@@ -1,0 +1,2 @@
+# ezc
+compiler for ez
