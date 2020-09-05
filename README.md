@@ -20,18 +20,18 @@ https://github.com/ziglang/zig - source code for another programming language
 
 ## Features (I may not impliment all of them)
 
-[] immutable assignments
+[ ] immutable assignments
 
-[] mutable variables
+[ ] mutable variables
 
-[] expressions
+[ ] expressions
 
-[] control flow
+[ ] control flow
 
-[] functions
+[ ] functions
 
-[] modules (should be easy since using c abi calling convention)
+[ ] modules (should be easy since using c abi calling convention)
 
-[] standard library
+[ ] standard library
 
-[] io
+[ ] io
