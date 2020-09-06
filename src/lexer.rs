@@ -119,21 +119,25 @@ impl Tokenizer {
                 }
                 LexerState::InWord => match c {
                     'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => self.intermidiate_string.push(c),
-                    _ => {
+                    ' ' | '\n' | '.' => {
                         self.end_token(get_kword(&self.intermidiate_string));
                         // put back char
                         self.pos -= 1;
                         self.col -= 1;
                     }
+                    _ => {
+                        return Err(LexError::UnexpectedChar(c));
+                    }
                 },
                 LexerState::InNum => match c {
                     '0'..='9' => self.intermidiate_string.push(c),
-                    _ => {
+                    ' ' | '\n' | '.' => {
                         self.end_token(Token::Number(self.intermidiate_string.to_owned()));
                         // put back char
                         self.pos -= 1;
                         self.col -= 1;
                     }
+                    _ => return Err(LexError::UnexpectedChar(c)),
                 },
             }
             self.pos += 1;
@@ -173,5 +177,30 @@ mod tests {
                 pos: 11,
             }
         )
+    }
+    #[test]
+    #[should_panic]
+    fn bad_input() {
+        let mut outputs = Vec::new();
+        let bad_inputs = ["set x to 5b.", "Set y to 10."];
+        for i in bad_inputs.iter() {
+            let mut tokenizer = Tokenizer::new();
+            outputs.push(tokenizer.lex(i.to_string()));
+        }
+        for i in outputs {
+            i.unwrap();
+        }
+    }
+    #[test]
+    fn good_input() {
+        let mut outputs = Vec::new();
+        let bad_inputs = ["set x to 5.", "Set y to 10."];
+        for i in bad_inputs.iter() {
+            let mut tokenizer = Tokenizer::new();
+            outputs.push(tokenizer.lex(i.to_string()));
+        }
+        for i in outputs {
+            i.unwrap();
+        }
     }
 }
