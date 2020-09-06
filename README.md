@@ -18,7 +18,17 @@ http://tinf2.vub.ac.be/~dvermeir/courses/compilers/compilers.pdf - book about co
 
 https://github.com/ziglang/zig - source code for another programming language
 
+http://www.cs.ecu.edu/karl/5220/spr16/Notes/Lexical/finitestate.html - explanation of a lexer as a state machine
+
 ## Features (I may not impliment all of them)
+
+- [x] working lexer
+
+- [ ] working ast (structs for ast items)
+
+- [ ] working parser
+
+- [ ] working codegen
 
 - [ ] immutable assignments
 
