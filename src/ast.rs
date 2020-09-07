@@ -12,7 +12,7 @@ pub struct SetNode {
 /// an expression
 #[derive(Debug)]
 pub enum Expr {
-    /// a number expression
+    /// a number
     Number(String),
 }
 
@@ -23,13 +23,20 @@ pub enum AstNodeType {
     Set(SetNode),
 }
 
+/// an abstract syntax tree
+#[derive(Debug)]
+pub struct Ast {
+    /// the nodes in the tree
+    pub nodes: Vec<AstNode>,
+}
+
 /// the ast node itself
 #[derive(Debug)]
 pub struct AstNode {
-    /// the row of the node
-    pub row: u32,
-    /// the col of the node
-    pub col: u32,
+    // /// the row of the node
+    // pub row: u32,
+    // /// the col of the node
+    // pub col: u32,
     /// the actual node
     pub node_type: AstNodeType,
 }

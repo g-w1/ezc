@@ -7,8 +7,11 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let op = tokenizer.lex(String::from("Set x to 10. Set y to 5."));
-    if let Ok(output) = op {
-        println!("{:?}", output);
-    }
+    let output = tokenizer
+        .lex(String::from("Set x to 10. set y to 5."))
+        .unwrap();
+    // println!("{:?}", &output);
+    let mut parser = parser::Parser::new(output);
+    let ast = parser.parse().unwrap();
+    println!("{:#?}", ast);
 }

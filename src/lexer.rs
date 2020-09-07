@@ -15,6 +15,8 @@ pub enum Token {
     Number(String),
     /// EndOfLine token (.)
     EndOfLine,
+    /// EndOfFile
+    Eof,
 }
 
 /// The Error type of a lex
@@ -146,6 +148,7 @@ impl Tokenizer {
             }
             self.pos += 1;
         }
+        output.push((Token::Eof, (self.col, self.row)));
         Ok(output)
     }
     /// the function to end a token
