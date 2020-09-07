@@ -20,6 +20,8 @@ https://github.com/ziglang/zig - source code for another programming language
 
 http://www.cs.ecu.edu/karl/5220/spr16/Notes/Lexical/finitestate.html - explanation of a lexer as a state machine
 
+https://llvm.org/docs/tutorial/ - another tutorial about compilers. it is by the leader in the industry compiler toolchain (llvm)
+
 ## Features (I may not impliment all of them)
 
 - [x] working lexer

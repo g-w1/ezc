@@ -1,7 +1,7 @@
 //! The module responsible for lexing the source code
 
 /// The tokens that get parsed from source
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     // Keyword Tokens
     /// kword for set
@@ -54,8 +54,8 @@ pub struct Tokenizer {
     state: LexerState,
     /// used for storing temporary strings
     intermidiate_string: String,
-    /// the output of the tokenizer
-    pub output: TokenStream,
+    // /// the output of the tokenizer
+    // pub output: TokenStream,
     /// the row
     row: u32,
     /// the colunm
@@ -73,15 +73,16 @@ impl Tokenizer {
         Tokenizer {
             state: LexerState::Start,
             intermidiate_string: String::new(),
-            output: Vec::new(),
+            // output: Vec::new(),
             row: 0,
             col: 0,
             pos: 0,
         }
     }
     /// the lex function
-    pub fn lex(self: &mut Self, input_string: String) -> Result<(), LexError> {
+    pub fn lex(self: &mut Self, input_string: String) -> Result<TokenStream, LexError> {
         let input: Vec<char> = input_string.chars().collect();
+        let mut output = TokenStream::new();
         let mut c: char;
         loop {
             if input.len() <= self.pos {
@@ -109,7 +110,7 @@ impl Tokenizer {
                             self.intermidiate_string.push(c);
                         }
                         '.' => {
-                            self.end_token(Token::EndOfLine);
+                            self.end_token(&mut output, Token::EndOfLine);
                         }
                         ' ' | '\n' => {}
                         _ => {
@@ -120,7 +121,7 @@ impl Tokenizer {
                 LexerState::InWord => match c {
                     'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => self.intermidiate_string.push(c),
                     ' ' | '\n' | '.' => {
-                        self.end_token(get_kword(&self.intermidiate_string));
+                        self.end_token(&mut output, get_kword(&self.intermidiate_string));
                         // put back char
                         self.pos -= 1;
                         self.col -= 1;
@@ -132,7 +133,10 @@ impl Tokenizer {
                 LexerState::InNum => match c {
                     '0'..='9' => self.intermidiate_string.push(c),
                     ' ' | '\n' | '.' => {
-                        self.end_token(Token::Number(self.intermidiate_string.to_owned()));
+                        self.end_token(
+                            &mut output,
+                            Token::Number(self.intermidiate_string.to_owned()),
+                        );
                         // put back char
                         self.pos -= 1;
                         self.col -= 1;
@@ -142,12 +146,12 @@ impl Tokenizer {
             }
             self.pos += 1;
         }
-        Ok(())
+        Ok(output)
     }
     /// the function to end a token
-    fn end_token(self: &mut Self, token_type: Token) {
+    fn end_token(self: &mut Self, output: &mut TokenStream, token_type: Token) {
         // pushes row and col for debuggin purposes
-        self.output.push((token_type, (self.col, self.row)));
+        output.push((token_type, (self.col, self.row)));
         self.state = LexerState::Start;
     }
 }
@@ -165,18 +169,21 @@ mod tests {
             Tokenizer {
                 state: LexerState::Start,
                 intermidiate_string: String::from(""),
-                output: vec![
-                    (Token::Kset, (4, 0)),
-                    (Token::Iden(String::from("x")), (6, 0)),
-                    (Token::Kto, (9, 0)),
-                    (Token::Number(String::from("5")), (11, 0)),
-                    (Token::EndOfLine, (11, 0))
-                ],
                 row: 0,
                 col: 11,
                 pos: 11,
             }
-        )
+        );
+        assert_eq!(
+            res.unwrap(),
+            vec![
+                (Token::Kset, (4, 0)),
+                (Token::Iden(String::from("x")), (6, 0)),
+                (Token::Kto, (9, 0)),
+                (Token::Number(String::from("5")), (11, 0)),
+                (Token::EndOfLine, (11, 0))
+            ]
+        );
     }
     #[test]
     #[should_panic]
