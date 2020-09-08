@@ -18,7 +18,7 @@ pub enum Expr {
 
 /// all the types of an ast node. it is like a tagged union. it also holds the values of the ast node type
 #[derive(Debug)]
-pub enum AstNodeType {
+pub enum AstNode {
     /// set an expression value to an identifier
     Set(SetNode),
 }
@@ -29,14 +29,9 @@ pub struct Ast {
     /// the nodes in the tree
     pub nodes: Vec<AstNode>,
 }
-
-/// the ast node itself
-#[derive(Debug)]
-pub struct AstNode {
-    // /// the row of the node
-    // pub row: u32,
-    // /// the col of the node
-    // pub col: u32,
-    /// the actual node
-    pub node_type: AstNodeType,
+impl Ast {
+    /// create an ast
+    pub fn new() -> Self {
+        Self { nodes: Vec::new() }
+    }
 }

@@ -1,15 +1,17 @@
 //! the parser module
 
 use crate::ast::*;
-use crate::lexer::{Token, TokenStream};
+use crate::lexer::{Locs, Token};
 
 /// the parser
 #[derive(Debug)]
 pub struct Parser {
-    /// the input to the parser as a TokenStream
-    input: TokenStream,
+    /// the input to the parser as a Vec<Token>
+    input: Vec<Token>,
     /// ptr to pos in input
     pos_input: usize,
+    /// the debug info of the locations of the tokens
+    locs_input: Locs,
 }
 
 /// an error in the parsing
@@ -21,44 +23,62 @@ pub enum ParserError {
 
 impl Parser {
     /// create a new parser
-    pub fn new(input: TokenStream) -> Self {
+    pub fn new(input: Vec<Token>, locs_input: Locs) -> Self {
         Parser {
             input,
             pos_input: 0,
+            locs_input,
         }
     }
+    /// a wrapper to give the err not have to use stuff in thejj
+    fn expected_token_err(self: &Self, token: Token) -> ParserError {
+        ParserError::ExpectedToken(
+            token,
+            (
+                self.locs_input[self.pos_input].0,
+                self.locs_input[self.pos_input].1,
+            ),
+        )
+    }
+    fn found_token_err(self: &Self, token: Token) -> ParserError {
+        ParserError::FoundToken(
+            token,
+            (
+                self.locs_input[self.pos_input].0,
+                self.locs_input[self.pos_input].1,
+            ),
+        )
+    }
+    /// Peek one token ahead without eating it
+    fn peek(self: &mut Self) -> Token {
+        self.input[self.pos_input + 1].clone()
+    }
+    fn cur_tok(self: &mut Self) -> Token {
+        self.input[self.pos_input].clone()
+    }
     /// A helper function to eat a token only if it exists and return error otherwise
-    fn expect_eat_token(
-        self: &mut Self,
-        token: Token,
-        // coords: (u32, u32),
-    ) -> Result<(), ParserError> {
-        if self.input[self.pos_input+1].clone().0 == token {
+    fn expect_eat_token(self: &mut Self, token: Token) -> Result<(), ParserError> {
+        if self.cur_tok() == token {
             self.pos_input += 1;
             return Ok(());
         }
-        // TODO refactor this. i dont wanna have to propigate the coords into everything. maybe have coords as a method that gives coords of current tok. big TODO. do not allow the ones
-        Err(ParserError::FoundToken(token, (1, 1)))
+        Err(self.found_token_err(token))
     }
-    // TODO refactor return type using type so that I dont have to write this tuple everywhere
     /// The function that does the parsing
     pub fn parse(self: &mut Self) -> Result<Ast, ParserError> {
-        let mut tree = Ast { nodes: Vec::new() };
+        let mut tree = Ast::new();
         while self.pos_input < self.input.len() - 1 {
-            println!("{:?}", tree);
-            println!("{:?}", self.pos_input);
-            match self.input[self.pos_input].0.clone() {
+            match self.cur_tok() {
                 Token::Kset => self.parse_set_stmt(&mut tree)?,
                 Token::Eof => break,
-                t => return Err(ParserError::FoundToken(t, (2, 2))),
+                t => return Err(self.found_token_err(t)),
             }
-            self.pos_input += 1;
         }
         Ok(tree)
     }
     /// KIden <- String
     fn parse_iden(self: &mut Self) -> Result<String, ParserError> {
-        match self.input[self.pos_input+1].clone().0 {
+        match self.cur_tok() {
             Token::Iden(s) => {
                 self.pos_input += 1;
                 Ok(s)
@@ -71,12 +91,12 @@ impl Parser {
     }
     /// Expr <- Number
     fn parse_expr(self: &mut Self) -> Result<Expr, ParserError> {
-        match self.input[self.pos_input+1].clone().0 {
+        match self.cur_tok() {
             Token::Number(s) => {
                 self.pos_input += 1;
                 Ok(Expr::Number(s))
             }
-            t => return Err(ParserError::ExpectedToken(t, (0, 0))),
+            t => return Err(self.expected_token_err(t)),
         }
     }
     /// SetNode <- Kset KIden Kto Expr EndOfLine
@@ -92,9 +112,7 @@ impl Parser {
         let node = SetNode { sete, setor };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
-        tree.nodes.push(AstNode {
-            node_type: AstNodeType::Set(node),
-        });
+        tree.nodes.push(AstNode::Set(node));
         Ok(())
     }
 }
