@@ -1,8 +1,22 @@
 # ezc
 
-compiler for ez
+Compiler for `ez`.
 
 This is for an independent study in school.
+
+## Goals
+- To learn a *lot*
+- `ez` should resemble english
+- Use only rust standard library
+- Write a (minimal) working compiler
+- Write a (minimal) standard library for `ez` in another language (zig, rust, c, asm, ..)
+
+## Instructions
+
+To run (right now it just displays an ast and some tokens): `cargo run`
+
+To test: `cargo test`
+
 
 ## Resources
 
@@ -24,19 +38,19 @@ https://llvm.org/docs/tutorial/ - another tutorial about compilers. it is by the
 
 ## Features (I may not impliment all of them)
 
-- [x] working lexer
+- [x] lexer
 
-- [x] working ast (structs for ast items)
+- [x] ast (structs for ast items)
 
-- [x] working parser
+- [x] parser
 
-- [ ] working codegen
+- [ ] codegen
 
 - [ ] immutable assignments
 
 - [ ] mutable variables
 
-- [ ] expressions
+- [ ] expressions (the start of recursive parsing)
 
 - [ ] control flow
 
