@@ -26,9 +26,9 @@ https://llvm.org/docs/tutorial/ - another tutorial about compilers. it is by the
 
 - [x] working lexer
 
-- [ ] working ast (structs for ast items)
+- [x] working ast (structs for ast items)
 
-- [ ] working parser
+- [x] working parser
 
 - [ ] working codegen
 

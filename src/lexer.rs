@@ -75,7 +75,6 @@ impl Tokenizer {
         Tokenizer {
             state: LexerState::Start,
             intermidiate_string: String::new(),
-            // output: Vec::new(),
             row: 0,
             col: 0,
             pos: 0,
@@ -93,6 +92,8 @@ impl Tokenizer {
             } else {
                 c = input[self.pos];
             }
+            // println!("{:?}", self.state);
+            // println!("{}", c);
             match c {
                 '\n' => {
                     self.row += 1;
@@ -123,7 +124,7 @@ impl Tokenizer {
                 }
                 LexerState::InWord => match c {
                     'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => self.intermidiate_string.push(c),
-                    ' ' | '\n' | '.' => {
+                    ' ' | '\n' => {
                         self.end_token(
                             &mut output,
                             &mut output_poss,
@@ -133,13 +134,23 @@ impl Tokenizer {
                         self.pos -= 1;
                         self.col -= 1;
                     }
+                    '.' => {
+                        self.end_token(
+                            &mut output,
+                            &mut output_poss,
+                            get_kword(&self.intermidiate_string),
+                        );
+                        self.end_token(&mut output, &mut output_poss, Token::EndOfLine);
+                        self.pos += 1;
+                        self.col += 1;
+                    }
                     _ => {
                         return (Err(LexError::UnexpectedChar(c)), output_poss);
                     }
                 },
                 LexerState::InNum => match c {
                     '0'..='9' => self.intermidiate_string.push(c),
-                    ' ' | '\n' | '.' => {
+                    ' ' | '\n' => {
                         self.end_token(
                             &mut output,
                             &mut output_poss,
@@ -149,10 +160,41 @@ impl Tokenizer {
                         self.pos -= 1;
                         self.col -= 1;
                     }
+                    '.' => {
+                        self.end_token(
+                            &mut output,
+                            &mut output_poss,
+                            Token::Number(self.intermidiate_string.to_owned()),
+                        );
+                        self.end_token(&mut output, &mut output_poss, Token::EndOfLine);
+                        self.pos += 1;
+                        self.col += 1;
+                    }
                     _ => return (Err(LexError::UnexpectedChar(c)), output_poss),
                 },
             }
             self.pos += 1;
+        }
+        // clean up any loose intermediate strings. should really clean up state and if not start throw an error. but good enough for now. TODO
+        match self.intermidiate_string.as_str() {
+            "" => {}
+            _ => match self.state {
+                LexerState::InWord => {
+                    self.end_token(
+                        &mut output,
+                        &mut output_poss,
+                        get_kword(&self.intermidiate_string),
+                    );
+                }
+                LexerState::InNum => {
+                    self.end_token(
+                        &mut output,
+                        &mut output_poss,
+                        Token::Number(self.intermidiate_string.to_owned()),
+                    );
+                }
+                _ => {}
+            },
         }
         self.end_token(&mut output, &mut output_poss, Token::Eof);
         (Ok(output), output_poss)
@@ -166,6 +208,7 @@ impl Tokenizer {
     ) {
         output.push(token_type);
         output_poss.push((self.col, self.row));
+        self.intermidiate_string = String::from("");
         self.state = LexerState::Start;
     }
 }
@@ -184,8 +227,8 @@ mod tests {
                 state: LexerState::Start,
                 intermidiate_string: String::from(""),
                 row: 0,
-                col: 11,
-                pos: 11,
+                col: 12,
+                pos: 12,
             }
         );
         let ts = res.0.unwrap();
@@ -197,6 +240,36 @@ mod tests {
                 Token::Kto,
                 Token::Number(String::from("5")),
                 Token::EndOfLine,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
+    }
+    #[test]
+    fn bad_ast() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(String::from("set x to 5. b"));
+        assert!(res.0.is_ok());
+        assert_eq!(
+            tokenizer,
+            Tokenizer {
+                state: LexerState::Start,
+                intermidiate_string: String::from(""),
+                row: 0,
+                col: 13,
+                pos: 13,
+            }
+        );
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Kset,
+                Token::Iden(String::from("x")),
+                Token::Kto,
+                Token::Number(String::from("5")),
+                Token::EndOfLine,
+                Token::Iden(String::from("b")),
                 Token::Eof,
             ]
         );

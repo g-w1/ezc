@@ -1,7 +1,7 @@
 //! the module where the abstract syntax tree is defined
 
 /// The tree of `set Iden to Expr`
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SetNode {
     /// the thing that is being set. an identifier
     pub sete: String,
@@ -10,21 +10,21 @@ pub struct SetNode {
 }
 
 /// an expression
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expr {
     /// a number
     Number(String),
 }
 
 /// all the types of an ast node. it is like a tagged union. it also holds the values of the ast node type
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AstNode {
     /// set an expression value to an identifier
     Set(SetNode),
 }
 
 /// an abstract syntax tree
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Ast {
     /// the nodes in the tree
     pub nodes: Vec<AstNode>,

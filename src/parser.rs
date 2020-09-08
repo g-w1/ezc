@@ -67,7 +67,7 @@ impl Parser {
     /// The function that does the parsing
     pub fn parse(self: &mut Self) -> Result<Ast, ParserError> {
         let mut tree = Ast::new();
-        while self.pos_input < self.input.len() - 1 {
+        while self.cur_tok() != Token::Eof {
             match self.cur_tok() {
                 Token::Kset => self.parse_set_stmt(&mut tree)?,
                 Token::Eof => break,
@@ -114,5 +114,50 @@ impl Parser {
         self.expect_eat_token(Token::EndOfLine)?;
         tree.nodes.push(AstNode::Set(node));
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::{Ast, AstNode, Expr, SetNode};
+    use crate::lexer;
+    #[test]
+    fn test_set_expr() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(String::from(
+            "Set x to 10. set y to 5 . set  xarst to 555134234523452345  \n.\n\n",
+        ));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse().unwrap();
+        assert_eq!(
+            Ast {
+                nodes: vec![
+                    AstNode::Set(SetNode {
+                        sete: String::from("x"),
+                        setor: Expr::Number(String::from("10"))
+                    }),
+                    AstNode::Set(SetNode {
+                        sete: String::from("y"),
+                        setor: Expr::Number(String::from("5"))
+                    }),
+                    AstNode::Set(SetNode {
+                        sete: String::from("xarst"),
+                        setor: Expr::Number(String::from("555134234523452345"))
+                    })
+                ]
+            },
+            ast
+        );
+    }
+    #[test]
+    #[should_panic]
+    fn test_bad_stuff() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(String::from(
+            "Set x to 10. set y to 5 . set  xarst to 555134234523452345. set 6 to lol.",
+        ));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        parser.parse().unwrap();
     }
 }
