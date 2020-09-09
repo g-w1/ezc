@@ -7,7 +7,7 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "Set x to 10. set y to 5 . set  x to 555134234523452345 .";
+    let input = "Set x to 10. set y to 5 . set  test to 555134234523452345 .";
     println!("input: {}", input);
     let output = tokenizer.lex(String::from(input));
     println!("lexed: {:?}", output);

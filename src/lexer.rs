@@ -11,8 +11,8 @@ pub enum Token {
     // Iden tokens
     /// Identifier token
     Iden(String),
-    /// Number token
-    Number(String),
+    /// IntLit token
+    IntLit(String),
     /// EndOfLine token (.)
     EndOfLine,
     /// EndOfFile
@@ -154,7 +154,7 @@ impl Tokenizer {
                         self.end_token(
                             &mut output,
                             &mut output_poss,
-                            Token::Number(self.intermidiate_string.to_owned()),
+                            Token::IntLit(self.intermidiate_string.to_owned()),
                         );
                         // put back char
                         self.pos -= 1;
@@ -164,7 +164,7 @@ impl Tokenizer {
                         self.end_token(
                             &mut output,
                             &mut output_poss,
-                            Token::Number(self.intermidiate_string.to_owned()),
+                            Token::IntLit(self.intermidiate_string.to_owned()),
                         );
                         self.end_token(&mut output, &mut output_poss, Token::EndOfLine);
                         self.pos += 1;
@@ -190,7 +190,7 @@ impl Tokenizer {
                     self.end_token(
                         &mut output,
                         &mut output_poss,
-                        Token::Number(self.intermidiate_string.to_owned()),
+                        Token::IntLit(self.intermidiate_string.to_owned()),
                     );
                 }
                 _ => {}
@@ -238,7 +238,7 @@ mod tests {
                 Token::Kset,
                 Token::Iden(String::from("x")),
                 Token::Kto,
-                Token::Number(String::from("5")),
+                Token::IntLit(String::from("5")),
                 Token::EndOfLine,
                 Token::Eof,
             ]
@@ -267,7 +267,7 @@ mod tests {
                 Token::Kset,
                 Token::Iden(String::from("x")),
                 Token::Kto,
-                Token::Number(String::from("5")),
+                Token::IntLit(String::from("5")),
                 Token::EndOfLine,
                 Token::Iden(String::from("b")),
                 Token::Eof,

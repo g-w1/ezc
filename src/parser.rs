@@ -89,10 +89,10 @@ impl Parser {
             }
         }
     }
-    /// Expr <- Number
+    /// Expr <- IntLit
     fn parse_expr(self: &mut Self) -> Result<Expr, ParserError> {
         match self.cur_tok() {
-            Token::Number(s) => {
+            Token::IntLit(s) => {
                 self.pos_input += 1;
                 Ok(Expr::Number(s))
             }
