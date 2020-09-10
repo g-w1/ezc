@@ -29,6 +29,7 @@ pub struct Code {
 impl fmt::Display for Code {
     /// printing the asm to stdout. should be very easy to port to file because stdout is a file!!!
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // adding the sections
         if self.text.instructions.clone().len() > 0 {
             writeln!(f, "global _start")?;
             writeln!(f, "section .text")?;
@@ -82,16 +83,57 @@ pub fn codegen(tree: Ast) -> Code {
     code
 }
 
+/// a helper function to provide `qword [_varname]` from `varname`
+fn qword_deref_helper(input: String) -> String {
+    format!("qword [_{}]", input)
+}
+
 /// code generation for a set statement
 fn cgen_set_stmt(node: SetNode, code: &mut Code) {
     code.bss.instructions.push(format!("_{} resq 1", node.sete));
     match node.setor {
         Expr::Number(s) => {
+            // if it is just a number push it to text here
             code.text
                 .instructions
-                .push(format!("mov qword [_{}], {}", node.sete, s));
+                .push(format!("mov {}, {}", qword_deref_helper(node.sete), s));
         }
         // for recursive expressions
-        // expr => code.text.instructions.push(cgen_expr(expr)),
+        // expr => {
+        //     let reg = cgen_expr(expr, &mut code);
+        //     code.text.instructions.push(format!("mov {}, {}", qword_deref_helper(node.sete), reg));
+        // },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_cget_set_stmt() {
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Set x to 10. set y to 5 . set   test to 445235 .";
+        let output = tokenizer.lex(String::from(input));
+        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse().unwrap();
+        let code = codegen::codegen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov qword [_x], 10
+mov qword [_y], 5
+mov qword [_test], 445235
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+_x resq 1
+_y resq 1
+_test resq 1
+";
+        assert_eq!(format!("{}", code), correct_code);
     }
 }

@@ -8,12 +8,12 @@ This is for an independent study in school.
 - To learn a *lot*
 - `ez` should resemble english
 - Use only rust standard library
-- Write a (minimal) working compiler
+- Write a (minimal) working compiler. probably only u64 but maybe arrays
 - Write a (minimal) standard library for `ez` in another language (zig, rust, c, asm, ..)
 
 ## Instructions
 
-To run (right now it opens gdb. only works on linux x86_64. To edit input code change `main.rs`): `cargo run -q > out.asm; yasm -g dwarf2 -f elf64 out.asm&&ld out.o -o out && gdb ./out`
+To run (and open in gdb. only works on linux x86_64. To edit input code change `main.rs`): `cargo run -q > out.asm; yasm -g dwarf2 -f elf64 out.asm&&ld out.o -o out && gdb ./out`
 
 
 To test: `cargo test`
@@ -45,9 +45,9 @@ https://llvm.org/docs/tutorial/ - another tutorial about compilers. it is by the
 
 - [x] parser
 
-- [ ] codegen
+- [x] codegen
 
-- [ ] immutable assignments
+- [x] immutable assignments
 
 - [ ] mutable variables
 
