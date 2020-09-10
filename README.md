@@ -51,7 +51,7 @@ https://llvm.org/docs/tutorial/ - another tutorial about compilers. it is by the
 
 - [x] mutable variables
 
-- [ ] semantic analysis.
+- [x] semantic analysis.
 
 - [ ] expressions (the start of recursive parsing)
 

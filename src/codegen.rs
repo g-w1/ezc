@@ -1,3 +1,5 @@
+//! code generation for the compiler
+
 use crate::ast::{Ast, AstNode, ChangeNode, Expr, SetNode};
 use std::fmt;
 /// section .bss

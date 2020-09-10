@@ -15,6 +15,8 @@ fn main() {
     // println!("lexed: {:?}", output);
     let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
     let ast = parser.parse().unwrap();
+    let mut analizer = analyze::AnalyzeState::new();
+    analizer.analyze(&ast).unwrap();
     // println!("ast: {:#?}", ast);
     let code = codegen::codegen(ast);
     // println!("output: ");
