@@ -30,7 +30,7 @@ impl Parser {
             locs_input,
         }
     }
-    /// a wrapper to give the err not have to use stuff in thejj
+    /// a wrapper to give the err not have to use stuff in the functions
     fn expected_token_err(self: &Self, token: Token) -> ParserError {
         ParserError::ExpectedToken(
             token,
@@ -40,6 +40,7 @@ impl Parser {
             ),
         )
     }
+    /// error helper function to put the positions of the tokens in the error message
     fn found_token_err(self: &Self, token: Token) -> ParserError {
         ParserError::FoundToken(
             token,
@@ -53,6 +54,7 @@ impl Parser {
     fn peek(self: &mut Self) -> Token {
         self.input[self.pos_input + 1].clone()
     }
+    /// Get the current token in the stream
     fn cur_tok(self: &mut Self) -> Token {
         self.input[self.pos_input].clone()
     }

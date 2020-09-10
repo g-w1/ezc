@@ -13,7 +13,8 @@ This is for an independent study in school.
 
 ## Instructions
 
-To run (right now it just displays an ast and some tokens): `cargo run`
+To run (right now it opens gdb. only works on linux x86_64. To edit input code change `main.rs`): `cargo run -q > out.asm; yasm -g dwarf2 -f elf64 out.asm&&ld out.o -o out && gdb ./out`
+
 
 To test: `cargo test`
 

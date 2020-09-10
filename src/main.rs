@@ -2,16 +2,20 @@
 #[warn(missing_crate_level_docs)]
 #[warn(missing_debug_implementations)]
 pub mod ast;
+pub mod codegen;
 pub mod lexer;
 pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "Set x to 10. set y to 5 . set  test to 555134234523452345 .";
-    println!("input: {}", input);
+    let input = "Set x to 10. set y to 5 . set  test to 445235 .";
+    // println!("input: {}", &input);
     let output = tokenizer.lex(String::from(input));
-    println!("lexed: {:?}", output);
+    // println!("lexed: {:?}", output);
     let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
     let ast = parser.parse().unwrap();
-    println!("ast: {:#?}", ast);
+    // println!("ast: {:#?}", ast);
+    let code = codegen::codegen(ast);
+    // println!("output: ");
+    println!("{}", code);
 }
