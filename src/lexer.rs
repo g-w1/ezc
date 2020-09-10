@@ -6,6 +6,8 @@ pub enum Token {
     // Keyword Tokens
     /// kword for set
     Kset,
+    /// kword for Change
+    Kchange,
     /// to
     Kto,
     // Iden tokens
@@ -37,6 +39,8 @@ fn get_kword(input: &String) -> Token {
     match input.as_str() {
         "set" => return Token::Kset,
         "Set" => return Token::Kset,
+        "change" => return Token::Kchange,
+        "Change" => return Token::Kchange,
         "to" => return Token::Kto,
         _ => return Token::Iden(input.to_string()),
     }

@@ -1,6 +1,7 @@
 #[warn(missing_docs)]
 #[warn(missing_crate_level_docs)]
 #[warn(missing_debug_implementations)]
+pub mod analyze;
 pub mod ast;
 pub mod codegen;
 pub mod lexer;
@@ -8,7 +9,7 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "Set x to 10. set y to 5 . set  test to 445235 .";
+    let input = "Set x to 10. set y to 5 . change  x to 445235 .";
     // println!("input: {}", &input);
     let output = tokenizer.lex(String::from(input));
     // println!("lexed: {:?}", output);

@@ -8,6 +8,14 @@ pub struct SetNode {
     /// the thing that the sete is being set to
     pub setor: Expr,
 }
+/// The tree of `change Iden to Expr`
+#[derive(Debug, PartialEq)]
+pub struct ChangeNode {
+    /// the thing that is being set. an identifier
+    pub sete: String,
+    /// the thing that the sete is being set to
+    pub setor: Expr,
+}
 
 /// an expression
 #[derive(Debug, PartialEq)]
@@ -21,6 +29,8 @@ pub enum Expr {
 pub enum AstNode {
     /// set an expression value to an identifier
     Set(SetNode),
+    /// change an expression value to an identifier
+    Change(ChangeNode),
 }
 
 /// an abstract syntax tree

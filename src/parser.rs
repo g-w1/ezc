@@ -72,6 +72,7 @@ impl Parser {
         while self.cur_tok() != Token::Eof {
             match self.cur_tok() {
                 Token::Kset => self.parse_set_stmt(&mut tree)?,
+                Token::Kchange => self.parse_change_stmt(&mut tree)?,
                 Token::Eof => break,
                 t => return Err(self.found_token_err(t)),
             }
@@ -115,6 +116,22 @@ impl Parser {
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
         tree.nodes.push(AstNode::Set(node));
+        Ok(())
+    }
+    /// ChangeNode <- Kchange KIden Kto Expr EndOfLine
+    fn parse_change_stmt(self: &mut Self, tree: &mut Ast) -> Result<(), ParserError> {
+        // Kset
+        self.expect_eat_token(Token::Kchange)?;
+        // KIden
+        let sete = self.parse_iden()?;
+        // Kto
+        self.expect_eat_token(Token::Kto)?;
+        // Expr
+        let setor = self.parse_expr()?;
+        let node = ChangeNode { sete, setor };
+        // EndOfLine
+        self.expect_eat_token(Token::EndOfLine)?;
+        tree.nodes.push(AstNode::Change(node));
         Ok(())
     }
 }

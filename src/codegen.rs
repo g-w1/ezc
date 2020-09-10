@@ -1,4 +1,4 @@
-use crate::ast::{Ast, AstNode, Expr, SetNode};
+use crate::ast::{Ast, AstNode, ChangeNode, Expr, SetNode};
 use std::fmt;
 /// section .bss
 #[derive(Debug)]
@@ -76,8 +76,10 @@ pub fn codegen(tree: Ast) -> Code {
         },
     };
     for node in tree.nodes {
+        // TODO all the stuff an impl for code instead of passing &mut code
         match node {
             AstNode::Set(stmt) => cgen_set_stmt(stmt, &mut code),
+            AstNode::Change(stmt) => cgen_change_stmt(stmt, &mut code),
         }
     }
     code
@@ -93,7 +95,24 @@ fn cgen_set_stmt(node: SetNode, code: &mut Code) {
     code.bss.instructions.push(format!("_{} resq 1", node.sete));
     match node.setor {
         Expr::Number(s) => {
-            // if it is just a number push it to text here
+            // if it is just a number push it to .text here
+            code.text
+                .instructions
+                .push(format!("mov {}, {}", qword_deref_helper(node.sete), s));
+        }
+        // for recursive expressions
+        // expr => {
+        //     let reg = cgen_expr(expr, &mut code);
+        //     code.text.instructions.push(format!("mov {}, {}", qword_deref_helper(node.sete), reg));
+        // },
+    }
+}
+
+/// code generation for a set statement
+fn cgen_change_stmt(node: ChangeNode, code: &mut Code) {
+    match node.setor {
+        Expr::Number(s) => {
+            // if it is just a number push it to .text here
             code.text
                 .instructions
                 .push(format!("mov {}, {}", qword_deref_helper(node.sete), s));
