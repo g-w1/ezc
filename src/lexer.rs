@@ -19,6 +19,12 @@ pub enum Token {
     EndOfLine,
     /// EndOfFile
     Eof,
+    // grouping
+    Lparen,
+    Rparen,
+    // Binops
+    BoPlus,
+    BoMinus,
 }
 
 /// The Error type of a lex
@@ -28,7 +34,7 @@ pub enum LexError {
     UnexpectedChar(char),
 }
 
-/// see if a word is an iden or a kword
+/// see if a word is an iden or a kword TODO: get this inine test to work
 /// ```rust
 /// let set = get_kword(String::from("set"));
 /// assert!(set == Token::Kset);
@@ -96,8 +102,6 @@ impl Tokenizer {
             } else {
                 c = input[self.pos];
             }
-            // println!("{:?}", self.state);
-            // println!("{}", c);
             match c {
                 '\n' => {
                     self.row += 1;
@@ -120,6 +124,10 @@ impl Tokenizer {
                         '.' => {
                             self.end_token(&mut output, &mut output_poss, Token::EndOfLine);
                         }
+                        '(' => self.end_token(&mut output, &mut output_poss, Token::Lparen),
+                        ')' => self.end_token(&mut output, &mut output_poss, Token::Rparen),
+                        '+' => self.end_token(&mut output, &mut output_poss, Token::BoPlus),
+                        '-' => self.end_token(&mut output, &mut output_poss, Token::BoMinus),
                         ' ' | '\n' => {}
                         _ => {
                             return (Err(LexError::UnexpectedChar(c)), output_poss);
@@ -128,7 +136,7 @@ impl Tokenizer {
                 }
                 LexerState::InWord => match c {
                     'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => self.intermidiate_string.push(c),
-                    ' ' | '\n' => {
+                    _ => {
                         self.end_token(
                             &mut output,
                             &mut output_poss,
@@ -137,24 +145,11 @@ impl Tokenizer {
                         // put back char
                         self.pos -= 1;
                         self.col -= 1;
-                    }
-                    '.' => {
-                        self.end_token(
-                            &mut output,
-                            &mut output_poss,
-                            get_kword(&self.intermidiate_string),
-                        );
-                        self.end_token(&mut output, &mut output_poss, Token::EndOfLine);
-                        self.pos += 1;
-                        self.col += 1;
-                    }
-                    _ => {
-                        return (Err(LexError::UnexpectedChar(c)), output_poss);
                     }
                 },
                 LexerState::InNum => match c {
                     '0'..='9' => self.intermidiate_string.push(c),
-                    ' ' | '\n' => {
+                    _ => {
                         self.end_token(
                             &mut output,
                             &mut output_poss,
@@ -164,17 +159,6 @@ impl Tokenizer {
                         self.pos -= 1;
                         self.col -= 1;
                     }
-                    '.' => {
-                        self.end_token(
-                            &mut output,
-                            &mut output_poss,
-                            Token::IntLit(self.intermidiate_string.to_owned()),
-                        );
-                        self.end_token(&mut output, &mut output_poss, Token::EndOfLine);
-                        self.pos += 1;
-                        self.col += 1;
-                    }
-                    _ => return (Err(LexError::UnexpectedChar(c)), output_poss),
                 },
             }
             self.pos += 1;
@@ -221,7 +205,7 @@ impl Tokenizer {
 mod tests {
     use super::*;
     #[test]
-    fn one_line() {
+    fn lexer_one_line() {
         let mut tokenizer = Tokenizer::new();
         let res = tokenizer.lex(String::from("set x to 5."));
         assert!(res.0.is_ok());
@@ -231,8 +215,8 @@ mod tests {
                 state: LexerState::Start,
                 intermidiate_string: String::from(""),
                 row: 0,
-                col: 12,
-                pos: 12,
+                col: 11,
+                pos: 11,
             }
         );
         let ts = res.0.unwrap();
@@ -250,7 +234,7 @@ mod tests {
         assert_eq!(ts.len(), res.1.len())
     }
     #[test]
-    fn bad_ast() {
+    fn lexer_bad_ast() {
         let mut tokenizer = Tokenizer::new();
         let res = tokenizer.lex(String::from("set x to 5. b"));
         assert!(res.0.is_ok());
@@ -280,10 +264,9 @@ mod tests {
         assert_eq!(ts.len(), res.1.len())
     }
     #[test]
-    #[should_panic]
-    fn bad_input() {
+    fn lexer_good_input() {
         let mut outputs = Vec::new();
-        let bad_inputs = ["set x to 5b.", "Set y to 10."];
+        let bad_inputs = ["set x to 5.", "change y to 10."];
         for i in bad_inputs.iter() {
             let mut tokenizer = Tokenizer::new();
             outputs.push(tokenizer.lex(i.to_string()));
@@ -293,15 +276,41 @@ mod tests {
         }
     }
     #[test]
-    fn good_input() {
-        let mut outputs = Vec::new();
-        let bad_inputs = ["set x to 5.", "Set y to 10."];
-        for i in bad_inputs.iter() {
-            let mut tokenizer = Tokenizer::new();
-            outputs.push(tokenizer.lex(i.to_string()));
-        }
-        for i in outputs {
-            assert_eq!(i.1.len(), i.0.unwrap().len());
-        }
+    fn lexer_expr() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(String::from("set x to 5. change x to (5 + x)."));
+        assert!(res.0.is_ok());
+        // assert_eq!(
+        //     tokenizer,
+        //     Tokenizer {
+        //         state: LexerState::Start,
+        //         intermidiate_string: String::from(""),
+        //         row: 0,
+        //         col: 13,
+        //         pos: 13,
+        //     }
+        // );
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Kset,
+                Token::Iden(String::from("x")),
+                Token::Kto,
+                Token::IntLit(String::from("5")),
+                Token::EndOfLine,
+                Token::Kchange,
+                Token::Iden(String::from("x")),
+                Token::Kto,
+                Token::Lparen,
+                Token::IntLit(String::from("5")),
+                Token::BoPlus,
+                Token::Iden(String::from("x")),
+                Token::Rparen,
+                Token::EndOfLine,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
     }
 }

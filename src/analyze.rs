@@ -15,14 +15,14 @@ pub enum AnalysisError {
 
 /// the state of an analisis
 #[derive(Debug)]
-pub struct AnalyzeState {
+pub struct Analyser {
     initialized_vars: HashMap<String, bool>,
 }
 
-impl AnalyzeState {
-    /// create an AnalyzeState
-    pub fn new() -> AnalyzeState {
-        AnalyzeState {
+impl Analyser {
+    /// create an Analyser
+    pub fn new() -> Self {
+        Self {
             initialized_vars: HashMap::new(),
         }
     }
@@ -51,6 +51,7 @@ impl AnalyzeState {
     fn check_expr(self: &Self, expr: Expr) -> Result<(), AnalysisError> {
         match expr {
             Expr::Number(n) => check_num(n)?,
+            _ => unimplemented!(),
         }
         Ok(())
     }
@@ -66,7 +67,7 @@ fn check_num(num: String) -> Result<(), AnalysisError> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_good_analyze() {
+    fn analyze_good_analyze() {
         use crate::analyze;
         use crate::lexer;
         use crate::parser;
@@ -75,12 +76,12 @@ mod tests {
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse().unwrap();
-        let mut analizer = analyze::AnalyzeState::new();
+        let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }
     #[test]
     #[should_panic]
-    fn test_double_set() {
+    fn analyze_double_set() {
         use crate::analyze;
         use crate::lexer;
         use crate::parser;
@@ -89,12 +90,12 @@ mod tests {
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse().unwrap();
-        let mut analizer = analyze::AnalyzeState::new();
+        let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }
     #[test]
     #[should_panic]
-    fn test_change_w_o_set() {
+    fn analyze_change_w_o_set() {
         use crate::analyze;
         use crate::lexer;
         use crate::parser;
@@ -103,12 +104,12 @@ mod tests {
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse().unwrap();
-        let mut analizer = analyze::AnalyzeState::new();
+        let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }
     #[test]
     #[should_panic]
-    fn test_number_too_big() {
+    fn analyze_number_too_big() {
         use crate::analyze;
         use crate::lexer;
         use crate::parser;
@@ -118,7 +119,7 @@ mod tests {
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse().unwrap();
-        let mut analizer = analyze::AnalyzeState::new();
+        let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }
 }
