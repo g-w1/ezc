@@ -2,23 +2,6 @@
 
 use crate::lexer::Token;
 
-/// The tree of `set Iden to Expr`
-#[derive(Debug, PartialEq, Clone)]
-pub struct SetNode {
-    /// the thing that is being set. an identifier
-    pub sete: String,
-    /// the thing that the sete is being set to
-    pub setor: Expr,
-}
-/// The tree of `change Iden to Expr`
-#[derive(Debug, PartialEq, Clone)]
-pub struct ChangeNode {
-    /// the thing that is being set. an identifier
-    pub sete: String,
-    /// the thing that the sete is being set to
-    pub setor: Expr,
-}
-
 /// an expression
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
@@ -53,9 +36,11 @@ pub enum BinOp {
 pub enum AstNode {
     /// set an expression value to an identifier
     // TODO make it so that each one is just an {} enum so that no need for extra structs
-    Set(SetNode),
-    /// change an expression value to an identifier
-    Change(ChangeNode),
+    SetOrChange {
+        sete: String,
+        setor: Expr,
+        change: bool,
+    },
 }
 
 /// an abstract syntax tree

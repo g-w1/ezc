@@ -30,28 +30,40 @@ impl Analyser {
     pub fn analyze(self: &mut Self, tree: &ast::Ast) -> Result<(), AnalysisError> {
         for node in tree.nodes.clone() {
             match node {
-                ast::AstNode::Set(s) => {
-                    if !self.initialized_vars.contains_key(&s.sete) {
-                        self.initialized_vars.insert(s.sete, true);
+                ast::AstNode::SetOrChange {
+                    sete,
+                    setor,
+                    change,
+                } => {
+                    if !change {
+                        if !self.initialized_vars.contains_key(&sete) {
+                            self.initialized_vars.insert(sete, true);
+                        } else {
+                            return Err(AnalysisError::DoubleSet);
+                        }
                     } else {
-                        return Err(AnalysisError::DoubleSet);
+                        self.make_sure_var_exists(sete)?;
                     }
-                    self.check_expr(s.setor)?;
-                }
-                ast::AstNode::Change(c) => {
-                    if !self.initialized_vars.contains_key(&c.sete) {
-                        return Err(AnalysisError::ChangeUsedBeforeSet);
-                    }
-                    self.check_expr(c.setor)?;
+                    self.check_expr(setor)?;
                 }
             }
+        }
+        Ok(())
+    }
+    fn make_sure_var_exists(self: &Self, var: String) -> Result<(), AnalysisError> {
+        if !self.initialized_vars.contains_key(&var) {
+            return Err(AnalysisError::ChangeUsedBeforeSet);
         }
         Ok(())
     }
     fn check_expr(self: &Self, expr: Expr) -> Result<(), AnalysisError> {
         match expr {
             Expr::Number(n) => check_num(n)?,
-            _ => unimplemented!(),
+            Expr::Iden(s) => self.make_sure_var_exists(s)?,
+            Expr::BinOp { lhs, op: _, rhs } => {
+                self.check_expr(*lhs)?;
+                self.check_expr(*rhs)?;
+            }
         }
         Ok(())
     }
@@ -64,6 +76,7 @@ fn check_num(num: String) -> Result<(), AnalysisError> {
         Err(_) => Err(AnalysisError::NumberTooBig),
     }
 }
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -72,7 +85,7 @@ mod tests {
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
-        let input = "Set x to 10. set y to 5 . change  x to 445235 .";
+        let input = "Set x to (10+4). set y to (5+x) . change  x to 445235+y .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse().unwrap();

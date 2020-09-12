@@ -1,6 +1,6 @@
 //! code generation for the compiler
 
-use crate::ast::{Ast, AstNode, ChangeNode, Expr, SetNode};
+use crate::ast::{Ast, AstNode, Expr};
 use std::fmt;
 /// section .bss
 #[derive(Debug)]
@@ -80,8 +80,11 @@ pub fn codegen(tree: Ast) -> Code {
     for node in tree.nodes {
         // TODO all the stuff an impl for code instead of passing &mut code
         match node {
-            AstNode::Set(stmt) => cgen_set_stmt(stmt, &mut code),
-            AstNode::Change(stmt) => cgen_change_stmt(stmt, &mut code),
+            AstNode::SetOrChange {
+                sete,
+                setor,
+                change,
+            } => cgen_set_or_change_stmt(sete, setor, change, &mut code),
         }
     }
     code
@@ -92,42 +95,43 @@ fn qword_deref_helper(input: String) -> String {
     format!("qword [_{}]", input)
 }
 
-/// code generation for a set statement
-fn cgen_set_stmt(node: SetNode, code: &mut Code) {
-    code.bss.instructions.push(format!("_{} resq 1", node.sete));
-    match node.setor {
+/// code generation for a set or change stmt. it is interpreted as change if change is true
+fn cgen_set_or_change_stmt(sete: String, setor: Expr, change: bool, code: &mut Code) {
+    if !change {
+        code.bss.instructions.push(format!("_{} resq 1", sete));
+    }
+    match setor {
         Expr::Number(s) => {
             // if it is just a number push it to .text here
             code.text
                 .instructions
-                .push(format!("mov {}, {}", qword_deref_helper(node.sete), s));
+                .push(format!("mov {}, {}", qword_deref_helper(sete), s));
         }
-        _ => {
+        Expr::Iden(s) => {
+            // if it is another iden then move the val to it
+            code.text.instructions.push(format!(
+                "mov {}, {}",
+                qword_deref_helper(sete),
+                qword_deref_helper(s)
+            ));
         }
-        // for recursive expressions
-        // expr => {
-        //     let reg = cgen_expr(expr, &mut code);
-        //     code.text.instructions.push(format!("mov {}, {}", qword_deref_helper(node.sete), reg));
-        // },
+        _ => {}
+        // // for recursive expressions
+        // Expr::BinOp {
+        //     lhs: _,
+        //     rhs: _,
+        //     op: _,
+        // } => {
+        //     let reg = cgen_expr(setor, &mut code);
+        //     code.text
+        //         .instructions
+        //         .push(format!("mov {}, {}", qword_deref_helper(sete), reg));
+        // }
     }
 }
 
-/// code generation for a set statement
-fn cgen_change_stmt(node: ChangeNode, code: &mut Code) {
-    match node.setor {
-        Expr::Number(s) => {
-            // if it is just a number push it to .text here
-            code.text
-                .instructions
-                .push(format!("mov {}, {}", qword_deref_helper(node.sete), s));
-        }
-        _ => {}
-        // for recursive expressions
-        // expr => {
-        //     let reg = cgen_expr(expr, &mut code);
-        //     code.text.instructions.push(format!("mov {}, {}", qword_deref_helper(node.sete), reg));
-        // },
-    }
+fn cgen_expr(_setor: Expr, _code: &mut Code) -> &str {
+    "rdi"
 }
 
 #[cfg(test)]
