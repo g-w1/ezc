@@ -37,8 +37,8 @@ impl Parser {
     /// the presedence of a binary operation
     fn bin_op_pres(self: &Self) -> i8 {
         match self.cur_tok() {
-            Token::BoPlus => (2),
-            Token::BoMinus => (2),
+            Token::BoPlus => (10),
+            Token::BoMinus => (10),
             _ => (-1),
         }
     }
@@ -62,10 +62,10 @@ impl Parser {
             ),
         )
     }
-    /// Peek one token ahead without eating it
-    fn peek(self: &mut Self) -> Token {
-        self.input[self.pos_input + 1].clone()
-    }
+    // /// Peek one token ahead without eating it. may need in future
+    // fn peek(self: &mut Self) -> Token {
+    //     self.input[self.pos_input + 1].clone()
+    // }
     /// Get the current token in the stream
     fn cur_tok(self: &Self) -> Token {
         self.input[self.pos_input].clone()
@@ -180,13 +180,14 @@ impl Parser {
         // parse the expression (yay recursion is fun)
         let parsed_expr = self.parse_expr()?;
         // eat Rparen
-        match self.next() {
+        match self.cur_tok() {
             Token::Rparen => {}
             t => return Err(self.found_token_err(t)),
         }
+        let _  = self.next();
         Ok(parsed_expr)
     }
-    /// Expr <- Number | Iden | Lparen Expr Rparen | Expr BinOp Expr (parsing an expression but not top level)
+    /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr (parsing an expression but not top level)
     fn parse_expr_primary(self: &mut Self) -> Result<Expr, ParserError> {
         match self.cur_tok() {
             Token::IntLit(_) => self.parse_expr_number(),
