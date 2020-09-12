@@ -176,7 +176,7 @@ impl Parser {
             Token::Lparen => {}
             t => return Err(self.found_token_err(t)),
         }
-        let _  = self.next();
+        let _ = self.next();
         // parse the expression (yay recursion is fun)
         let parsed_expr = self.parse_expr()?;
         // eat Rparen
@@ -184,7 +184,7 @@ impl Parser {
             Token::Rparen => {}
             t => return Err(self.found_token_err(t)),
         }
-        let _  = self.next();
+        let _ = self.next();
         Ok(parsed_expr)
     }
     /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr (parsing an expression but not top level)
@@ -239,7 +239,7 @@ mod tests {
     use crate::ast::{Ast, AstNode, Expr, SetNode};
     use crate::lexer;
     #[test]
-    fn parser_set_expr() {
+    fn parser_set() {
         let mut tokenizer = lexer::Tokenizer::new();
         let output = tokenizer.lex(String::from(
             "Set x to 10. set y to 5 . set  xarst to 555134234523452345  \n.\n\n",
@@ -260,6 +260,78 @@ mod tests {
                     AstNode::Set(SetNode {
                         sete: String::from("xarst"),
                         setor: Expr::Number(String::from("555134234523452345"))
+                    })
+                ]
+            },
+            ast
+        );
+    }
+    #[test]
+    fn parser_change() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(String::from(
+            "Set x to 10. set y to 5 . change  x to y  \n.\n\n",
+        ));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse().unwrap();
+        assert_eq!(
+            Ast {
+                nodes: vec![
+                    AstNode::Set(SetNode {
+                        sete: String::from("x"),
+                        setor: Expr::Number(String::from("10"))
+                    }),
+                    AstNode::Set(SetNode {
+                        sete: String::from("y"),
+                        setor: Expr::Number(String::from("5"))
+                    }),
+                    AstNode::Change(ChangeNode {
+                        sete: String::from("x"),
+                        setor: Expr::Iden(String::from("y"))
+                    })
+                ]
+            },
+            ast
+        );
+    }
+    #[test]
+    fn parser_parens_expr() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(String::from(
+            "Set x to (5 + 10). change y to (1-x)+x . set  xarst to y+x  \n.\n\n",
+        ));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse().unwrap();
+        assert_eq!(
+            Ast {
+                nodes: vec![
+                    AstNode::Set(SetNode {
+                        sete: String::from("x"),
+                        setor: Expr::BinOp {
+                            lhs: Box::new(Expr::Number(String::from("5"))),
+                            op: BinOp::Add,
+                            rhs: Box::new(Expr::Number(String::from("10")))
+                        }
+                    }),
+                    AstNode::Change(ChangeNode {
+                        sete: String::from("y"),
+                        setor: Expr::BinOp {
+                            lhs: Box::new(Expr::BinOp {
+                                lhs: Box::new(Expr::Number(String::from("1"))),
+                                op: BinOp::Sub,
+                                rhs: Box::new(Expr::Iden(String::from("x")))
+                            }),
+                            op: BinOp::Add,
+                            rhs: Box::new(Expr::Iden(String::from("x")))
+                        }
+                    }),
+                    AstNode::Set(SetNode {
+                        sete: String::from("xarst"),
+                        setor: Expr::BinOp {
+                            lhs: Box::new(Expr::Iden(String::from("y"))),
+                            op: BinOp::Add,
+                            rhs: Box::new(Expr::Iden(String::from("x")))
+                        }
                     })
                 ]
             },

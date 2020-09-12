@@ -52,6 +52,7 @@ pub enum BinOp {
 #[derive(Debug, PartialEq, Clone)]
 pub enum AstNode {
     /// set an expression value to an identifier
+    // TODO make it so that each one is just an {} enum so that no need for extra structs
     Set(SetNode),
     /// change an expression value to an identifier
     Change(ChangeNode),
