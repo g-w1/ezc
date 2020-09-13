@@ -18,7 +18,8 @@ fn main() {
     // println!("ast: {:#?}", ast);
     let mut analizer = analyze::Analyser::new();
     analizer.analyze(&ast).unwrap();
-    let code = codegen::codegen(ast);
+    let mut code = codegen::Code::new();
+    code.codegen(ast);
     // println!("output: ");
     println!("{}", code);
 }

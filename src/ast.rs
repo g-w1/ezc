@@ -35,7 +35,6 @@ pub enum BinOp {
 #[derive(Debug, PartialEq, Clone)]
 pub enum AstNode {
     /// set an expression value to an identifier
-    // TODO make it so that each one is just an {} enum so that no need for extra structs
     SetOrChange {
         sete: String,
         setor: Expr,

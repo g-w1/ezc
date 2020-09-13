@@ -138,7 +138,7 @@ impl Parser {
         let lhs = self.parse_expr_primary()?;
         self.parse_bin_op_rhs(0, &lhs)
     }
-    /// TODO add docstring
+    /// Expr <- LParen Expr Rparen. TODO is this right?
     // impliments this algorithm https://en.wikipedia.org/wiki/Operator-precedence_parser
     fn parse_bin_op_rhs(
         self: &mut Self,
