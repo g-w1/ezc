@@ -82,7 +82,7 @@ impl Code {
             }
             // for recursive expressions
             Expr::BinOp { lhs, rhs, op } => {
-                let reg = "rax"; // TODO may need to change if "rax" is used
+                let reg = "r8";
                 self.cgen_expr(*lhs, op, *rhs);
                 self.text.instructions.push(format!("pop {}", reg));
                 self.text
@@ -287,6 +287,67 @@ syscall
 section .bss
 _x resq 1
 _y resq 1
+";
+        assert_eq!(format!("{}", code), correct_code);
+    }
+    #[test]
+    fn codegen_expr() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4.";
+        let output = tokenizer.lex(String::from(input));
+        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse().unwrap();
+        let mut analizer = analyze::Analyser::new();
+        analizer.analyze(&ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.codegen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov qword [_y], 5
+push qword [_y]
+push 5
+pop r8
+pop r9
+add r8, r9
+push r8
+push 10
+pop r8
+pop r9
+sub r9, r8
+push r9
+push qword [_y]
+pop r8
+pop r9
+add r8, r9
+push r8
+push 15
+pop r8
+pop r9
+sub r9, r8
+push r9
+pop r8
+mov qword [_x], r8
+push qword [_x]
+push 4
+pop r8
+pop r9
+add r8, r9
+push r8
+pop r8
+mov qword [_z], r8
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+_y resq 1
+_x resq 1
+_z resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }
