@@ -83,27 +83,149 @@ impl Code {
             // for recursive expressions
             Expr::BinOp { lhs, rhs, op } => {
                 let reg = "rax"; // TODO may need to change if "rax" is used
-                // self.cgen_expr(*lhs, op, *rhs, reg);
+                self.cgen_expr(*lhs, op, *rhs);
+                self.text.instructions.push(format!("pop {}", reg));
+                self.text
+                    .instructions
+                    .push(format!("mov {}, {}", qword_deref_helper(sete), reg));
             }
         }
     }
 
-    // /// A function to recursively generate code for expressions. TODO make work
-    // fn cgen_expr(self: &mut Self, lhs: Expr, op: BinOp, rhs: Expr, reg: &str) {
-    //     match lhs {
-    //         Expr::Number(n) {
+    /// A function to recursively generate code for expressions. TODO make work
+    fn cgen_expr(self: &mut Self, lhs: Expr, op: BinOp, rhs: Expr) {
+        // let lhs_is_leaf: bool = matches!(lhs, Expr::Iden(_) | Expr::Number(_));
+        // let rhs_is_leaf: bool = matches!(rhs, Expr::Iden(_) | Expr::Number(_));
+        let cloned_rhs = rhs.clone();
+        let cloned_lhs = lhs.clone();
+        match (lhs, rhs) {
+            // base case
+            //       op
+            //     /    \
+            //  num     num
+            (Expr::Iden(_), Expr::Number(_))
+            | (Expr::Number(_), Expr::Iden(_))
+            | (Expr::Number(_), Expr::Number(_))
+            | (Expr::Iden(_), Expr::Iden(_)) => {
+                self.text
+                    .instructions
+                    .push(format!("push {}", cloned_lhs.get_display_asm()));
+                self.text
+                    .instructions
+                    .push(format!("push {}", cloned_rhs.get_display_asm()));
+                self.text
+                    .instructions
+                    .extend_from_slice(&op.cgen_for_stack())
+            }
+            //        op
+            //      /    \
+            //     op     num
+            //    /  \
+            // num    num
+            (
+                Expr::BinOp {
+                    lhs: reclhs,
+                    op: recop,
+                    rhs: recrhs,
+                },
+                Expr::Iden(_),
+            )
+            | (
+                Expr::BinOp {
+                    lhs: reclhs,
+                    op: recop,
+                    rhs: recrhs,
+                },
+                Expr::Number(_),
+            ) => {
+                self.cgen_expr(*reclhs, recop, *recrhs);
+                self.text
+                    .instructions
+                    .push(format!("push {}", cloned_rhs.get_display_asm()));
+                self.text
+                    .instructions
+                    .extend_from_slice(&op.cgen_for_stack());
+            }
+            //        op
+            //      /    \
+            //     num     op
+            //            /  \
+            //         num    num
+            (
+                Expr::Iden(_),
+                Expr::BinOp {
+                    lhs: reclhs,
+                    op: recop,
+                    rhs: recrhs,
+                },
+            )
+            | (
+                Expr::Number(_),
+                Expr::BinOp {
+                    lhs: reclhs,
+                    op: recop,
+                    rhs: recrhs,
+                },
+            ) => {
+                self.text
+                    .instructions
+                    .push(format!("push {}", cloned_rhs.get_display_asm()));
+                self.cgen_expr(*reclhs, recop, *recrhs);
+                self.text
+                    .instructions
+                    .extend_from_slice(&op.cgen_for_stack());
+            }
+            (
+                Expr::BinOp {
+                    lhs: lreclhs,
+                    op: lrecop,
+                    rhs: lrecrhs,
+                },
+                Expr::BinOp {
+                    lhs: rreclhs,
+                    op: rrecop,
+                    rhs: rrecrhs,
+                },
+            ) => {
+                self.cgen_expr(*lreclhs, lrecop, *lrecrhs);
+                self.cgen_expr(*rreclhs, rrecop, *rrecrhs);
+                self.text
+                    .instructions
+                    .extend_from_slice(&op.cgen_for_stack());
+            }
+        }
+    }
+}
 
-    //         }
-    //     }
-    //     match op {
-    //         BinOp::Add => {
-    //             self.text.instructions.push()
-    //         }
-    //         BinOp::Sub => {
+impl BinOp {
+    /// takes 2 things on the stack. pops them, does an arg and then pushes the result
+    fn cgen_for_stack(self: &Self) -> [String; 4] {
+        match self {
+            Self::Add => [
+                String::from("pop r8"),
+                String::from("pop r9"),
+                String::from("add r8, r9"),
+                String::from("push r8"),
+            ],
+            Self::Sub => [
+                String::from("pop r8"),
+                String::from("pop r9"),
+                String::from("sub r9, r8"),
+                String::from("push r9"),
+            ],
+        }
+    }
+}
 
-    //         }
-    //     }
-    // }
+impl Expr {
+    /// if its a num or iden give how to display it deferenecd
+    fn get_display_asm(self: &Self) -> String {
+        match self {
+            Self::Iden(a) => qword_deref_helper(a.to_owned()),
+            Self::Number(n) => n.to_owned(),
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[cfg(test)]

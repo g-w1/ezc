@@ -9,7 +9,7 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "set y to 5. set   x to (445235 - 5)+ y .";
+    let input = "set y to 5. set   x to (5 - 10).";
     // println!("input: {}", &input);
     let output = tokenizer.lex(String::from(input));
     // println!("lexed: {:?}", output);
@@ -20,6 +20,5 @@ fn main() {
     analizer.analyze(&ast).unwrap();
     let mut code = codegen::Code::new();
     code.codegen(ast);
-    // println!("output: ");
     println!("{}", code);
 }
