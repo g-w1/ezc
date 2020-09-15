@@ -37,9 +37,14 @@ impl Parser {
     /// the presedence of a binary operation
     fn bin_op_pres(self: &Self) -> i8 {
         match self.cur_tok() {
-            Token::BoPlus => (10),
-            Token::BoMinus => (10),
-            _ => (-1),
+            Token::BoPlus => 10,
+            Token::BoMinus => 10,
+            Token::BoG => 5,
+            Token::BoL => 5,
+            Token::BoLe => 5,
+            Token::BoGe => 5,
+            Token::BoE => 5,
+            _ => -1,
         }
     }
     /// a wrapper to give the err not have to use stuff in the functions
@@ -81,15 +86,17 @@ impl Parser {
             self.pos_input += 1;
             return Ok(());
         }
-        Err(self.found_token_err(token))
+        Err(self.expected_token_err(token))
     }
     /// The function that does the parsing
-    pub fn parse(self: &mut Self) -> Result<Ast, ParserError> {
+    pub fn parse(self: &mut Self, toplevel: bool) -> Result<Ast, ParserError> {
         let mut tree = Ast::new();
         while self.cur_tok() != Token::Eof {
             match self.cur_tok() {
                 Token::Kset => self.parse_set_stmt(&mut tree)?,
                 Token::Kchange => self.parse_change_stmt(&mut tree)?,
+                Token::Kif => self.parse_if_stmt(&mut tree)?,
+                Token::CloseBlock if !toplevel => break,
                 Token::Eof => break,
                 t => return Err(self.found_token_err(t)),
             }
@@ -199,6 +206,18 @@ impl Parser {
     //
     // Parsing stmts
     //
+    /// IfNode <- Kif Expr OpenBlock Ast CloseBlock
+    fn parse_if_stmt(self: &mut Self, tree: &mut Ast) -> Result<(), ParserError> {
+        // TODO add syntactic sugar so that u dont need endofline when a '!' is next. harder than u think
+        // Kif
+        self.expect_eat_token(Token::Kif)?;
+        let guard: Expr = self.parse_expr()?;
+        self.expect_eat_token(Token::OpenBlock)?;
+        let body: Ast = self.parse(false)?;
+        self.expect_eat_token(Token::CloseBlock)?;
+        tree.push(AstNode::If { guard, body });
+        Ok(())
+    }
     /// SetNode <- Kset KIden Kto Expr EndOfLine
     fn parse_set_stmt(self: &mut Self, tree: &mut Ast) -> Result<(), ParserError> {
         // Kset
@@ -216,7 +235,7 @@ impl Parser {
         };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
-        tree.nodes.push(node);
+        tree.push(node);
         Ok(())
     }
     /// ChangeNode <- Kchange KIden Kto Expr EndOfLine
@@ -236,7 +255,7 @@ impl Parser {
         };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
-        tree.nodes.push(node);
+        tree.push(node);
         Ok(())
     }
 }
@@ -244,7 +263,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Ast, AstNode, Expr};
+    use crate::ast::{AstNode, Expr};
     use crate::lexer;
     #[test]
     fn parser_set() {
@@ -253,27 +272,25 @@ mod tests {
             "Set x to 10. set y to 5 . set  xarst to 555134234523452345  \n.\n\n",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         assert_eq!(
-            Ast {
-                nodes: vec![
-                    AstNode::SetOrChange {
-                        sete: String::from("x"),
-                        change: false,
-                        setor: Expr::Number(String::from("10"))
-                    },
-                    AstNode::SetOrChange {
-                        sete: String::from("y"),
-                        change: false,
-                        setor: Expr::Number(String::from("5"))
-                    },
-                    AstNode::SetOrChange {
-                        sete: String::from("xarst"),
-                        change: false,
-                        setor: Expr::Number(String::from("555134234523452345"))
-                    }
-                ]
-            },
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: false,
+                    setor: Expr::Number(String::from("10"))
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("y"),
+                    change: false,
+                    setor: Expr::Number(String::from("5"))
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("xarst"),
+                    change: false,
+                    setor: Expr::Number(String::from("555134234523452345"))
+                }
+            ],
             ast
         );
     }
@@ -284,27 +301,72 @@ mod tests {
             "Set x to 10. set y to 5 . change  x to y  \n.\n\n",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         assert_eq!(
-            Ast {
-                nodes: vec![
-                    AstNode::SetOrChange {
-                        sete: String::from("x"),
-                        change: false,
-                        setor: Expr::Number(String::from("10"))
-                    },
-                    AstNode::SetOrChange {
-                        sete: String::from("y"),
-                        change: false,
-                        setor: Expr::Number(String::from("5"))
-                    },
-                    AstNode::SetOrChange {
-                        sete: String::from("x"),
-                        change: true,
-                        setor: Expr::Iden(String::from("y"))
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: false,
+                    setor: Expr::Number(String::from("10"))
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("y"),
+                    change: false,
+                    setor: Expr::Number(String::from("5"))
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: true,
+                    setor: Expr::Iden(String::from("y"))
+                }
+            ],
+            ast
+        );
+    }
+    #[test]
+    fn parser_if_stmt() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(String::from(
+            "Set x to (5 + 10).set y to 32. if x > 10, if y > 4, change x to 5.!! ",
+        ));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: false,
+                    setor: Expr::BinOp {
+                        lhs: Box::new(Expr::Number(String::from("5"))),
+                        op: BinOp::Add,
+                        rhs: Box::new(Expr::Number(String::from("10")))
                     }
-                ]
-            },
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("y"),
+                    change: false,
+                    setor: Expr::Number(String::from("32")),
+                },
+                AstNode::If {
+                    guard: Expr::BinOp {
+                        lhs: Box::new(Expr::Iden(String::from("x"))),
+                        op: BinOp::Gt,
+                        rhs: Box::new(Expr::Number(String::from("10")))
+                    },
+                    body: vec![AstNode::If {
+                        guard: Expr::BinOp {
+                            lhs: Box::new(Expr::Iden(String::from("y"))),
+                            op: BinOp::Gt,
+                            rhs: Box::new(Expr::Number(String::from("4")))
+                        },
+                        body: vec![AstNode::SetOrChange {
+                            sete: String::from("x"),
+                            change: true,
+                            setor: Expr::Number(String::from("5"))
+                        }]
+                    }]
+                }
+            ],
             ast
         );
     }
@@ -315,43 +377,41 @@ mod tests {
             "Set x to (5 + 10). change y to (1-x)+x . set  xarst to y+x  \n.\n\n",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         assert_eq!(
-            Ast {
-                nodes: vec![
-                    AstNode::SetOrChange {
-                        sete: String::from("x"),
-                        change: false,
-                        setor: Expr::BinOp {
-                            lhs: Box::new(Expr::Number(String::from("5"))),
-                            op: BinOp::Add,
-                            rhs: Box::new(Expr::Number(String::from("10")))
-                        }
-                    },
-                    AstNode::SetOrChange {
-                        sete: String::from("y"),
-                        change: true,
-                        setor: Expr::BinOp {
-                            lhs: Box::new(Expr::BinOp {
-                                lhs: Box::new(Expr::Number(String::from("1"))),
-                                op: BinOp::Sub,
-                                rhs: Box::new(Expr::Iden(String::from("x")))
-                            }),
-                            op: BinOp::Add,
-                            rhs: Box::new(Expr::Iden(String::from("x")))
-                        }
-                    },
-                    AstNode::SetOrChange {
-                        sete: String::from("xarst"),
-                        change: false,
-                        setor: Expr::BinOp {
-                            lhs: Box::new(Expr::Iden(String::from("y"))),
-                            op: BinOp::Add,
-                            rhs: Box::new(Expr::Iden(String::from("x")))
-                        }
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: false,
+                    setor: Expr::BinOp {
+                        lhs: Box::new(Expr::Number(String::from("5"))),
+                        op: BinOp::Add,
+                        rhs: Box::new(Expr::Number(String::from("10")))
                     }
-                ]
-            },
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("y"),
+                    change: true,
+                    setor: Expr::BinOp {
+                        lhs: Box::new(Expr::BinOp {
+                            lhs: Box::new(Expr::Number(String::from("1"))),
+                            op: BinOp::Sub,
+                            rhs: Box::new(Expr::Iden(String::from("x")))
+                        }),
+                        op: BinOp::Add,
+                        rhs: Box::new(Expr::Iden(String::from("x")))
+                    }
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("xarst"),
+                    change: false,
+                    setor: Expr::BinOp {
+                        lhs: Box::new(Expr::Iden(String::from("y"))),
+                        op: BinOp::Add,
+                        rhs: Box::new(Expr::Iden(String::from("x")))
+                    }
+                }
+            ],
             ast
         );
     }
@@ -363,6 +423,6 @@ mod tests {
             "Set x to 10. set y to 5 . set  xarst to 555134234523452345. set 6 to lol.",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
-        parser.parse().unwrap();
+        parser.parse(true).unwrap();
     }
 }

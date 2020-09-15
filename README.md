@@ -50,7 +50,7 @@ To test: `cargo test`
 
 - [x] expressions (the start of recursive parsing)
 
-- [ ] control flow
+- [ ] control flow. loops and if stmts. (maybe turing complete here?)
 
 - [ ] functions
 

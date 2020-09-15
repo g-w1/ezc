@@ -49,13 +49,14 @@ impl Code {
     }
     /// generate the code. dont deal with any of the sections
     pub fn codegen(self: &mut Self, tree: Ast) {
-        for node in tree.nodes {
+        for node in tree {
             match node {
                 AstNode::SetOrChange {
                     sete,
                     setor,
                     change,
                 } => self.cgen_set_or_change_stmt(sete, setor, change),
+                _ => unimplemented!(),
             }
         }
     }
@@ -213,6 +214,7 @@ impl BinOp {
                 String::from("sub r9, r8"),
                 String::from("push r9"),
             ],
+            _ => unimplemented!(),
         }
     }
 }
@@ -240,7 +242,7 @@ mod tests {
         let input = "Set x to 10. set y to 5 . set   test to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         let mut code = codegen::Code::new();
         code.codegen(ast);
         let correct_code = "global _start
@@ -270,7 +272,7 @@ _test resq 1
         let input = "Set x to 10. set y to 5 . change   x to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
         let mut code = codegen::Code::new();
@@ -301,7 +303,7 @@ _y resq 1
         let input = "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4.";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
         let mut code = codegen::Code::new();

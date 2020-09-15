@@ -21,6 +21,11 @@ pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {
     match tok {
         Token::BoPlus => BinOp::Add,
         Token::BoMinus => BinOp::Sub,
+        Token::BoG => BinOp::Gt,
+        Token::BoL => BinOp::Lt,
+        Token::BoLe => BinOp::Lte,
+        Token::BoGe => BinOp::Gte,
+        Token::BoE => BinOp::Equ,
         _ => unreachable!(),
     }
 }
@@ -29,6 +34,11 @@ pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {
 pub enum BinOp {
     Add,
     Sub,
+    Gt,
+    Lt,
+    Equ,
+    Lte,
+    Gte,
 }
 
 /// all the types of an ast node. it is like a tagged union. it also holds the values of the ast node type
@@ -40,17 +50,9 @@ pub enum AstNode {
         setor: Expr,
         change: bool,
     },
+    /// an if statement
+    If { guard: Expr, body: Ast },
 }
 
 /// an abstract syntax tree
-#[derive(Debug, PartialEq, Clone)]
-pub struct Ast {
-    /// the nodes in the tree
-    pub nodes: Vec<AstNode>,
-}
-impl Ast {
-    /// create an ast
-    pub fn new() -> Self {
-        Self { nodes: Vec::new() }
-    }
-}
+pub type Ast = Vec<AstNode>;

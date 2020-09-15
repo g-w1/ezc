@@ -28,7 +28,7 @@ impl Analyser {
     }
     /// analize a tree to see if works
     pub fn analyze(self: &mut Self, tree: &ast::Ast) -> Result<(), AnalysisError> {
-        for node in tree.nodes.clone() {
+        for node in tree.clone() {
             match node {
                 ast::AstNode::SetOrChange {
                     sete,
@@ -46,6 +46,7 @@ impl Analyser {
                     }
                     self.check_expr(setor)?;
                 }
+                _ => unimplemented!(),
             }
         }
         Ok(())
@@ -88,7 +89,7 @@ mod tests {
         let input = "Set x to (10+4). set y to (5+x) . change  x to 445235+y .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }
@@ -102,7 +103,7 @@ mod tests {
         let input = "Set x to 10. set x to 5 . change  x to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }
@@ -116,7 +117,7 @@ mod tests {
         let input = "Set x to 10. set y to 5 . change  z to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }
@@ -131,7 +132,7 @@ mod tests {
         let input = "Set x to 10. set y to 5 . change  x to 11111111111144523111111111115 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse().unwrap();
+        let ast = parser.parse(true).unwrap();
         let mut analizer = analyze::Analyser::new();
         analizer.analyze(&ast).unwrap();
     }

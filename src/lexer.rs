@@ -1,4 +1,5 @@
 //! The module responsible for lexing the source code
+//! TODO: revamp debug info. not really working. just use pos and then calc row and col from that
 
 /// The tokens that get parsed from source
 #[derive(Clone, Debug, PartialEq)]
@@ -10,6 +11,8 @@ pub enum Token {
     Kchange,
     /// to
     Kto,
+    /// If
+    Kif,
     // Iden tokens
     /// Identifier token
     Iden(String),
@@ -20,11 +23,29 @@ pub enum Token {
     /// EndOfFile
     Eof,
     // grouping
+    /// Left paren
     Lparen,
+    /// Right paren
     Rparen,
+    /// Open block (',')
+    OpenBlock,
+    /// Close block ('!')
+    CloseBlock,
     // Binops
+    /// '+'
     BoPlus,
+    /// '-'
     BoMinus,
+    /// '>'
+    BoG,
+    /// '<'
+    BoL,
+    /// '>='
+    BoGe,
+    /// '<='
+    BoLe,
+    /// '=='
+    BoE,
 }
 
 /// The Error type of a lex
@@ -48,6 +69,8 @@ fn get_kword(input: &String) -> Token {
         "change" => return Token::Kchange,
         "Change" => return Token::Kchange,
         "to" => return Token::Kto,
+        "If" => return Token::Kif,
+        "if" => return Token::Kif,
         _ => return Token::Iden(input.to_string()),
     }
 }
@@ -57,6 +80,9 @@ enum LexerState {
     Start,
     InWord,
     InNum,
+    SawLessThan,
+    SawEquals,
+    SawGreaterThan,
 }
 
 #[derive(Debug, PartialEq)]
@@ -121,13 +147,16 @@ impl Tokenizer {
                             self.state = LexerState::InNum;
                             self.intermidiate_string.push(c);
                         }
-                        '.' => {
-                            self.end_token(&mut output, &mut output_poss, Token::EndOfLine);
-                        }
+                        '.' => self.end_token(&mut output, &mut output_poss, Token::EndOfLine),
+                        ',' => self.end_token(&mut output, &mut output_poss, Token::OpenBlock),
+                        '!' => self.end_token(&mut output, &mut output_poss, Token::CloseBlock),
                         '(' => self.end_token(&mut output, &mut output_poss, Token::Lparen),
                         ')' => self.end_token(&mut output, &mut output_poss, Token::Rparen),
                         '+' => self.end_token(&mut output, &mut output_poss, Token::BoPlus),
                         '-' => self.end_token(&mut output, &mut output_poss, Token::BoMinus),
+                        '>' => self.state = LexerState::SawGreaterThan,
+                        '<' => self.state = LexerState::SawLessThan,
+                        '=' => self.state = LexerState::SawEquals,
                         ' ' | '\n' => {}
                         _ => {
                             return (Err(LexError::UnexpectedChar(c)), output_poss);
@@ -156,6 +185,31 @@ impl Tokenizer {
                             Token::IntLit(self.intermidiate_string.to_owned()),
                         );
                         // put back char
+                        self.pos -= 1;
+                        self.col -= 1;
+                    }
+                },
+                LexerState::SawGreaterThan => match c {
+                    '=' => self.end_token(&mut output, &mut output_poss, Token::BoGe),
+                    _ => {
+                        self.end_token(&mut output, &mut output_poss, Token::BoG);
+                        self.pos -= 1;
+                        self.col -= 1;
+                    }
+                },
+                LexerState::SawLessThan => match c {
+                    '=' => self.end_token(&mut output, &mut output_poss, Token::BoLe),
+                    _ => {
+                        // TODO col could alaerdy be 0
+                        self.end_token(&mut output, &mut output_poss, Token::BoL);
+                        self.pos -= 1;
+                        self.col -= 1;
+                    }
+                },
+                LexerState::SawEquals => match c {
+                    '=' => self.end_token(&mut output, &mut output_poss, Token::BoE),
+                    _ => {
+                        // TODO col could alaerdy be 0
                         self.pos -= 1;
                         self.col -= 1;
                     }
@@ -280,16 +334,6 @@ mod tests {
         let mut tokenizer = Tokenizer::new();
         let res = tokenizer.lex(String::from("set x to 5. change x to (5 + x)."));
         assert!(res.0.is_ok());
-        // assert_eq!(
-        //     tokenizer,
-        //     Tokenizer {
-        //         state: LexerState::Start,
-        //         intermidiate_string: String::from(""),
-        //         row: 0,
-        //         col: 13,
-        //         pos: 13,
-        //     }
-        // );
         let ts = res.0.unwrap();
         assert_eq!(
             ts,
@@ -308,6 +352,67 @@ mod tests {
                 Token::Iden(String::from("x")),
                 Token::Rparen,
                 Token::EndOfLine,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
+    }
+    #[test]
+    fn lexer_if_stmt() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(String::from(
+            "
+if x >= 5,
+    set y to 4.
+!
+if y ==2,
+    set z to 4.
+!
+if test <= 4+2,
+    set z to 5.
+!
+",
+        ));
+        assert!(res.0.is_ok());
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Kif,
+                Token::Iden(String::from("x")),
+                Token::BoGe,
+                Token::IntLit(String::from("5")),
+                Token::OpenBlock,
+                Token::Kset,
+                Token::Iden(String::from("y")),
+                Token::Kto,
+                Token::IntLit(String::from("4")),
+                Token::EndOfLine,
+                Token::CloseBlock,
+                Token::Kif,
+                Token::Iden(String::from("y")),
+                Token::BoE,
+                Token::IntLit(String::from("2")),
+                Token::OpenBlock,
+                Token::Kset,
+                Token::Iden(String::from("z")),
+                Token::Kto,
+                Token::IntLit(String::from("4")),
+                Token::EndOfLine,
+                Token::CloseBlock,
+                Token::Kif,
+                Token::Iden(String::from("test")),
+                Token::BoLe,
+                Token::IntLit(String::from("4")),
+                Token::BoPlus,
+                Token::IntLit(String::from("2")),
+                Token::OpenBlock,
+                Token::Kset,
+                Token::Iden(String::from("z")),
+                Token::Kto,
+                Token::IntLit(String::from("5")),
+                Token::EndOfLine,
+                Token::CloseBlock,
                 Token::Eof,
             ]
         );
