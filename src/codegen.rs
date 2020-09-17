@@ -273,8 +273,7 @@ _test resq 1
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse(true).unwrap();
-        let mut analizer = analyze::Analyser::new();
-        analizer.analyze(&ast).unwrap();
+        analyze::analize(&ast).unwrap();
         let mut code = codegen::Code::new();
         code.codegen(ast);
         let correct_code = "global _start
@@ -304,8 +303,8 @@ _y resq 1
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse(true).unwrap();
-        let mut analizer = analyze::Analyser::new();
-        analizer.analyze(&ast).unwrap();
+        // TODO spelling. one is spelled with y and other with i
+        analyze::analize(&ast).unwrap();
         let mut code = codegen::Code::new();
         code.codegen(ast);
         let correct_code = "global _start

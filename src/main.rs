@@ -9,15 +9,18 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "Set x to (5 + 10).set y to 32. if x > 10, if y > 4, change x to 5.!! ";
+    let input = "set z to 5. if 5 > 4,
+            set a to 6.
+            change a to 4.
+        !
+    set a to 6. ";
     // println!("input: {}", &input);
     let output = tokenizer.lex(String::from(input));
-    println!("lexed: {:?}", output);
+    // println!("lexed: {:?}", output);
     let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
     let ast = parser.parse(true).unwrap();
+    analyze::analize(&ast).unwrap();
     println!("ast: {:#?}", ast);
-    // let mut analizer = analyze::Analyser::new();
-    // analizer.analyze(&ast).unwrap();
     // let mut code = codegen::Code::new();
     // code.codegen(ast);
     // println!("{}", code);
