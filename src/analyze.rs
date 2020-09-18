@@ -32,9 +32,12 @@ pub fn analize(ast: &ast::Ast) -> Result<(), AnalysisError> {
 }
 #[derive(Debug)]
 struct Analyser {
+    /// the initialized_static_vars
     initialized_static_vars: HashMap<String, bool>,
+    /// the initialized_local_vars
     initialized_local_vars: HashMap<String, bool>,
 }
+
 impl Analyser {
     /// create an Analyser
     pub fn new() -> Self {

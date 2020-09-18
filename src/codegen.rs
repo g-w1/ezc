@@ -1,6 +1,7 @@
 //! code generation for the compiler
 
 use crate::ast::{Ast, AstNode, BinOp, Expr};
+use std::collections::HashMap;
 use std::fmt;
 /// section .bss
 #[derive(Debug)]
@@ -26,6 +27,7 @@ pub struct Code {
     data: Data,
     bss: Bss,
     text: Text,
+    number_for_mangling: u32,
 }
 
 /// a helper function to provide `qword [_varname]` from `varname`
@@ -45,6 +47,7 @@ impl Code {
             bss: Bss {
                 instructions: Vec::new(),
             },
+            number_for_mangling: 0,
         }
     }
     /// generate the code. dont deal with any of the sections
@@ -55,14 +58,21 @@ impl Code {
                     sete,
                     setor,
                     change,
-                } => self.cgen_set_or_change_stmt(sete, setor, change),
-                _ => unimplemented!(),
+                } => self.cgen_static_set_or_change_stmt(sete, setor, change),
+                AstNode::If { guard, body } => self.cgen_if_stmt(guard, body),
             }
         }
     }
-
+    /// code gen for if stmt. uses stack based allocation
+    fn cgen_if_stmt(self: &mut Self, guard: Expr, body: Ast) {
+        let vars: HashMap<String, u32> = get_all_var_decls(&body);
+        let mem_len = vars.len() * 8;
+        self.text.instructions.push(String::from("push rbp"));
+        self.text.instructions.push(String::from("mov rbp, rsp"));
+        self.text.instructions.push(format!("sub rsp, {}", mem_len)); // allocate locals
+    }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
-    fn cgen_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr, change: bool) {
+    fn cgen_static_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr, change: bool) {
         if !change {
             self.bss.instructions.push(format!("_{} resq 1", sete));
         }
@@ -93,7 +103,7 @@ impl Code {
         }
     }
 
-    /// A function to recursively generate code for expressions. TODO make work
+    /// A function to recursively generate code for expressions.
     fn cgen_expr(self: &mut Self, lhs: Expr, op: BinOp, rhs: Expr) {
         // let lhs_is_leaf: bool = matches!(lhs, Expr::Iden(_) | Expr::Number(_));
         // let rhs_is_leaf: bool = matches!(rhs, Expr::Iden(_) | Expr::Number(_));
@@ -116,7 +126,9 @@ impl Code {
                     .push(format!("push {}", cloned_rhs.get_display_asm()));
                 self.text
                     .instructions
-                    .extend_from_slice(&op.cgen_for_stack())
+                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                // // update it by 2 because 2 was used and dont wanna pass mut
+                // self.number_for_mangling += 2;
             }
             //        op
             //      /    \
@@ -145,7 +157,8 @@ impl Code {
                     .push(format!("push {}", cloned_rhs.get_display_asm()));
                 self.text
                     .instructions
-                    .extend_from_slice(&op.cgen_for_stack());
+                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                self.number_for_mangling += 2;
             }
             //        op
             //      /    \
@@ -174,7 +187,8 @@ impl Code {
                 self.cgen_expr(*reclhs, recop, *recrhs);
                 self.text
                     .instructions
-                    .extend_from_slice(&op.cgen_for_stack());
+                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                self.number_for_mangling += 2;
             }
             (
                 Expr::BinOp {
@@ -192,7 +206,8 @@ impl Code {
                 self.cgen_expr(*rreclhs, rrecop, *rrecrhs);
                 self.text
                     .instructions
-                    .extend_from_slice(&op.cgen_for_stack());
+                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                self.number_for_mangling += 2;
             }
         }
     }
@@ -200,7 +215,7 @@ impl Code {
 
 impl BinOp {
     /// takes 2 things on the stack. pops them, does an arg and then pushes the result
-    fn cgen_for_stack(self: &Self) -> [String; 4] {
+    fn cgen_for_stack(self: &Self, num_for_mangling: &mut u32) -> [String; 4] {
         match self {
             Self::Add => [
                 String::from("pop r8"),
@@ -214,7 +229,81 @@ impl BinOp {
                 String::from("sub r9, r8"),
                 String::from("push r9"),
             ],
-            _ => unimplemented!(),
+            Self::Gt => {
+                *num_for_mangling += 2;
+                [
+                    String::from("pop r9"),
+                    String::from("pop r8"),
+                    format!(
+                        "cmp r9, r8\njg .IF_{}\njle .ELSE_{}",
+                        num_for_mangling, num_for_mangling
+                    ),
+                    format!(
+                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        num_for_mangling, num_for_mangling
+                    ),
+                ]
+            }
+            Self::Lt => {
+                *num_for_mangling += 2;
+                [
+                    String::from("pop r9"),
+                    String::from("pop r8"),
+                    format!(
+                        "cmp r9, r8\njl .IF_{}\njge .ELSE_{}",
+                        num_for_mangling, num_for_mangling
+                    ),
+                    format!(
+                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        num_for_mangling, num_for_mangling
+                    ),
+                ]
+            }
+            Self::Equ => {
+                *num_for_mangling += 2;
+                [
+                    String::from("pop r9"),
+                    String::from("pop r8"),
+                    format!(
+                        "cmp r9, r8\nje .IF_{}\njne .ELSE_{}",
+                        num_for_mangling, num_for_mangling
+                    ),
+                    format!(
+                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        num_for_mangling, num_for_mangling
+                    ),
+                ]
+            }
+            Self::Lte => {
+                *num_for_mangling += 2;
+                [
+                    String::from("pop r9"),
+                    String::from("pop r8"),
+                    format!(
+                        "cmp r9, r8\njle .IF_{}\njg .ELSE_{}",
+                        num_for_mangling, num_for_mangling
+                    ),
+                    format!(
+                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        num_for_mangling, num_for_mangling
+                    ),
+                ]
+            }
+            Self::Gte => {
+                *num_for_mangling += 2;
+                [
+                    String::from("pop r9"),
+                    String::from("pop r8"),
+                    format!(
+                        "cmp r9, r8\njge .IF_{}\njl .ELSE_{}",
+                        num_for_mangling, num_for_mangling
+                    ),
+                    format!(
+                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        num_for_mangling, num_for_mangling
+                    ),
+                ]
+            }
         }
     }
 }
@@ -228,6 +317,24 @@ impl Expr {
             _ => unreachable!(),
         }
     }
+}
+
+/// get all the variable declarations in a block.
+fn get_all_var_decls(tree: &Ast) -> HashMap<String, u32> {
+    let mut map = HashMap::new();
+    for (i, node) in tree.iter().enumerate() {
+        match node {
+            AstNode::SetOrChange {
+                sete,
+                setor: _,
+                change: false,
+            } => {
+                map.insert(sete.clone(), i as u32);
+            }
+            _ => {}
+        }
+    }
+    map.clone()
 }
 
 #[cfg(test)]

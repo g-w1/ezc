@@ -50,7 +50,7 @@ To test: `cargo test`
 
 - [x] expressions (the start of recursive parsing)
 
-- [ ] control flow. loops and if stmts. (maybe turing complete here?)
+- [ ] control flow. loops and if stmts. (maybe turing complete here? idk if you need to have io. theoretically the kernel could read the memory at that spot. it is no different to writing to stdout right? there is no actual stdout? well once I have functions i can just link to glibc and easily get io. although im thinking i really wanna write the stdlib in asm :) )
 
 - [ ] functions
 
