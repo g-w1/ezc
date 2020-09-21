@@ -1,6 +1,7 @@
 //! the module where the abstract syntax tree is defined. we dont need tests in this because very litle code
 
 use crate::lexer::Token;
+use std::collections::HashMap;
 
 /// an expression
 #[derive(Debug, PartialEq, Clone)]
@@ -51,7 +52,12 @@ pub enum AstNode {
         change: bool,
     },
     /// an if statement
-    If { guard: Expr, body: Ast },
+    If {
+        guard: Expr,
+        body: Ast,
+        /// for the variables declared inside the if statement
+        vars_declared: Option<HashMap<String, bool>>,
+    },
 }
 
 /// an abstract syntax tree

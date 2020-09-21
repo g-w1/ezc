@@ -215,7 +215,11 @@ impl Parser {
         self.expect_eat_token(Token::OpenBlock)?;
         let body: Ast = self.parse(false)?;
         self.expect_eat_token(Token::CloseBlock)?;
-        tree.push(AstNode::If { guard, body });
+        tree.push(AstNode::If {
+            guard,
+            body,
+            vars_declared: None,
+        });
         Ok(())
     }
     /// SetNode <- Kset KIden Kto Expr EndOfLine
@@ -363,8 +367,10 @@ mod tests {
                             sete: String::from("x"),
                             change: true,
                             setor: Expr::Number(String::from("5"))
-                        }]
-                    }]
+                        }],
+                        vars_declared: None
+                    }],
+                    vars_declared: None
                 }
             ],
             ast

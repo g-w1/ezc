@@ -1,4 +1,5 @@
 //! analisis on the ast
+
 use crate::{ast, ast::Expr};
 use std::collections::HashMap;
 
@@ -25,9 +26,9 @@ enum VarLevel {
 }
 
 /// a wrapper function to analize the ast
-pub fn analize(ast: &ast::Ast) -> Result<(), AnalysisError> {
+pub fn analize(ast: &mut ast::Ast) -> Result<(), AnalysisError> {
     let mut analizer = Analyser::new();
-    analizer.analyze(&ast, VarLevel::Static)?;
+    analizer.analyze(ast, VarLevel::Static)?;
     Ok(())
 }
 #[derive(Debug)]
@@ -46,27 +47,32 @@ impl Analyser {
             initialized_local_vars: HashMap::new(),
         }
     }
+
     /// analize a tree to see if works
-    pub fn analyze(self: &mut Self, tree: &ast::Ast, level: VarLevel) -> Result<(), AnalysisError> {
+    pub fn analyze(
+        self: &mut Self,
+        tree: &mut ast::Ast,
+        level: VarLevel,
+    ) -> Result<HashMap<String, bool>, AnalysisError> {
         let mut new_locals: HashMap<String, bool> = HashMap::new();
-        for node in tree.clone() {
+        for node in tree.iter_mut() {
             match node {
                 ast::AstNode::SetOrChange {
                     sete,
                     setor,
                     change,
                 } => {
-                    if !change {
-                        if !self.initialized_static_vars.contains_key(&sete)
-                            && !self.initialized_local_vars.contains_key(&sete)
+                    if !*change {
+                        if !self.initialized_static_vars.contains_key(sete)
+                            && !self.initialized_local_vars.contains_key(sete)
                         {
                             match level {
                                 VarLevel::Static => {
-                                    self.initialized_static_vars.insert(sete, true);
+                                    self.initialized_static_vars.insert(sete.clone(), true);
                                 }
                                 VarLevel::Local => {
                                     self.initialized_local_vars.insert(sete.clone(), true);
-                                    new_locals.insert(sete, true);
+                                    new_locals.insert(sete.clone(), true);
                                 }
                                 _ => unimplemented!(),
                             }
@@ -74,13 +80,17 @@ impl Analyser {
                             return Err(AnalysisError::DoubleSet);
                         }
                     } else {
-                        self.make_sure_var_exists(sete, level)?;
-                        self.check_expr(setor, level)?;
+                        self.make_sure_var_exists(sete.clone(), level)?;
+                        self.check_expr(setor.clone(), level)?;
                     }
                 }
-                ast::AstNode::If { guard, body } => {
-                    self.check_expr(guard, level)?;
-                    self.analyze(&body, VarLevel::Local)?;
+                ast::AstNode::If {
+                    guard,
+                    body,
+                    vars_declared,
+                } => {
+                    self.check_expr(guard.clone(), level)?;
+                    *vars_declared = Some(self.analyze(body, VarLevel::Local)?);
                 }
             }
         }
@@ -88,7 +98,7 @@ impl Analyser {
         for (key, _) in new_locals.iter() {
             self.initialized_local_vars.remove(key);
         }
-        Ok(())
+        Ok(new_locals)
     }
     fn make_sure_var_exists(
         self: &Self,
@@ -145,8 +155,8 @@ mod tests {
         let input = "Set x to (10+4). set y to (5+x) . change  x to 445235+y .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
-        analyze::analize(&ast).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -158,8 +168,8 @@ mod tests {
         let input = "Set x to 10. set x to 5 . change  x to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
-        analyze::analize(&ast).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -171,8 +181,8 @@ mod tests {
         let input = "Set x to 10. set y to 5 . change  z to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
-        analyze::analize(&ast).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
     }
     #[test]
     fn analyze_if_scope() {
@@ -183,8 +193,8 @@ mod tests {
         let input = "Set x to 10. if x > 10, set z to 4. change  z to 445235 .! set z to 4.";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
-        analyze::analize(&ast).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -196,8 +206,8 @@ mod tests {
         let input = "Set x to 10.if x > 10, set z to 4.change  z to 445235.! change z to 4.";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
-        analyze::analize(&ast).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -210,7 +220,7 @@ mod tests {
         let input = "Set x to 10. set y to 5 . change  x to 11111111111144523111111111115 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
-        analyze::analize(&ast).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
     }
 }

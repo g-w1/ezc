@@ -59,7 +59,11 @@ impl Code {
                     setor,
                     change,
                 } => self.cgen_static_set_or_change_stmt(sete, setor, change),
-                AstNode::If { guard, body } => self.cgen_if_stmt(guard, body),
+                AstNode::If {
+                    guard,
+                    body,
+                    vars_declared,
+                } => self.cgen_if_stmt(guard, body),
             }
         }
     }
@@ -67,9 +71,29 @@ impl Code {
     fn cgen_if_stmt(self: &mut Self, guard: Expr, body: Ast) {
         let vars: HashMap<String, u32> = get_all_var_decls(&body);
         let mem_len = vars.len() * 8;
-        self.text.instructions.push(String::from("push rbp"));
-        self.text.instructions.push(String::from("mov rbp, rsp"));
+        // self.text.instructions.push(String::from("push rbp")); // do i need to move base pointer?
+        // self.text.instructions.push(String::from("mov rbp, rsp"));// i dont think so because its not func
+
+        self.text.instructions.push(format!("push rbp")); // allocate locals
         self.text.instructions.push(format!("sub rsp, {}", mem_len)); // allocate locals
+        match guard {
+            Expr::BinOp { lhs, op, rhs } => {
+                let reg = "r8";
+                self.cgen_expr(*lhs, op, *rhs);
+                self.text.instructions.push(format!("pop {}", reg));
+                self.text.instructions.push(format!("cmp {}, 0", reg));
+            }
+            Expr::Number(n) => {
+                self.text.instructions.push(format!("cmp {}, 0", n)); // TODO really easy optimisation by just parsing num at compile time. but right now this is easier
+            }
+            Expr::Iden(i) => {
+                self.text
+                    .instructions
+                    .push(format!("cmp {}, 0", qword_deref_helper(i)));
+            }
+        }
+        self.text.instructions.push(format!("mov rsp, rbp")); // deallocate locals?
+        self.text.instructions.push(format!("pop rbp")); // deallocate locals?
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_static_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr, change: bool) {
@@ -105,8 +129,6 @@ impl Code {
 
     /// A function to recursively generate code for expressions.
     fn cgen_expr(self: &mut Self, lhs: Expr, op: BinOp, rhs: Expr) {
-        // let lhs_is_leaf: bool = matches!(lhs, Expr::Iden(_) | Expr::Number(_));
-        // let rhs_is_leaf: bool = matches!(rhs, Expr::Iden(_) | Expr::Number(_));
         let cloned_rhs = rhs.clone();
         let cloned_lhs = lhs.clone();
         match (lhs, rhs) {
@@ -235,11 +257,11 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njg .IF_{}\njle .ELSE_{}",
+                        "cmp r9, r8\njg .IF_{}\njle .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
                         num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -250,11 +272,11 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njl .IF_{}\njge .ELSE_{}",
+                        "cmp r9, r8\njl .IF_{}\njge .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
                         num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -265,11 +287,11 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\nje .IF_{}\njne .ELSE_{}",
+                        "cmp r9, r8\nje .IF_{}\njne .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
                         num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -280,11 +302,11 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njle .IF_{}\njg .ELSE_{}",
+                        "cmp r9, r8\njle .IF_{}\njg .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
                         num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -295,11 +317,11 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njge .IF_{}\njl .ELSE_{}",
+                        "cmp r9, r8\njge .IF_{}\njl .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.ELSE_{}\npush 0",
+                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
                         num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -341,6 +363,7 @@ fn get_all_var_decls(tree: &Ast) -> HashMap<String, u32> {
 mod tests {
     #[test]
     fn codegen_set_stmt() {
+        use crate::analyze;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -349,7 +372,8 @@ mod tests {
         let input = "Set x to 10. set y to 5 . set   test to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.codegen(ast);
         let correct_code = "global _start
@@ -379,8 +403,8 @@ _test resq 1
         let input = "Set x to 10. set y to 5 . change   x to 445235 .";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
-        analyze::analize(&ast).unwrap();
+        let mut ast = parser.parse(true).unwrap();
+        analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.codegen(ast);
         let correct_code = "global _start
@@ -409,10 +433,11 @@ _y resq 1
         let input = "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4.";
         let output = tokenizer.lex(String::from(input));
         let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let ast = parser.parse(true).unwrap();
+        let mut ast = parser.parse(true).unwrap();
         // TODO spelling. one is spelled with y and other with i
-        analyze::analize(&ast).unwrap();
+        analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
+        analyze::analize(&mut ast).unwrap();
         code.codegen(ast);
         let correct_code = "global _start
 section .text
