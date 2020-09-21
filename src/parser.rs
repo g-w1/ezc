@@ -89,7 +89,7 @@ impl Parser {
         Err(self.expected_token_err(token))
     }
     /// The function that does the parsing
-    pub fn parse(self: &mut Self, toplevel: bool) -> Result<AstNode, ParserError> {
+    pub fn parse(self: &mut Self, toplevel: bool) -> Result<Vec<AstNode>, ParserError> {
         // let mut tree = AstRoot{
         //     static_vars: None,
         //     tree: Vec::new()
@@ -219,7 +219,7 @@ impl Parser {
         self.expect_eat_token(Token::OpenBlock)?;
         let body: Vec<AstNode> = self.parse(false)?;
         self.expect_eat_token(Token::CloseBlock)?;
-        tree.tree.push(AstNode::If {
+        tree.push(AstNode::If {
             guard,
             body,
             vars_declared: None,
@@ -242,7 +242,7 @@ impl Parser {
         };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
-        tree.tree.push(node);
+        tree.push(node);
         Ok(())
     }
     /// ChangeNode <- Kchange KIden Kto Expr EndOfLine
@@ -262,7 +262,7 @@ impl Parser {
         };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
-        tree.tree.push(node);
+        tree.push(node);
         Ok(())
     }
 }
