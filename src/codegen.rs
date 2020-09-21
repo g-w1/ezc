@@ -28,6 +28,7 @@ pub struct Code {
     bss: Bss,
     text: Text,
     number_for_mangling: u32,
+    stack_pointer_num: usize,
 }
 
 /// a helper function to provide `qword [_varname]` from `varname`
@@ -48,6 +49,7 @@ impl Code {
                 instructions: Vec::new(),
             },
             number_for_mangling: 0,
+            stack_pointer_num: 0
         }
     }
     /// generate the code. dont deal with any of the sections
