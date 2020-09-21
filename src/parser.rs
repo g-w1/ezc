@@ -89,8 +89,12 @@ impl Parser {
         Err(self.expected_token_err(token))
     }
     /// The function that does the parsing
-    pub fn parse(self: &mut Self, toplevel: bool) -> Result<Ast, ParserError> {
-        let mut tree = Ast::new();
+    pub fn parse(self: &mut Self, toplevel: bool) -> Result<AstNode, ParserError> {
+        // let mut tree = AstRoot{
+        //     static_vars: None,
+        //     tree: Vec::new()
+        // };
+        let mut tree = Vec::new();
         while self.cur_tok() != Token::Eof {
             match self.cur_tok() {
                 Token::Kset => self.parse_set_stmt(&mut tree)?,
@@ -207,15 +211,15 @@ impl Parser {
     // Parsing stmts
     //
     /// IfNode <- Kif Expr OpenBlock Ast CloseBlock
-    fn parse_if_stmt(self: &mut Self, tree: &mut Ast) -> Result<(), ParserError> {
+    fn parse_if_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         // TODO add syntactic sugar so that u dont need endofline when a '!' is next. harder than u think
         // Kif
         self.expect_eat_token(Token::Kif)?;
         let guard: Expr = self.parse_expr()?;
         self.expect_eat_token(Token::OpenBlock)?;
-        let body: Ast = self.parse(false)?;
+        let body: Vec<AstNode> = self.parse(false)?;
         self.expect_eat_token(Token::CloseBlock)?;
-        tree.push(AstNode::If {
+        tree.tree.push(AstNode::If {
             guard,
             body,
             vars_declared: None,
@@ -223,12 +227,11 @@ impl Parser {
         Ok(())
     }
     /// SetNode <- Kset KIden Kto Expr EndOfLine
-    fn parse_set_stmt(self: &mut Self, tree: &mut Ast) -> Result<(), ParserError> {
+    fn parse_set_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         // Kset
         self.expect_eat_token(Token::Kset)?;
         // Iden
         let sete = self.parse_iden()?;
-        // Kto
         self.expect_eat_token(Token::Kto)?;
         // Expr
         let setor = self.parse_expr()?;
@@ -239,11 +242,11 @@ impl Parser {
         };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
-        tree.push(node);
+        tree.tree.push(node);
         Ok(())
     }
     /// ChangeNode <- Kchange KIden Kto Expr EndOfLine
-    fn parse_change_stmt(self: &mut Self, tree: &mut Ast) -> Result<(), ParserError> {
+    fn parse_change_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         // Kset
         self.expect_eat_token(Token::Kchange)?;
         // Iden
@@ -259,7 +262,7 @@ impl Parser {
         };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
-        tree.push(node);
+        tree.tree.push(node);
         Ok(())
     }
 }

@@ -26,7 +26,7 @@ enum VarLevel {
 }
 
 /// a wrapper function to analize the ast
-pub fn analize(ast: &mut ast::Ast) -> Result<(), AnalysisError> {
+pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
     let mut analizer = Analyser::new();
     analizer.analyze(ast, VarLevel::Static)?;
     Ok(())
@@ -51,11 +51,11 @@ impl Analyser {
     /// analize a tree to see if works
     pub fn analyze(
         self: &mut Self,
-        tree: &mut ast::Ast,
+        tree: &mut ast::AstRoot,
         level: VarLevel,
     ) -> Result<HashMap<String, bool>, AnalysisError> {
         let mut new_locals: HashMap<String, bool> = HashMap::new();
-        for node in tree.iter_mut() {
+        for node in tree.tree.iter_mut() {
             match node {
                 ast::AstNode::SetOrChange {
                     sete,

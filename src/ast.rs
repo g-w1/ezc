@@ -54,11 +54,14 @@ pub enum AstNode {
     /// an if statement
     If {
         guard: Expr,
-        body: Ast,
+        body: Vec<AstNode>,
         /// for the variables declared inside the if statement
         vars_declared: Option<HashMap<String, bool>>,
     },
 }
 
-/// an abstract syntax tree
-pub type Ast = Vec<AstNode>;
+#[derive(Debug, PartialEq, Clone)]
+pub struct AstRoot {
+    pub static_vars: Option<HashMap<String,bool>>,
+    pub tree: Vec<AstNode>,
+}

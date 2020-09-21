@@ -97,6 +97,12 @@ impl Code {
         self.text.instructions.push(format!("mov rsp, rbp")); // deallocate locals?
         self.text.instructions.push(format!("pop rbp")); // deallocate locals?
     }
+    fn cgen_stack_based_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr, change: bool) {
+        if !change {
+            
+        }
+
+    }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_static_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr, change: bool) {
         if !change {
