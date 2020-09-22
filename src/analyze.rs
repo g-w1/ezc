@@ -1,6 +1,6 @@
 //! analisis on the ast
 
-use crate::{ast, ast::Expr};
+use crate::{ast, ast::AstNode, ast::Expr};
 use std::collections::HashMap;
 
 /// error for a code analyze
@@ -28,7 +28,8 @@ enum VarLevel {
 /// a wrapper function to analize the ast
 pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
     let mut analizer = Analyser::new();
-    analizer.analyze(ast, VarLevel::Static)?;
+    analizer.analyze(&mut ast.tree, VarLevel::Static)?;
+    ast.static_vars = Some(get_all_var_decls(&ast.tree));
     Ok(())
 }
 #[derive(Debug)]
@@ -51,11 +52,11 @@ impl Analyser {
     /// analize a tree to see if works
     pub fn analyze(
         self: &mut Self,
-        tree: &mut ast::AstRoot,
+        tree: &mut Vec<ast::AstNode>,
         level: VarLevel,
     ) -> Result<HashMap<String, bool>, AnalysisError> {
         let mut new_locals: HashMap<String, bool> = HashMap::new();
-        for node in tree.tree.iter_mut() {
+        for node in tree.iter_mut() {
             match node {
                 ast::AstNode::SetOrChange {
                     sete,
@@ -144,6 +145,24 @@ fn check_num(num: String) -> Result<(), AnalysisError> {
     }
 }
 
+/// get all the variable declarations in a block.
+fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<String> {
+    let mut vars = Vec::new();
+    for node in tree {
+        match node {
+            AstNode::SetOrChange {
+                sete,
+                setor: _,
+                change: false,
+            } => {
+                vars.push(sete.to_owned());
+            }
+            _ => {}
+        }
+    }
+    vars
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -154,8 +173,7 @@ mod tests {
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to (10+4). set y to (5+x) . change  x to 445235+y .";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
     #[test]
@@ -167,8 +185,7 @@ mod tests {
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. set x to 5 . change  x to 445235 .";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
     #[test]
@@ -180,8 +197,7 @@ mod tests {
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. set y to 5 . change  z to 445235 .";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
     #[test]
@@ -192,8 +208,7 @@ mod tests {
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. if x > 10, set z to 4. change  z to 445235 .! set z to 4.";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
     #[test]
@@ -205,8 +220,7 @@ mod tests {
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10.if x > 10, set z to 4.change  z to 445235.! change z to 4.";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
     #[test]
@@ -219,8 +233,7 @@ mod tests {
         // number is too big
         let input = "Set x to 10. set y to 5 . change  x to 11111111111144523111111111115 .";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
 }

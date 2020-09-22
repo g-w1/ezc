@@ -62,6 +62,6 @@ pub enum AstNode {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct AstRoot {
-    pub static_vars: Option<HashMap<String,bool>>,
+    pub static_vars: Option<Vec<String>>,
     pub tree: Vec<AstNode>,
 }

@@ -15,8 +15,7 @@ fn main() {
         !
     set a to 6. ";
     let output = tokenizer.lex(String::from(input));
-    let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-    let mut ast = parser.parse(true).unwrap();
+    let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
     analyze::analize(&mut ast).unwrap();
     let mut code = codegen::Code::new();
     code.codegen(ast);

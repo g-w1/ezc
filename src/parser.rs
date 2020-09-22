@@ -3,9 +3,17 @@
 use crate::ast::*;
 use crate::lexer::{Locs, Token};
 
+/// a wrapper function for the parser
+pub fn parse(input: Vec<Token>, locs_input: Vec<(u32, u32)>) -> Result<AstRoot, ParserError> {
+    Ok(AstRoot {
+        static_vars: None,
+        tree: Parser::new(input, locs_input).parse(true)?,
+    })
+}
+
 /// the parser
 #[derive(Debug)]
-pub struct Parser {
+struct Parser {
     /// the input to the parser as a Vec<Token>
     input: Vec<Token>,
     /// ptr to pos in input
@@ -13,6 +21,7 @@ pub struct Parser {
     /// the debug info of the locations of the tokens
     locs_input: Locs,
 }
+
 
 /// an error in the parsing
 #[derive(Debug)]
@@ -89,7 +98,7 @@ impl Parser {
         Err(self.expected_token_err(token))
     }
     /// The function that does the parsing
-    pub fn parse(self: &mut Self, toplevel: bool) -> Result<Vec<AstNode>, ParserError> {
+    fn parse(self: &mut Self, toplevel: bool) -> Result<Vec<AstNode>, ParserError> {
         // let mut tree = AstRoot{
         //     static_vars: None,
         //     tree: Vec::new()

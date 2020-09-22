@@ -1,6 +1,6 @@
 //! code generation for the compiler
 
-use crate::ast::{Ast, AstNode, BinOp, Expr};
+use crate::ast::{AstNode, AstRoot, BinOp, Expr};
 use std::collections::HashMap;
 use std::fmt;
 /// section .bss
@@ -49,29 +49,31 @@ impl Code {
                 instructions: Vec::new(),
             },
             number_for_mangling: 0,
-            stack_pointer_num: 0
+            stack_pointer_num: 0,
         }
     }
     /// generate the code. dont deal with any of the sections
-    pub fn codegen(self: &mut Self, tree: Ast) {
-        for node in tree {
+    pub fn codegen(self: &mut Self, tree: AstRoot) {
+        for var in tree.static_vars.unwrap() {
+            self.bss.instructions.push(format!("_{} resq 1", var));
+        }
+        for node in tree.tree {
             match node {
                 AstNode::SetOrChange {
                     sete,
                     setor,
-                    change,
-                } => self.cgen_static_set_or_change_stmt(sete, setor, change),
+                    change: _,
+                } => self.cgen_static_set_or_change_stmt(sete, setor),
                 AstNode::If {
                     guard,
                     body,
                     vars_declared,
-                } => self.cgen_if_stmt(guard, body),
+                } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body), // we unwrap because it was analised
             }
         }
     }
     /// code gen for if stmt. uses stack based allocation
-    fn cgen_if_stmt(self: &mut Self, guard: Expr, body: Ast) {
-        let vars: HashMap<String, u32> = get_all_var_decls(&body);
+    fn cgen_if_stmt(self: &mut Self, guard: Expr, vars: HashMap<String, bool>, body: Vec<AstNode>) {
         let mem_len = vars.len() * 8;
         // self.text.instructions.push(String::from("push rbp")); // do i need to move base pointer?
         // self.text.instructions.push(String::from("mov rbp, rsp"));// i dont think so because its not func
@@ -97,17 +99,17 @@ impl Code {
         self.text.instructions.push(format!("mov rsp, rbp")); // deallocate locals?
         self.text.instructions.push(format!("pop rbp")); // deallocate locals?
     }
-    fn cgen_stack_based_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr, change: bool) {
-        if !change {
-            
-        }
 
+    fn cgen_stack_based_set_or_change_stmt(
+        self: &mut Self,
+        sete: String,
+        setor: Expr,
+        change: bool,
+    ) {
+        if !change {}
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
-    fn cgen_static_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr, change: bool) {
-        if !change {
-            self.bss.instructions.push(format!("_{} resq 1", sete));
-        }
+    fn cgen_static_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr) {
         match setor {
             Expr::Number(s) => {
                 // if it is just a number push it to .text here
@@ -349,24 +351,6 @@ impl Expr {
     }
 }
 
-/// get all the variable declarations in a block.
-fn get_all_var_decls(tree: &Ast) -> HashMap<String, u32> {
-    let mut map = HashMap::new();
-    for (i, node) in tree.iter().enumerate() {
-        match node {
-            AstNode::SetOrChange {
-                sete,
-                setor: _,
-                change: false,
-            } => {
-                map.insert(sete.clone(), i as u32);
-            }
-            _ => {}
-        }
-    }
-    map.clone()
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -379,8 +363,7 @@ mod tests {
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. set y to 5 . set   test to 445235 .";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.codegen(ast);
@@ -410,8 +393,7 @@ _test resq 1
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. set y to 5 . change   x to 445235 .";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.codegen(ast);
@@ -440,8 +422,7 @@ _y resq 1
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4.";
         let output = tokenizer.lex(String::from(input));
-        let mut parser = parser::Parser::new(output.0.unwrap(), output.1);
-        let mut ast = parser.parse(true).unwrap();
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         // TODO spelling. one is spelled with y and other with i
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
