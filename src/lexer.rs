@@ -209,9 +209,10 @@ impl Tokenizer {
                     }
                 },
                 LexerState::SawEquals => match c {
-                    '=' => self.end_token(&mut output, &mut output_poss, Token::BoE),
+                    // '=' => self.end_token(&mut output, &mut output_poss, Token::BoE),
                     _ => {
                         // TODO col could alaerdy be 0
+                        self.end_token(&mut output, &mut output_poss, Token::BoE);
                         self.pos -= 1;
                         self.col -= 1;
                     }
