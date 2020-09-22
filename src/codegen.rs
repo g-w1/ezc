@@ -27,8 +27,9 @@ pub struct Code {
     data: Data,
     bss: Bss,
     text: Text,
+    initalized_local_vars: HashMap<String, u32>,
     number_for_mangling: u32,
-    stack_pointer_num: usize,
+    stack_p_offset: usize,
 }
 
 /// a helper function to provide `qword [_varname]` from `varname`
@@ -49,7 +50,8 @@ impl Code {
                 instructions: Vec::new(),
             },
             number_for_mangling: 0,
-            stack_pointer_num: 0,
+            stack_p_offset: 0,
+            initalized_local_vars: HashMap::new(),
         }
     }
     /// generate the code. dont deal with any of the sections
@@ -73,12 +75,15 @@ impl Code {
         }
     }
     /// code gen for if stmt. uses stack based allocation
-    fn cgen_if_stmt(self: &mut Self, guard: Expr, vars: HashMap<String, bool>, body: Vec<AstNode>) {
-        let mem_len = vars.len() * 8;
+    fn cgen_if_stmt(self: &mut Self, guard: Expr, vars: HashMap<String, u32>, body: Vec<AstNode>) {
+        let mem_len = vars.len();
+        for (varname, place) in vars {
+            self.initalized_local_vars.insert(varname, self.stack_p_offset as u32 - place);
+        }
         // self.text.instructions.push(String::from("push rbp")); // do i need to move base pointer?
         // self.text.instructions.push(String::from("mov rbp, rsp"));// i dont think so because its not func
 
-        self.text.instructions.push(format!("push rbp")); // allocate locals
+        // self.text.instructions.push(format!("push rbp")); // allocate locals?
         self.text.instructions.push(format!("sub rsp, {}", mem_len)); // allocate locals
         match guard {
             Expr::BinOp { lhs, op, rhs } => {
@@ -97,7 +102,7 @@ impl Code {
             }
         }
         self.text.instructions.push(format!("mov rsp, rbp")); // deallocate locals?
-        self.text.instructions.push(format!("pop rbp")); // deallocate locals?
+        // self.text.instructions.push(format!("pop rbp")); // deallocate locals?
     }
 
     fn cgen_stack_based_set_or_change_stmt(

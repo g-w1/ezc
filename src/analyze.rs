@@ -37,7 +37,7 @@ struct Analyser {
     /// the initialized_static_vars
     initialized_static_vars: HashMap<String, bool>,
     /// the initialized_local_vars
-    initialized_local_vars: HashMap<String, bool>,
+    initialized_local_vars: HashMap<String, u32>,
 }
 
 impl Analyser {
@@ -54,8 +54,9 @@ impl Analyser {
         self: &mut Self,
         tree: &mut Vec<ast::AstNode>,
         level: VarLevel,
-    ) -> Result<HashMap<String, bool>, AnalysisError> {
-        let mut new_locals: HashMap<String, bool> = HashMap::new();
+    ) -> Result<HashMap<String, u32>, AnalysisError> {
+        let mut new_locals: HashMap<String, u32> = HashMap::new();
+        let mut num_vars_declared: u32 = 0;
         for node in tree.iter_mut() {
             match node {
                 ast::AstNode::SetOrChange {
@@ -71,9 +72,12 @@ impl Analyser {
                                 VarLevel::Static => {
                                     self.initialized_static_vars.insert(sete.clone(), true);
                                 }
+                                
                                 VarLevel::Local => {
-                                    self.initialized_local_vars.insert(sete.clone(), true);
-                                    new_locals.insert(sete.clone(), true);
+                                    num_vars_declared +=1;
+
+                                    self.initialized_local_vars.insert(sete.clone(), num_vars_declared);
+                                    new_locals.insert(sete.clone(), num_vars_declared);
                                 }
                                 _ => unimplemented!(),
                             }

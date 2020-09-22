@@ -56,7 +56,7 @@ pub enum AstNode {
         guard: Expr,
         body: Vec<AstNode>,
         /// for the variables declared inside the if statement
-        vars_declared: Option<HashMap<String, bool>>,
+        vars_declared: Option<HashMap<String, u32>>,
     },
 }
 
