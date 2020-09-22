@@ -72,11 +72,12 @@ impl Analyser {
                                 VarLevel::Static => {
                                     self.initialized_static_vars.insert(sete.clone(), true);
                                 }
-                                
-                                VarLevel::Local => {
-                                    num_vars_declared +=1;
 
-                                    self.initialized_local_vars.insert(sete.clone(), num_vars_declared);
+                                VarLevel::Local => {
+                                    num_vars_declared += 1;
+
+                                    self.initialized_local_vars
+                                        .insert(sete.clone(), num_vars_declared);
                                     new_locals.insert(sete.clone(), num_vars_declared);
                                 }
                                 _ => unimplemented!(),

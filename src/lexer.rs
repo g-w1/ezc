@@ -197,6 +197,8 @@ impl Tokenizer {
                         self.col -= 1;
                     }
                 },
+                // TODO when you just have = it doesn't work. the lexer just hangs not the highest
+                // priority tho
                 LexerState::SawLessThan => match c {
                     '=' => self.end_token(&mut output, &mut output_poss, Token::BoLe),
                     _ => {

@@ -22,7 +22,6 @@ struct Parser {
     locs_input: Locs,
 }
 
-
 /// an error in the parsing
 #[derive(Debug)]
 pub enum ParserError {

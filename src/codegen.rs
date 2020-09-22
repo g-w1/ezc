@@ -29,7 +29,7 @@ pub struct Code {
     text: Text,
     initalized_local_vars: HashMap<String, u32>,
     number_for_mangling: u32,
-    stack_p_offset: usize,
+    stack_p_offset: u32,
 }
 
 /// a helper function to provide `qword [_varname]` from `varname`
@@ -65,7 +65,7 @@ impl Code {
                     sete,
                     setor,
                     change: _,
-                } => self.cgen_static_set_or_change_stmt(sete, setor),
+                } => self.cgen_set_or_change_stmt(sete, setor),
                 AstNode::If {
                     guard,
                     body,
@@ -76,58 +76,82 @@ impl Code {
     }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(self: &mut Self, guard: Expr, vars: HashMap<String, u32>, body: Vec<AstNode>) {
-        let mem_len = vars.len();
-        for (varname, place) in vars {
-            self.initalized_local_vars.insert(varname, self.stack_p_offset as u32 - place);
-        }
-        // self.text.instructions.push(String::from("push rbp")); // do i need to move base pointer?
-        // self.text.instructions.push(String::from("mov rbp, rsp"));// i dont think so because its not func
-
-        // self.text.instructions.push(format!("push rbp")); // allocate locals?
-        self.text.instructions.push(format!("sub rsp, {}", mem_len)); // allocate locals
+        ///////////////////////////////////// EVALUATE THE ACTUAL BOOL //////////////////////////////
         match guard {
             Expr::BinOp { lhs, op, rhs } => {
                 let reg = "r8";
                 self.cgen_expr(*lhs, op, *rhs);
                 self.text.instructions.push(format!("pop {}", reg));
-                self.text.instructions.push(format!("cmp {}, 0", reg));
+                self.text.instructions.push(format!("cmp {}, 1", reg));
             }
             Expr::Number(n) => {
-                self.text.instructions.push(format!("cmp {}, 0", n)); // TODO really easy optimisation by just parsing num at compile time. but right now this is easier
+                self.text.instructions.push(format!("cmp {}, 1", n)); // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
             }
-            Expr::Iden(i) => {
+            Expr::Iden(_) => {
                 self.text
                     .instructions
-                    .push(format!("cmp {}, 0", qword_deref_helper(i)));
+                    .push(format!("cmp {}, 1", self.get_display_asm(&guard)));
             }
         }
-        self.text.instructions.push(format!("mov rsp, rbp")); // deallocate locals?
-        // self.text.instructions.push(format!("pop rbp")); // deallocate locals?
-    }
-
-    fn cgen_stack_based_set_or_change_stmt(
-        self: &mut Self,
-        sete: String,
-        setor: Expr,
-        change: bool,
-    ) {
-        if !change {}
+        self.text
+            .instructions
+            .push(format!("je .IF_BODY_{}", self.number_for_mangling));
+        self.text
+            .instructions
+            .push(format!("jne .IF_END_{}", self.number_for_mangling));
+        ///////////////////////// THE BODY OF THE IF STMT ////////////////////////////////////////////////////////
+        self.text
+            .instructions
+            .push(format!(".IF_BODY_{}", self.number_for_mangling));
+        ///////////// ALLOCATION FOR THE IF STMT //////////////////////////////
+        let mem_len = vars.len();
+        self.stack_p_offset += mem_len as u32;
+        self.text.instructions.push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
+        for (varname, place) in vars.to_owned() {
+            self.initalized_local_vars
+                .insert(varname, self.stack_p_offset as u32 - place);
+        }
+        for node in body {
+            match node {
+                AstNode::If {
+                    body,
+                    guard,
+                    vars_declared,
+                } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body),
+                AstNode::SetOrChange {
+                    sete,
+                    setor,
+                    change: _,
+                } => self.cgen_set_or_change_stmt(sete, setor),
+            }
+        }
+        ///////////////////////// DEALLOCATION FOR THE VARS DECLARED INSIDE THE STMT ////////////////////////////
+        for (var, _) in vars {
+            self.initalized_local_vars.remove(&var);
+        }
+        self.text.instructions.push(format!("add rsp, {} * 8", mem_len)); // deallocate locals?
+        self.text
+            .instructions
+            .push(format!(".IF_END_{}", self.number_for_mangling));
+        self.number_for_mangling += 1;
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
-    fn cgen_static_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr) {
+    fn cgen_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr) {
         match setor {
             Expr::Number(s) => {
                 // if it is just a number push it to .text here
-                self.text
-                    .instructions
-                    .push(format!("mov {}, {}", qword_deref_helper(sete), s));
+                self.text.instructions.push(format!(
+                    "mov {}, {}",
+                    self.get_display_asm(&Expr::Iden(sete)),
+                    s
+                ));
             }
             Expr::Iden(s) => {
                 // if it is another iden then move the val to it
                 self.text.instructions.push(format!(
                     "mov {}, {}",
-                    qword_deref_helper(sete),
-                    qword_deref_helper(s)
+                    self.get_display_asm(&Expr::Iden(sete)),
+                    self.get_display_asm(&Expr::Iden(s))
                 ));
             }
             // for recursive expressions
@@ -157,10 +181,10 @@ impl Code {
             | (Expr::Iden(_), Expr::Iden(_)) => {
                 self.text
                     .instructions
-                    .push(format!("push {}", cloned_lhs.get_display_asm()));
+                    .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
                 self.text
                     .instructions
-                    .push(format!("push {}", cloned_rhs.get_display_asm()));
+                    .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
                 self.text
                     .instructions
                     .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
@@ -191,7 +215,7 @@ impl Code {
                 self.cgen_expr(*reclhs, recop, *recrhs);
                 self.text
                     .instructions
-                    .push(format!("push {}", cloned_rhs.get_display_asm()));
+                    .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
                 self.text
                     .instructions
                     .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
@@ -220,7 +244,7 @@ impl Code {
             ) => {
                 self.text
                     .instructions
-                    .push(format!("push {}", cloned_rhs.get_display_asm()));
+                    .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
                 self.cgen_expr(*reclhs, recop, *recrhs);
                 self.text
                     .instructions
@@ -248,6 +272,17 @@ impl Code {
             }
         }
     }
+    /// if its a num or iden give how to display it deferenecd
+    fn get_display_asm(self: &Self, expr: &Expr) -> String {
+        match expr {
+            Expr::Number(n) => n.to_owned(),
+            Expr::Iden(a) => match self.initalized_local_vars.get(a) {
+                None => format!("{}", qword_deref_helper(a.to_owned())),
+                Some(num) => format!("qword [rsp - {} * 8]", (self.stack_p_offset - num)),
+            },
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl BinOp {
@@ -272,12 +307,12 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njg .IF_{}\njle .IF_FAILED_{}",
+                        "cmp r9, r8\njl .IF_{}\njge .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
-                        num_for_mangling, num_for_mangling
+                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
             }
@@ -287,12 +322,12 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njl .IF_{}\njge .IF_FAILED_{}",
+                        "cmp r9, r8\njg .IF_{}\njle .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
-                        num_for_mangling, num_for_mangling
+                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
             }
@@ -306,8 +341,8 @@ impl BinOp {
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
-                        num_for_mangling, num_for_mangling
+                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
             }
@@ -317,12 +352,12 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njle .IF_{}\njg .IF_FAILED_{}",
+                        "cmp r9, r8\njge .IF_{}\njl .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
-                        num_for_mangling, num_for_mangling
+                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
             }
@@ -332,26 +367,15 @@ impl BinOp {
                     String::from("pop r9"),
                     String::from("pop r8"),
                     format!(
-                        "cmp r9, r8\njge .IF_{}\njl .IF_FAILED_{}",
+                        "cmp r9, r8\njle .IF_{}\njg .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\n.IF_FAILED_{}\npush 0",
-                        num_for_mangling, num_for_mangling
+                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
             }
-        }
-    }
-}
-
-impl Expr {
-    /// if its a num or iden give how to display it deferenecd
-    fn get_display_asm(self: &Self) -> String {
-        match self {
-            Self::Iden(a) => qword_deref_helper(a.to_owned()),
-            Self::Number(n) => n.to_owned(),
-            _ => unreachable!(),
         }
     }
 }

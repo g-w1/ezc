@@ -9,11 +9,12 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "set z to 5. if z > 4,
-            set a to 6.
+    let input = "set z to 5. if z <= 5,
+            set a to 5.
+            set b to 6.
             change a to 4.
         !
-    set a to 6. ";
+    ";
     let output = tokenizer.lex(String::from(input));
     let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
     analyze::analize(&mut ast).unwrap();
