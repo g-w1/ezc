@@ -368,7 +368,7 @@ mod tests {
 if x >= 5,
     set y to 4.
 !
-if y ==2,
+if y =2,
     set z to 4.
 !
 if test <= 4+2,

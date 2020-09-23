@@ -11,8 +11,10 @@ fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
     let input = "set z to 5. if z = 5,
             set a to 5.
-            set b to 6.
-            change a to 4.
+            if a > 4,
+                set test to a.
+            !
+            set test to 5.
         !
     ";
     let output = tokenizer.lex(String::from(input));

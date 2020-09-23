@@ -77,6 +77,7 @@ impl Code {
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(self: &mut Self, guard: Expr, vars: HashMap<String, u32>, body: Vec<AstNode>) {
         ///////////////////////////////////// EVALUATE THE ACTUAL BOOL //////////////////////////////
+        let our_number_for_mangling = self.number_for_mangling;
         match guard {
             Expr::BinOp { lhs, op, rhs } => {
                 let reg = "r8";
@@ -95,19 +96,33 @@ impl Code {
         }
         self.text
             .instructions
-            .push(format!("je .IF_BODY_{}", self.number_for_mangling));
+            .push(format!("je .IF_BODY_{}", our_number_for_mangling));
         self.text
             .instructions
-            .push(format!("jne .IF_END_{}", self.number_for_mangling));
+            .push(format!("jne .IF_END_{}", our_number_for_mangling));
         ///////////////////////// THE BODY OF THE IF STMT ////////////////////////////////////////////////////////
         self.text
             .instructions
-            .push(format!(".IF_BODY_{}", self.number_for_mangling));
+            .push(format!(".IF_BODY_{}", our_number_for_mangling));
         ///////////// ALLOCATION FOR THE IF STMT //////////////////////////////
+        let mut double_keys: HashMap<String, bool> = HashMap::new(); // the use of this is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
+                                                                     // set z to 5. if z = 5,
+                                                                     //     set a to 5.
+                                                                     //     if a > 4,
+                                                                     //         set test to a.
+                                                                     //     !
+                                                                     //     set test to 5.
+                                                                     // !
+
         let mem_len = vars.len();
         self.stack_p_offset += mem_len as u32;
-        self.text.instructions.push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
+        self.text
+            .instructions
+            .push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
         for (varname, place) in vars.to_owned() {
+            if self.initalized_local_vars.contains_key(&varname) {
+                double_keys.insert(varname.clone(), true);
+            }
             self.initalized_local_vars
                 .insert(varname, self.stack_p_offset as u32 - place);
         }
@@ -127,12 +142,16 @@ impl Code {
         }
         ///////////////////////// DEALLOCATION FOR THE VARS DECLARED INSIDE THE STMT ////////////////////////////
         for (var, _) in vars {
-            self.initalized_local_vars.remove(&var);
+            if !double_keys.contains_key(&var) {
+                self.initalized_local_vars.remove(&var);
+            }
         }
-        self.text.instructions.push(format!("add rsp, {} * 8", mem_len)); // deallocate locals?
         self.text
             .instructions
-            .push(format!(".IF_END_{}", self.number_for_mangling));
+            .push(format!("add rsp, {} * 8", mem_len)); // deallocate locals?
+        self.text
+            .instructions
+            .push(format!(".IF_END_{}", our_number_for_mangling));
         self.number_for_mangling += 1;
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
@@ -147,12 +166,21 @@ impl Code {
                 ));
             }
             Expr::Iden(s) => {
-                // if it is another iden then move the val to it
-                self.text.instructions.push(format!(
-                    "mov {}, {}",
-                    self.get_display_asm(&Expr::Iden(sete)),
-                    self.get_display_asm(&Expr::Iden(s))
-                ));
+                if let Some(_) = self.initalized_local_vars.get(&sete) {
+                    // if it is 2 things that are in stack memory, then do it in 2 places bc cant copy mem directoly
+                    self.text.instructions.push(format!(
+                        "mov r8, {}\nmov {}, r8",
+                        self.get_display_asm(&Expr::Iden(s)),
+                        self.get_display_asm(&Expr::Iden(sete))
+                    ));
+                } else {
+                    // if it is another iden then move the val to it
+                    self.text.instructions.push(format!(
+                        "mov {}, {}",
+                        self.get_display_asm(&Expr::Iden(sete)),
+                        self.get_display_asm(&Expr::Iden(s))
+                    ));
+                }
             }
             // for recursive expressions
             Expr::BinOp { lhs, rhs, op } => {
@@ -311,7 +339,7 @@ impl BinOp {
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
                         num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -325,8 +353,9 @@ impl BinOp {
                         "cmp r9, r8\njg .IF_{}\njle .IF_FAILED_{}",
                         num_for_mangling, num_for_mangling
                     ),
+                    // TODO refactor this format into a function. it is repetitive
                     format!(
-                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
                         num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -341,7 +370,7 @@ impl BinOp {
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
                         num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -356,7 +385,7 @@ impl BinOp {
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
                         num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
@@ -371,7 +400,7 @@ impl BinOp {
                         num_for_mangling, num_for_mangling
                     ),
                     format!(
-                        ".IF_{}:\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
+                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
                         num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
                     ),
                 ]
