@@ -278,13 +278,14 @@ impl Code {
             ) => {
                 self.text
                     .instructions
-                    .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
+                    .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
                 self.stack_p_offset += 1;
                 self.cgen_expr(*reclhs, recop, *recrhs);
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
                 self.number_for_mangling += 2;
             }
+            // THE CASE WHERE BOTH ARE RECURSIVE
             (
                 Expr::BinOp {
                     lhs: lreclhs,

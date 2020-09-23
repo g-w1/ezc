@@ -9,8 +9,12 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "if 4 < 5,
-            set a to 200.
+    let input = "set y to 0. if 4 < 5,
+            set a to a + 1.
+            if a >= a + 1,
+                set p to 0.
+                change y to 4.
+            !
             change a to 100 + a.
         !
     ";
