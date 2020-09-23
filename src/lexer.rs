@@ -208,15 +208,12 @@ impl Tokenizer {
                         self.col -= 1;
                     }
                 },
-                LexerState::SawEquals => match c {
-                    // '=' => self.end_token(&mut output, &mut output_poss, Token::BoE),
-                    _ => {
+                LexerState::SawEquals => {
                         // TODO col could alaerdy be 0
                         self.end_token(&mut output, &mut output_poss, Token::BoE);
                         self.pos -= 1;
                         self.col -= 1;
                     }
-                },
             }
             self.pos += 1;
         }
