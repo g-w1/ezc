@@ -311,7 +311,7 @@ impl Code {
             Expr::Number(n) => n.to_owned(),
             Expr::Iden(a) => match self.initalized_local_vars.get(a) {
                 None => format!("{}", qword_deref_helper(a.to_owned())),
-                Some(num) => format!("qword [rsp - {} * 8]", (self.stack_p_offset - num)),
+                Some(num) => format!("qword [rsp + {} * 8]", (self.stack_p_offset - num - 1)),
             },
             _ => unreachable!(),
         }
