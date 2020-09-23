@@ -189,7 +189,7 @@ impl Code {
                 self.text.instructions.push(format!("pop {}", reg));
                 self.text
                     .instructions
-                    .push(format!("mov {}, {}", qword_deref_helper(sete), reg));
+                    .push(format!("mov {}, {}", self.get_display_asm(&Expr::Iden(sete)), reg));
             }
         }
     }
