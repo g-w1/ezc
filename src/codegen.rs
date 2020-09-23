@@ -2,6 +2,7 @@
 
 use crate::ast::{AstNode, AstRoot, BinOp, Expr};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt;
 /// section .bss
 #[derive(Debug)]
@@ -106,7 +107,7 @@ impl Code {
             .instructions
             .push(format!(".IF_BODY_{}", our_number_for_mangling));
         ///////////// ALLOCATION FOR THE IF STMT //////////////////////////////
-        let mut double_keys: HashMap<String, bool> = HashMap::new();
+        let mut double_keys: HashSet<String> = HashSet::new();
         // the use of this is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
         // set z to 5. if z = 5,
         //     set a to 5.
@@ -123,7 +124,7 @@ impl Code {
             .push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
         for (varname, place) in vars.to_owned() {
             if self.initalized_local_vars.contains_key(&varname) {
-                double_keys.insert(varname.clone(), true);
+                double_keys.insert(varname.clone());
             }
             self.initalized_local_vars
                 .insert(varname, self.stack_p_offset as u32 - place);
@@ -144,7 +145,7 @@ impl Code {
         }
         ///////////////////////// DEALLOCATION FOR THE VARS DECLARED INSIDE THE STMT ////////////////////////////
         for (var, _) in vars {
-            if !double_keys.contains_key(&var) {
+            if !double_keys.contains(&var) {
                 self.initalized_local_vars.remove(&var);
             }
         }

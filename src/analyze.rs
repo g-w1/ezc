@@ -2,6 +2,7 @@
 
 use crate::{ast, ast::AstNode, ast::Expr};
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 /// error for a code analyze
 #[derive(Debug)]
@@ -35,7 +36,7 @@ pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
 #[derive(Debug)]
 struct Analyser {
     /// the initialized_static_vars
-    initialized_static_vars: HashMap<String, bool>,
+    initialized_static_vars: HashSet<String>,
     /// the initialized_local_vars
     initialized_local_vars: HashMap<String, u32>,
 }
@@ -44,7 +45,7 @@ impl Analyser {
     /// create an Analyser
     pub fn new() -> Self {
         Self {
-            initialized_static_vars: HashMap::new(),
+            initialized_static_vars: HashSet::new(),
             initialized_local_vars: HashMap::new(),
         }
     }
@@ -65,12 +66,12 @@ impl Analyser {
                     change,
                 } => {
                     if !*change {
-                        if !self.initialized_static_vars.contains_key(sete)
+                        if !self.initialized_static_vars.contains(sete)
                             && !self.initialized_local_vars.contains_key(sete)
                         {
                             match level {
                                 VarLevel::Static => {
-                                    self.initialized_static_vars.insert(sete.clone(), true);
+                                    self.initialized_static_vars.insert(sete.clone());
                                 }
 
                                 VarLevel::Local => {
@@ -113,14 +114,14 @@ impl Analyser {
     ) -> Result<(), AnalysisError> {
         match level {
             VarLevel::Static => {
-                if !self.initialized_static_vars.contains_key(&var) {
+                if !self.initialized_static_vars.contains(&var) {
                     return Err(AnalysisError::VarNotExist(var));
                 }
             }
             VarLevel::Local => {
                 // TODO change for functions. prolly needs a whole redoing
                 if !(self.initialized_local_vars.contains_key(&var)
-                    || self.initialized_static_vars.contains_key(&var))
+                    || self.initialized_static_vars.contains(&var))
                 {
                     return Err(AnalysisError::VarNotExist(var));
                 }
