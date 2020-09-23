@@ -83,6 +83,7 @@ impl Code {
                 let reg = "r8";
                 self.cgen_expr(*lhs, op, *rhs);
                 self.text.instructions.push(format!("pop {}", reg));
+                self.stack_p_offset -=1;
                 self.text.instructions.push(format!("cmp {}, 1", reg));
             }
             Expr::Number(n) => {
@@ -105,14 +106,15 @@ impl Code {
             .instructions
             .push(format!(".IF_BODY_{}", our_number_for_mangling));
         ///////////// ALLOCATION FOR THE IF STMT //////////////////////////////
-        let mut double_keys: HashMap<String, bool> = HashMap::new(); // the use of this is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
-                                                                     // set z to 5. if z = 5,
-                                                                     //     set a to 5.
-                                                                     //     if a > 4,
-                                                                     //         set test to a.
-                                                                     //     !
-                                                                     //     set test to 5.
-                                                                     // !
+        let mut double_keys: HashMap<String, bool> = HashMap::new();
+        // the use of this is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
+        // set z to 5. if z = 5,
+        //     set a to 5.
+        //     if a > 4,
+        //         set test to a.
+        //     !
+        //     set test to 5.
+        // !
 
         let mem_len = vars.len();
         self.stack_p_offset += mem_len as u32;
@@ -187,9 +189,12 @@ impl Code {
                 let reg = "r8";
                 self.cgen_expr(*lhs, op, *rhs);
                 self.text.instructions.push(format!("pop {}", reg));
-                self.text
-                    .instructions
-                    .push(format!("mov {}, {}", self.get_display_asm(&Expr::Iden(sete)), reg));
+                self.stack_p_offset -=1;
+                self.text.instructions.push(format!(
+                    "mov {}, {}",
+                    self.get_display_asm(&Expr::Iden(sete)),
+                    reg
+                ));
             }
         }
     }
@@ -210,12 +215,13 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
+                self.stack_p_offset += 1;
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.text
-                    .instructions
-                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                self.stack_p_offset += 1;
+                let slice = &self.cgen_for_stack(&op);
+                self.text.instructions.extend_from_slice(slice);
                 // // update it by 2 because 2 was used and dont wanna pass mut
                 // self.number_for_mangling += 2;
             }
@@ -244,9 +250,9 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.text
-                    .instructions
-                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                self.stack_p_offset += 1;
+                let slice = &self.cgen_for_stack(&op);
+                self.text.instructions.extend_from_slice(slice);
                 self.number_for_mangling += 2;
             }
             //        op
@@ -273,10 +279,10 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
+                self.stack_p_offset += 1;
                 self.cgen_expr(*reclhs, recop, *recrhs);
-                self.text
-                    .instructions
-                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                let slice = &self.cgen_for_stack(&op);
+                self.text.instructions.extend_from_slice(slice);
                 self.number_for_mangling += 2;
             }
             (
@@ -293,9 +299,8 @@ impl Code {
             ) => {
                 self.cgen_expr(*lreclhs, lrecop, *lrecrhs);
                 self.cgen_expr(*rreclhs, rrecop, *rrecrhs);
-                self.text
-                    .instructions
-                    .extend_from_slice(&op.cgen_for_stack(&mut self.number_for_mangling));
+                let slice = &self.cgen_for_stack(&op);
+                self.text.instructions.extend_from_slice(slice);
                 self.number_for_mangling += 2;
             }
         }
@@ -311,102 +316,86 @@ impl Code {
             _ => unreachable!(),
         }
     }
-}
-
-impl BinOp {
     /// takes 2 things on the stack. pops them, does an arg and then pushes the result
-    fn cgen_for_stack(self: &Self, num_for_mangling: &mut u32) -> [String; 4] {
-        match self {
-            Self::Add => [
-                String::from("pop r8"),
-                String::from("pop r9"),
-                String::from("add r8, r9"),
-                String::from("push r8"),
-            ],
-            Self::Sub => [
-                String::from("pop r8"),
-                String::from("pop r9"),
-                String::from("sub r9, r8"),
-                String::from("push r9"),
-            ],
-            Self::Gt => {
-                *num_for_mangling += 2;
-                [
-                    String::from("pop r9"),
-                    String::from("pop r8"),
-                    format!(
-                        "cmp r9, r8\njl .IF_{}\njge .IF_FAILED_{}",
-                        num_for_mangling, num_for_mangling
-                    ),
-                    format!(
-                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
-                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
-                    ),
-                ]
+    fn cgen_for_stack(self: &mut Self, b_op: &BinOp) -> [String; 4] {
+        match b_op {
+            &BinOp::Add => {
+                self.stack_p_offset -= 1;
+                add_or_sub_op("add")
             }
-            Self::Lt => {
-                *num_for_mangling += 2;
-                [
-                    String::from("pop r9"),
-                    String::from("pop r8"),
-                    format!(
-                        "cmp r9, r8\njg .IF_{}\njle .IF_FAILED_{}",
-                        num_for_mangling, num_for_mangling
-                    ),
-                    // TODO refactor this format into a function. it is repetitive
-                    format!(
-                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
-                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
-                    ),
-                ]
+            &BinOp::Sub => {
+                self.stack_p_offset -= 1;
+                add_or_sub_op("sub")
             }
-            Self::Equ => {
-                *num_for_mangling += 2;
-                [
-                    String::from("pop r9"),
-                    String::from("pop r8"),
-                    format!(
-                        "cmp r9, r8\nje .IF_{}\njne .IF_FAILED_{}",
-                        num_for_mangling, num_for_mangling
-                    ),
-                    format!(
-                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
-                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
-                    ),
-                ]
+            &BinOp::Gt => {
+                self.stack_p_offset -= 1;
+                crate::eq_op!("jg", self.number_for_mangling)
             }
-            Self::Lte => {
-                *num_for_mangling += 2;
-                [
-                    String::from("pop r9"),
-                    String::from("pop r8"),
-                    format!(
-                        "cmp r9, r8\njge .IF_{}\njl .IF_FAILED_{}",
-                        num_for_mangling, num_for_mangling
-                    ),
-                    format!(
-                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
-                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
-                    ),
-                ]
+
+            &BinOp::Lt => {
+                self.stack_p_offset -= 1;
+                crate::eq_op!("jl", self.number_for_mangling)
             }
-            Self::Gte => {
-                *num_for_mangling += 2;
-                [
-                    String::from("pop r9"),
-                    String::from("pop r8"),
-                    format!(
-                        "cmp r9, r8\njle .IF_{}\njg .IF_FAILED_{}",
-                        num_for_mangling, num_for_mangling
-                    ),
-                    format!(
-                        ".IF_{}\npush 1\njmp .END_IF_{}\n.IF_FAILED_{}\npush 0\n.END_IF_{}",
-                        num_for_mangling, num_for_mangling, num_for_mangling, num_for_mangling
-                    ),
-                ]
+            &BinOp::Equ => {
+                self.stack_p_offset -= 1;
+                crate::eq_op!("je", self.number_for_mangling)
+            }
+            &BinOp::Lte => {
+                self.stack_p_offset -= 1;
+                crate::eq_op!("jle", self.number_for_mangling)
+            }
+            &BinOp::Gte => {
+                self.stack_p_offset -= 1;
+                crate::eq_op!("jge", self.number_for_mangling)
             }
         }
     }
+}
+
+// inline cuz y not
+#[inline]
+fn add_or_sub_op(op: &str) -> [String; 4] {
+    [
+        String::from("pop r8"),
+        String::from("pop r9"),
+        format!("{} r9, r8", op),
+        String::from("push r9"),
+    ]
+}
+
+#[inline]
+fn get_op_of_eq_op(jump_cond: &str) -> &str {
+    match jump_cond {
+        "jl" => "jge",
+        "jg" => "jle",
+        "jle" => "jg",
+        "jge" => "jle",
+        "je" => "jne",
+        "jn" => "je",
+        _ => unreachable!(),
+    }
+}
+
+#[macro_export]
+macro_rules! eq_op {
+    ($op:literal, $num:expr) => {{
+        $num += 2;
+        [
+            String::from("pop r9"),
+            String::from("pop r8"),
+            format!(
+                "cmp r9, r8\n{} .IF_{}\n{} .IF_FAILED_{}",
+                $op,
+                $num,
+                get_op_of_eq_op($op),
+                $num
+            ),
+            format!(
+                ".IF_{}\npush 0\njmp .END_IF_{}\n.IF_FAILED_{}\npush 1\n.END_IF_{}",
+                $num, $num, $num, $num
+            ),
+        ]
+    }};
 }
 
 #[cfg(test)]
@@ -478,7 +467,8 @@ _y resq 1
         use crate::parser;
 
         let mut tokenizer = lexer::Tokenizer::new();
-        let input = "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4.";
+        let input =
+            "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x > 10.";
         let output = tokenizer.lex(String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         // TODO spelling. one is spelled with y and other with i
@@ -494,8 +484,8 @@ push qword [_y]
 push 5
 pop r8
 pop r9
-add r8, r9
-push r8
+add r9, r8
+push r9
 push 10
 pop r8
 pop r9
@@ -504,8 +494,8 @@ push r9
 push qword [_y]
 pop r8
 pop r9
-add r8, r9
-push r8
+add r9, r8
+push r9
 push 15
 pop r8
 pop r9
@@ -517,10 +507,25 @@ push qword [_x]
 push 4
 pop r8
 pop r9
-add r8, r9
-push r8
+add r9, r8
+push r9
 pop r8
 mov qword [_z], r8
+push qword [_x]
+push 10
+pop r9
+pop r8
+cmp r9, r8
+jg .IF_8
+jle .IF_FAILED_8
+.IF_8
+push 0
+jmp .END_IF_8
+.IF_FAILED_8
+push 1
+.END_IF_8
+pop r8
+mov qword [_res_of_bop], r8
 mov rax, 60
 xor rdi, rdi
 syscall
@@ -528,6 +533,7 @@ section .bss
 _y resq 1
 _x resq 1
 _z resq 1
+_res_of_bop resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }

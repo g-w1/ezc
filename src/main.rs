@@ -9,7 +9,7 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "set z to 5. if z = 5,
+    let input = "if 4 < 5,
             set a to 200.
             change a to 100 + a.
         !
