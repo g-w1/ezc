@@ -566,6 +566,7 @@ _y resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }
+    #[test]
     fn codegen_loop() {
         use crate::analyze;
         use crate::codegen;
@@ -573,8 +574,7 @@ _y resq 1
         use crate::parser;
 
         let mut tokenizer = lexer::Tokenizer::new();
-        let input =
-            "set x to 0 . loop, change x to x + 1. if x > 10, break.!!";
+        let input = "set x to 0. loop, change x to x + 1. if x > 10, break.!!";
         let output = tokenizer.lex(String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         // TODO spelling. one is spelled with y and other with i
@@ -624,7 +624,6 @@ xor rdi, rdi
 syscall
 section .bss
 _x resq 1
-
 ";
         assert_eq!(format!("{}", code), correct_code);
     }

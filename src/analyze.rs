@@ -101,7 +101,7 @@ impl Analyser {
                     vars_declared,
                 } => {
                     self.check_expr(guard.clone(), level)?;
-                    *vars_declared = Some(self.analyze(body, VarLevel::Local, false)?);
+                    *vars_declared = Some(self.analyze(body, VarLevel::Local, inloop)?);
                 }
                 ast::AstNode::Loop { body } => {
                     self.analyze(body, VarLevel::Local, true)?;

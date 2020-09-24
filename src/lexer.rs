@@ -153,6 +153,7 @@ impl Tokenizer {
                         }
                         '.' => self.end_token(&mut output, &mut output_poss, Token::EndOfLine),
                         ',' => self.end_token(&mut output, &mut output_poss, Token::OpenBlock),
+                        // TODO make != work
                         '!' => self.end_token(&mut output, &mut output_poss, Token::CloseBlock),
                         '(' => self.end_token(&mut output, &mut output_poss, Token::Lparen),
                         ')' => self.end_token(&mut output, &mut output_poss, Token::Rparen),

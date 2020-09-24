@@ -25,8 +25,11 @@ struct Parser {
 /// an error in the parsing
 #[derive(Debug)]
 pub enum ParserError {
-    ExpectedToken(Token, (u32, u32)),
-    FoundToken(Token, (u32, u32)),
+    ExectedOneFoundAnother {
+        expected: Token,
+        found: Token,
+        coords: (u32, u32),
+    },
 }
 
 impl Parser {
@@ -56,24 +59,15 @@ impl Parser {
         }
     }
     /// a wrapper to give the err not have to use stuff in the functions
-    fn expected_token_err(self: &Self, token: Token) -> ParserError {
-        ParserError::ExpectedToken(
-            token,
-            (
+    fn expected_token_err(self: &Self, expected: Token, found: Token) -> ParserError {
+        ParserError::ExectedOneFoundAnother {
+            expected,
+            found,
+            coords: (
                 self.locs_input[self.pos_input].0,
                 self.locs_input[self.pos_input].1,
             ),
-        )
-    }
-    /// error helper function to put the positions of the tokens in the error message
-    fn found_token_err(self: &Self, token: Token) -> ParserError {
-        ParserError::FoundToken(
-            token,
-            (
-                self.locs_input[self.pos_input].0,
-                self.locs_input[self.pos_input].1,
-            ),
-        )
+        }
     }
     // /// Peek one token ahead without eating it. may need in future
     // fn peek(self: &mut Self) -> Token {
@@ -94,7 +88,7 @@ impl Parser {
             self.pos_input += 1;
             return Ok(());
         }
-        Err(self.expected_token_err(token))
+        Err(self.expected_token_err(token, self.cur_tok()))
     }
     /// The function that does the parsing
     fn parse(self: &mut Self, toplevel: bool) -> Result<Vec<AstNode>, ParserError> {
@@ -116,7 +110,7 @@ impl Parser {
                     tree.push(AstNode::Break);
                 }
                 Token::Eof => break,
-                t => return Err(self.found_token_err(t)),
+                t => return Err(self.expected_token_err(t, Token::Eof)),
             }
         }
         Ok(tree)
@@ -129,7 +123,11 @@ impl Parser {
                 Ok(s)
             }
             t => {
-                return Err(ParserError::FoundToken(t, (0, 0)));
+                return Err(ParserError::ExectedOneFoundAnother {
+                    found: t,
+                    expected: Token::Iden(String::from("")),
+                    coords: (0, 0),
+                });
             }
         }
     }
@@ -144,7 +142,7 @@ impl Parser {
                 Ok(Expr::Iden(s))
             }
             t => {
-                return Err(self.expected_token_err(t));
+                return Err(self.expected_token_err(Token::IntLit(String::from("")), t));
             }
         }
     }
@@ -155,7 +153,7 @@ impl Parser {
                 self.pos_input += 1;
                 Ok(Expr::Number(s))
             }
-            t => Err(self.expected_token_err(t)),
+            t => Err(self.expected_token_err(Token::IntLit(String::from("")), t)),
         }
     }
     /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr
@@ -199,7 +197,7 @@ impl Parser {
         // eat Lparen
         match self.cur_tok() {
             Token::Lparen => {}
-            t => return Err(self.found_token_err(t)),
+            t => return Err(self.expected_token_err(Token::Lparen, t)),
         }
         let _ = self.next();
         // parse the expression (yay recursion is fun)
@@ -207,7 +205,7 @@ impl Parser {
         // eat Rparen
         match self.cur_tok() {
             Token::Rparen => {}
-            t => return Err(self.found_token_err(t)),
+            t => return Err(self.expected_token_err(Token::Rparen, t)),
         }
         let _ = self.next();
         Ok(parsed_expr)
@@ -218,7 +216,7 @@ impl Parser {
             Token::IntLit(_) => self.parse_expr_number(),
             Token::Iden(_) => self.parse_expr_iden(),
             Token::Lparen => self.parse_expr_paren(),
-            t => return Err(self.expected_token_err(t)),
+            t => return Err(self.expected_token_err(Token::Lparen, t)),
         }
     }
     //
