@@ -72,6 +72,7 @@ impl Code {
                     body,
                     vars_declared,
                 } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body), // we unwrap because it was analised
+                AstNode::Loop { body } => self.cgen_loop_stmt(body),
             }
         }
     }
@@ -141,6 +142,7 @@ impl Code {
                     setor,
                     change: _,
                 } => self.cgen_set_or_change_stmt(sete, setor),
+                AstNode::Loop { body } => self.cgen_loop_stmt(body),
             }
         }
         ///////////////////////// DEALLOCATION FOR THE VARS DECLARED INSIDE THE STMT ////////////////////////////
@@ -156,6 +158,12 @@ impl Code {
             .instructions
             .push(format!(".IF_END_{}", our_number_for_mangling));
         self.number_for_mangling += 1;
+    }
+    /// code generation for a loop. very easy
+    fn cgen_loop_stmt(self: &mut Self, body: Vec<AstNode>) {
+        for _ in body {
+            unimplemented!()
+        }
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr) {
@@ -410,7 +418,8 @@ _test resq 1
         use crate::parser;
 
         let mut tokenizer = lexer::Tokenizer::new();
-        let input = "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
+        let input =
+            "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
         let output = tokenizer.lex(String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();

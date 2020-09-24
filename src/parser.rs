@@ -3,7 +3,7 @@
 use crate::ast::*;
 use crate::lexer::{Locs, Token};
 
-/// a wrapper function for the parser
+/// AstRoot <- Vec<Ast>
 pub fn parse(input: Vec<Token>, locs_input: Vec<(u32, u32)>) -> Result<AstRoot, ParserError> {
     Ok(AstRoot {
         static_vars: None,
@@ -107,6 +107,7 @@ impl Parser {
             match self.cur_tok() {
                 Token::Kset => self.parse_set_stmt(&mut tree)?,
                 Token::Kchange => self.parse_change_stmt(&mut tree)?,
+                Token::Kloop => self.parse_loop_stmt(&mut tree)?,
                 Token::Kif => self.parse_if_stmt(&mut tree)?,
                 Token::CloseBlock if !toplevel => break,
                 Token::Eof => break,
@@ -218,6 +219,15 @@ impl Parser {
     //
     // Parsing stmts
     //
+    /// LoopNode <- Kloop OpenBlock Ast CloseBlock
+    fn parse_loop_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
+        self.expect_eat_token(Token::Kloop)?;
+        self.expect_eat_token(Token::OpenBlock)?;
+        let body: Vec<AstNode> = self.parse(false)?;
+        self.expect_eat_token(Token::CloseBlock)?;
+        tree.push(AstNode::Loop { body });
+        Ok(())
+    }
     /// IfNode <- Kif Expr OpenBlock Ast CloseBlock
     fn parse_if_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         // TODO add syntactic sugar so that u dont need endofline when a '!' is next. harder than u think
@@ -304,6 +314,34 @@ mod tests {
                     sete: String::from("xarst"),
                     change: false,
                     setor: Expr::Number(String::from("555134234523452345"))
+                }
+            ],
+            ast
+        );
+    }
+    #[test]
+    fn parser_loop() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(String::from("Set x to 1. loop, change x to x+1.!"));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: false,
+                    setor: Expr::Number(String::from("1"))
+                },
+                AstNode::Loop {
+                    body: vec![AstNode::SetOrChange {
+                        sete: String::from("x"),
+                        change: true,
+                        setor: Expr::BinOp {
+                            lhs: Box::new(Expr::Iden(String::from("x"))),
+                            rhs: Box::new(Expr::Number(String::from("1"))),
+                            op: BinOp::Add
+                        }
+                    }]
                 }
             ],
             ast

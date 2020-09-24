@@ -58,6 +58,9 @@ pub enum AstNode {
         /// for the variables declared inside the if statement
         vars_declared: Option<HashMap<String, u32>>,
     },
+    Loop {
+        body: Vec<AstNode>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]

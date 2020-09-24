@@ -13,13 +13,15 @@ pub enum AnalysisError {
     VarNotExist(String),
     /// bigger than 2^64 num
     NumberTooBig,
+    /// try to set a var in loop. doesn't work for technical reasons
+    SetInLoop,
 }
 
 /// the level of the variable: static, fn, local
 #[derive(Debug, Copy, Clone)]
 enum VarLevel {
-    /// function scope
-    _Func,
+    /// loops
+    Loop,
     /// static variable scope
     Static,
     /// local scope: if stmts...
@@ -66,6 +68,9 @@ impl Analyser {
                     change,
                 } => {
                     if !*change {
+                        if let VarLevel::Loop = level {
+                            return Err(AnalysisError::SetInLoop);
+                        }
                         if !self.initialized_static_vars.contains(sete)
                             && !self.initialized_local_vars.contains_key(sete)
                         {
@@ -80,7 +85,7 @@ impl Analyser {
                                         .insert(sete.clone(), num_vars_declared);
                                     new_locals.insert(sete.clone(), num_vars_declared);
                                 }
-                                _ => unimplemented!(),
+                                VarLevel::Loop => unreachable!(),
                             }
                         } else {
                             return Err(AnalysisError::DoubleSet);
@@ -98,6 +103,9 @@ impl Analyser {
                     self.check_expr(guard.clone(), level)?;
                     *vars_declared = Some(self.analyze(body, VarLevel::Local)?);
                 }
+                ast::AstNode::Loop { body } => {
+                    self.analyze(body, VarLevel::Loop)?;
+                }
             }
         }
         // drop all the local vars.
@@ -111,13 +119,14 @@ impl Analyser {
         var: String,
         level: VarLevel,
     ) -> Result<(), AnalysisError> {
+        // TODO why did i put this in anyways. if its static no local vars should exist??? im confusion whatever its an extra check. maybe remove it
         match level {
             VarLevel::Static => {
                 if !self.initialized_static_vars.contains(&var) {
                     return Err(AnalysisError::VarNotExist(var));
                 }
             }
-            VarLevel::Local => {
+            VarLevel::Local | VarLevel::Loop => {
                 // TODO change for functions. prolly needs a whole redoing
                 if !self.initialized_local_vars.contains_key(&var)
                     && !self.initialized_static_vars.contains(&var)
@@ -125,7 +134,6 @@ impl Analyser {
                     return Err(AnalysisError::VarNotExist(var));
                 }
             }
-            _ => unimplemented!(),
         }
         Ok(())
     }

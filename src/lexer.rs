@@ -13,6 +13,8 @@ pub enum Token {
     Kto,
     /// If
     Kif,
+    /// Loop
+    Kloop,
     // Iden tokens
     /// Identifier token
     Iden(String),
@@ -62,16 +64,14 @@ pub enum LexError {
 /// let random = get_kword(String::from("random"));
 /// assert!(set == Token::Iden(String::from("random")));
 /// ```
-fn get_kword(input: &String) -> Token {
-    match input.as_str() {
-        "set" => return Token::Kset,
-        "Set" => return Token::Kset,
-        "change" => return Token::Kchange,
-        "Change" => return Token::Kchange,
-        "to" => return Token::Kto,
-        "If" => return Token::Kif,
-        "if" => return Token::Kif,
-        _ => return Token::Iden(input.to_string()),
+fn get_kword(input: &str) -> Token {
+    match input {
+        "Set" | "set" => Token::Kset,
+        "Change" | "change" => Token::Kchange,
+        "to" => Token::Kto,
+        "If" | "if" => Token::Kif,
+        "Loop" | "loop" => Token::Kloop,
+        _ => Token::Iden(input.to_string()),
     }
 }
 
@@ -290,7 +290,6 @@ mod tests {
     fn lexer_bad_ast() {
         let mut tokenizer = Tokenizer::new();
         let res = tokenizer.lex(String::from("set x to 5. b"));
-        assert!(res.0.is_ok());
         assert_eq!(
             tokenizer,
             Tokenizer {
@@ -311,6 +310,34 @@ mod tests {
                 Token::IntLit(String::from("5")),
                 Token::EndOfLine,
                 Token::Iden(String::from("b")),
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
+    }
+    #[test]
+    fn lexer_loop() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(String::from("set x to 4. loop, change x to x + 1.!"));
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Kset,
+                Token::Iden(String::from("x")),
+                Token::Kto,
+                Token::IntLit(String::from("4")),
+                Token::EndOfLine,
+                Token::Kloop,
+                Token::OpenBlock,
+                Token::Kchange,
+                Token::Iden(String::from("x")),
+                Token::Kto,
+                Token::Iden(String::from("x")),
+                Token::BoPlus,
+                Token::IntLit(String::from("1")),
+                Token::EndOfLine,
+                Token::CloseBlock,
                 Token::Eof,
             ]
         );
