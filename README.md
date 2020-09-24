@@ -52,7 +52,7 @@ To test: `cargo test`
 
 - [x] if statements
 
-- [ ] loops (maybe turing complete here? idk if you need to have io or arrays. theoretically the kernel could read the memory at that spot. it is no different to writing to stdout right? well once I have functions i can just link to a libc and easily get io. although im thinking i really wanna write the stdlib in asm or zig
+- [x] loops
 
 - [ ] functions
 
