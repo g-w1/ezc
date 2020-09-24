@@ -157,7 +157,7 @@ impl Parser {
         let lhs = self.parse_expr_primary()?;
         self.parse_bin_op_rhs(0, &lhs)
     }
-    /// Expr <- LParen Expr Rparen. TODO is this right?
+    /// Expr <- LParen Expr Rparen.
     // impliments this algorithm https://en.wikipedia.org/wiki/Operator-precedence_parser
     fn parse_bin_op_rhs(
         self: &mut Self,

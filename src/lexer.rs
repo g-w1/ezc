@@ -186,7 +186,9 @@ impl Tokenizer {
                         );
                         // put back char
                         self.pos -= 1;
-                        self.col -= 1;
+                        if self.col != 0 {
+                            self.col -= 1
+                        };
                     }
                 },
                 LexerState::SawGreaterThan => match c {
@@ -197,8 +199,6 @@ impl Tokenizer {
                         self.col -= 1;
                     }
                 },
-                // TODO when you just have = it doesn't work. the lexer just hangs not the highest
-                // priority tho
                 LexerState::SawLessThan => match c {
                     '=' => self.end_token(&mut output, &mut output_poss, Token::BoLe),
                     _ => {
@@ -209,15 +209,14 @@ impl Tokenizer {
                     }
                 },
                 LexerState::SawEquals => {
-                        // TODO col could alaerdy be 0
-                        self.end_token(&mut output, &mut output_poss, Token::BoE);
-                        self.pos -= 1;
-                        self.col -= 1;
-                    }
+                    // TODO col could alaerdy be 0
+                    self.end_token(&mut output, &mut output_poss, Token::BoE);
+                    self.pos -= 1;
+                    self.col -= 1;
+                }
             }
             self.pos += 1;
         }
-        // clean up any loose intermediate strings. should really clean up state and if not start throw an error. but good enough for now. TODO
         match self.intermidiate_string.as_str() {
             "" => {}
             _ => match self.state {

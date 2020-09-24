@@ -84,7 +84,7 @@ impl Code {
                 let reg = "r8";
                 self.cgen_expr(*lhs, op, *rhs);
                 self.text.instructions.push(format!("pop {}", reg));
-                self.stack_p_offset -=1;
+                self.stack_p_offset -= 1;
                 self.text.instructions.push(format!("cmp {}, 1", reg));
             }
             Expr::Number(n) => {
@@ -169,28 +169,19 @@ impl Code {
                 ));
             }
             Expr::Iden(s) => {
-                if let Some(_) = self.initalized_local_vars.get(&sete) {
-                    // if it is 2 things that are in stack memory, then do it in 2 places bc cant copy mem directoly
-                    self.text.instructions.push(format!(
-                        "mov r8, {}\nmov {}, r8",
-                        self.get_display_asm(&Expr::Iden(s)),
-                        self.get_display_asm(&Expr::Iden(sete))
-                    ));
-                } else {
-                    // if it is another iden then move the val to it
-                    self.text.instructions.push(format!(
-                        "mov {}, {}",
-                        self.get_display_asm(&Expr::Iden(sete)),
-                        self.get_display_asm(&Expr::Iden(s))
-                    ));
-                }
+                // if it is 2 things that are in stack memory, then do it in 2 places bc cant copy mem directoly
+                self.text.instructions.push(format!(
+                    "mov r8, {}\nmov {}, r8",
+                    self.get_display_asm(&Expr::Iden(s)),
+                    self.get_display_asm(&Expr::Iden(sete))
+                ));
             }
             // for recursive expressions
             Expr::BinOp { lhs, rhs, op } => {
                 let reg = "r8";
                 self.cgen_expr(*lhs, op, *rhs);
                 self.text.instructions.push(format!("pop {}", reg));
-                self.stack_p_offset -=1;
+                self.stack_p_offset -= 1;
                 self.text.instructions.push(format!(
                     "mov {}, {}",
                     self.get_display_asm(&Expr::Iden(sete)),
@@ -321,35 +312,13 @@ impl Code {
     /// takes 2 things on the stack. pops them, does an arg and then pushes the result
     fn cgen_for_stack(self: &mut Self, b_op: &BinOp) -> [String; 4] {
         match b_op {
-            &BinOp::Add => {
-                self.stack_p_offset -= 1;
-                add_or_sub_op("add")
-            }
-            &BinOp::Sub => {
-                self.stack_p_offset -= 1;
-                add_or_sub_op("sub")
-            }
-            &BinOp::Gt => {
-                self.stack_p_offset -= 1;
-                crate::eq_op!("jg", self.number_for_mangling)
-            }
-
-            &BinOp::Lt => {
-                self.stack_p_offset -= 1;
-                crate::eq_op!("jl", self.number_for_mangling)
-            }
-            &BinOp::Equ => {
-                self.stack_p_offset -= 1;
-                crate::eq_op!("je", self.number_for_mangling)
-            }
-            &BinOp::Lte => {
-                self.stack_p_offset -= 1;
-                crate::eq_op!("jle", self.number_for_mangling)
-            }
-            &BinOp::Gte => {
-                self.stack_p_offset -= 1;
-                crate::eq_op!("jge", self.number_for_mangling)
-            }
+            &BinOp::Add => add_or_sub_op("add"),
+            &BinOp::Sub => add_or_sub_op("sub"),
+            &BinOp::Gt => crate::eq_op!("jg", self),
+            &BinOp::Lt => crate::eq_op!("jl", self),
+            &BinOp::Equ => crate::eq_op!("je", self),
+            &BinOp::Lte => crate::eq_op!("jle", self),
+            &BinOp::Gte => crate::eq_op!("jge", self),
         }
     }
 }
@@ -371,7 +340,7 @@ fn get_op_of_eq_op(jump_cond: &str) -> &str {
         "jl" => "jge",
         "jg" => "jle",
         "jle" => "jg",
-        "jge" => "jle",
+        "jge" => "jl",
         "je" => "jne",
         "jn" => "je",
         _ => unreachable!(),
@@ -380,21 +349,22 @@ fn get_op_of_eq_op(jump_cond: &str) -> &str {
 
 #[macro_export]
 macro_rules! eq_op {
-    ($op:literal, $num:expr) => {{
-        $num += 2;
+    ($op:literal, $self:ident) => {{
+        $self.stack_p_offset -=1;
+        $self.number_for_mangling += 2;
         [
-            String::from("pop r9"),
             String::from("pop r8"),
+            String::from("pop r9"),
             format!(
-                "cmp r9, r8\n{} .IF_{}\n{} .IF_FAILED_{}",
+                "cmp r9, r8\n{} .IF_HEADER_{}\n{} .IF_HEADER_FAILED_{}",
                 $op,
-                $num,
+                $self.number_for_mangling,
                 get_op_of_eq_op($op),
-                $num
+                $self.number_for_mangling
             ),
             format!(
-                ".IF_{}\npush 0\njmp .END_IF_{}\n.IF_FAILED_{}\npush 1\n.END_IF_{}",
-                $num, $num, $num, $num
+                ".IF_HEADER_{}\npush 1\njmp .END_IF_HEADER_{}\n.IF_HEADER_FAILED_{}\npush 0\n.END_IF_HEADER_{}",
+                $self.number_for_mangling, $self.number_for_mangling, $self.number_for_mangling, $self.number_for_mangling
             ),
         ]
     }};
@@ -429,6 +399,86 @@ section .bss
 _x resq 1
 _y resq 1
 _test resq 1
+";
+        assert_eq!(format!("{}", code), correct_code);
+    }
+    #[test]
+    fn codegen_if_stmt() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
+        let output = tokenizer.lex(String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.codegen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov qword [_y], 5
+push qword [_y]
+push 5
+pop r8
+pop r9
+add r9, r8
+push r9
+push 10
+pop r8
+pop r9
+sub r9, r8
+push r9
+push qword [_y]
+pop r8
+pop r9
+add r9, r8
+push r9
+push 15
+pop r8
+pop r9
+sub r9, r8
+push r9
+pop r8
+mov qword [_x], r8
+push qword [_x]
+push 4
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov qword [_z], r8
+push qword [_x]
+push qword [_z]
+pop r8
+pop r9
+sub r9, r8
+push r9
+push 10
+pop r8
+pop r9
+cmp r9, r8
+jl .IF_HEADER_8
+jge .IF_HEADER_FAILED_8
+.IF_HEADER_8
+push 1
+jmp .END_IF_HEADER_8
+.IF_HEADER_FAILED_8
+push 0
+.END_IF_HEADER_8
+pop r8
+mov qword [_res_of_bop], r8
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+_y resq 1
+_x resq 1
+_z resq 1
+_res_of_bop resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }
@@ -470,7 +520,7 @@ _y resq 1
 
         let mut tokenizer = lexer::Tokenizer::new();
         let input =
-            "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x > 10.";
+            "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
         let output = tokenizer.lex(String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         // TODO spelling. one is spelled with y and other with i
@@ -514,18 +564,23 @@ push r9
 pop r8
 mov qword [_z], r8
 push qword [_x]
-push 10
-pop r9
+push qword [_z]
 pop r8
+pop r9
+sub r9, r8
+push r9
+push 10
+pop r8
+pop r9
 cmp r9, r8
-jg .IF_8
-jle .IF_FAILED_8
-.IF_8
-push 0
-jmp .END_IF_8
-.IF_FAILED_8
+jl .IF_HEADER_8
+jge .IF_HEADER_FAILED_8
+.IF_HEADER_8
 push 1
-.END_IF_8
+jmp .END_IF_HEADER_8
+.IF_HEADER_FAILED_8
+push 0
+.END_IF_HEADER_8
 pop r8
 mov qword [_res_of_bop], r8
 mov rax, 60

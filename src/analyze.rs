@@ -69,14 +69,13 @@ impl Analyser {
                         if !self.initialized_static_vars.contains(sete)
                             && !self.initialized_local_vars.contains_key(sete)
                         {
+                            self.check_expr(setor.clone(), level)?;
                             match level {
                                 VarLevel::Static => {
                                     self.initialized_static_vars.insert(sete.clone());
                                 }
-
                                 VarLevel::Local => {
                                     num_vars_declared += 1;
-
                                     self.initialized_local_vars
                                         .insert(sete.clone(), num_vars_declared);
                                     new_locals.insert(sete.clone(), num_vars_declared);
@@ -120,8 +119,8 @@ impl Analyser {
             }
             VarLevel::Local => {
                 // TODO change for functions. prolly needs a whole redoing
-                if !(self.initialized_local_vars.contains_key(&var)
-                    || self.initialized_static_vars.contains(&var))
+                if !self.initialized_local_vars.contains_key(&var)
+                    && !self.initialized_static_vars.contains(&var)
                 {
                     return Err(AnalysisError::VarNotExist(var));
                 }
@@ -190,6 +189,22 @@ mod tests {
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. set x to 5 . change  x to 445235 .";
+        let output = tokenizer.lex(String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn analyze_use_itself_in_set() {
+        use crate::analyze;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "set y to 0. if (4 + 1) = 5,
+            set a to a + 1.
+            change y to 5.
+        !
+";
         let output = tokenizer.lex(String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
