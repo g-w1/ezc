@@ -110,6 +110,11 @@ impl Parser {
                 Token::Kloop => self.parse_loop_stmt(&mut tree)?,
                 Token::Kif => self.parse_if_stmt(&mut tree)?,
                 Token::CloseBlock if !toplevel => break,
+                Token::Kbreak => {
+                    self.expect_eat_token(Token::Kbreak)?;
+                    self.expect_eat_token(Token::EndOfLine)?;
+                    tree.push(AstNode::Break);
+                }
                 Token::Eof => break,
                 t => return Err(self.found_token_err(t)),
             }

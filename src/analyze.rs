@@ -15,13 +15,13 @@ pub enum AnalysisError {
     NumberTooBig,
     /// try to set a var in loop. doesn't work for technical reasons
     SetInLoop,
+    /// a break without a loop
+    BreakWithoutLoop,
 }
 
 /// the level of the variable: static, fn, local
 #[derive(Debug, Copy, Clone)]
 enum VarLevel {
-    /// loops
-    Loop,
     /// static variable scope
     Static,
     /// local scope: if stmts...
@@ -31,7 +31,7 @@ enum VarLevel {
 /// a wrapper function to analize the ast
 pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
     let mut analizer = Analyser::new();
-    analizer.analyze(&mut ast.tree, VarLevel::Static)?;
+    analizer.analyze(&mut ast.tree, VarLevel::Static, false)?;
     ast.static_vars = Some(get_all_var_decls(&ast.tree));
     Ok(())
 }
@@ -57,6 +57,7 @@ impl Analyser {
         self: &mut Self,
         tree: &mut Vec<ast::AstNode>,
         level: VarLevel,
+        inloop: bool,
     ) -> Result<HashMap<String, u32>, AnalysisError> {
         let mut new_locals: HashMap<String, u32> = HashMap::new();
         let mut num_vars_declared: u32 = 0;
@@ -68,7 +69,7 @@ impl Analyser {
                     change,
                 } => {
                     if !*change {
-                        if let VarLevel::Loop = level {
+                        if inloop {
                             return Err(AnalysisError::SetInLoop);
                         }
                         if !self.initialized_static_vars.contains(sete)
@@ -85,7 +86,6 @@ impl Analyser {
                                         .insert(sete.clone(), num_vars_declared);
                                     new_locals.insert(sete.clone(), num_vars_declared);
                                 }
-                                VarLevel::Loop => unreachable!(),
                             }
                         } else {
                             return Err(AnalysisError::DoubleSet);
@@ -101,10 +101,15 @@ impl Analyser {
                     vars_declared,
                 } => {
                     self.check_expr(guard.clone(), level)?;
-                    *vars_declared = Some(self.analyze(body, VarLevel::Local)?);
+                    *vars_declared = Some(self.analyze(body, VarLevel::Local, false)?);
                 }
                 ast::AstNode::Loop { body } => {
-                    self.analyze(body, VarLevel::Loop)?;
+                    self.analyze(body, VarLevel::Local, true)?;
+                }
+                ast::AstNode::Break => {
+                    if !inloop {
+                        return Err(AnalysisError::BreakWithoutLoop);
+                    }
                 }
             }
         }
@@ -126,7 +131,7 @@ impl Analyser {
                     return Err(AnalysisError::VarNotExist(var));
                 }
             }
-            VarLevel::Local | VarLevel::Loop => {
+            VarLevel::Local => {
                 // TODO change for functions. prolly needs a whole redoing
                 if !self.initialized_local_vars.contains_key(&var)
                     && !self.initialized_static_vars.contains(&var)
@@ -248,6 +253,29 @@ mod tests {
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10.if x > 10, set z to 4.change  z to 445235.! change z to 4.";
+        let output = tokenizer.lex(String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn analyze_breaking_bad() {
+        use crate::analyze;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "set z to 4.break.";
+        let output = tokenizer.lex(String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+    }
+    #[test]
+    fn analyze_breaking() {
+        use crate::analyze;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "loop, break.!";
         let output = tokenizer.lex(String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();

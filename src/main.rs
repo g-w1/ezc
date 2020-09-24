@@ -9,7 +9,7 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "set z to 5. set a to 4. set x to a + z + 4. loop, change x to x + 1.!";
+    let input = "set x to 0 . loop, change x to x + 1. if x > 10, break.!!";
     let output = tokenizer.lex(String::from(input));
     let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
     analyze::analize(&mut ast).unwrap();

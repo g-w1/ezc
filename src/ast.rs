@@ -61,6 +61,7 @@ pub enum AstNode {
     Loop {
         body: Vec<AstNode>,
     },
+    Break,
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -71,13 +71,20 @@ impl Code {
                     guard,
                     body,
                     vars_declared,
-                } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body), // we unwrap because it was analised
+                } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None), // we unwrap because it was analised
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
+                _ => unreachable!(),
             }
         }
     }
     /// code gen for if stmt. uses stack based allocation
-    fn cgen_if_stmt(self: &mut Self, guard: Expr, vars: HashMap<String, u32>, body: Vec<AstNode>) {
+    fn cgen_if_stmt(
+        self: &mut Self,
+        guard: Expr,
+        vars: HashMap<String, u32>,
+        body: Vec<AstNode>,
+        loop_num: Option<u32>,
+    ) {
         ///////////////////////////////////// EVALUATE THE ACTUAL BOOL //////////////////////////////
         let our_number_for_mangling = self.number_for_mangling;
         match guard {
@@ -136,13 +143,17 @@ impl Code {
                     body,
                     guard,
                     vars_declared,
-                } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body),
+                } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None),
                 AstNode::SetOrChange {
                     sete,
                     setor,
                     change: _,
                 } => self.cgen_set_or_change_stmt(sete, setor),
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
+                AstNode::Break => self
+                    .text
+                    .instructions
+                    .push(format!("jmp .END_LOOP_{}", loop_num.unwrap())),
             }
         }
         ///////////////////////// DEALLOCATION FOR THE VARS DECLARED INSIDE THE STMT ////////////////////////////
@@ -161,9 +172,44 @@ impl Code {
     }
     /// code generation for a loop. very easy
     fn cgen_loop_stmt(self: &mut Self, body: Vec<AstNode>) {
-        for _ in body {
-            unimplemented!()
+        let our_number_for_mangling = self.number_for_mangling;
+        self.number_for_mangling += 1;
+        self.text
+            .instructions
+            .push(format!(".START_LOOP_{}", our_number_for_mangling));
+        for node in body {
+            match node {
+                AstNode::SetOrChange {
+                    sete,
+                    change: true,
+                    setor,
+                } => self.cgen_set_or_change_stmt(sete, setor),
+                AstNode::If {
+                    guard,
+                    body,
+                    vars_declared,
+                } => self.cgen_if_stmt(
+                    guard,
+                    vars_declared.unwrap(),
+                    body,
+                    Some(our_number_for_mangling),
+                ),
+                AstNode::Loop { body } => self.cgen_loop_stmt(body),
+                AstNode::Break => self
+                    .text
+                    .instructions
+                    .push(format!("jmp .END_LOOP_{}", our_number_for_mangling)),
+                AstNode::SetOrChange {
+                    sete: _,
+                    setor: _,
+                    change: false,
+                } => unreachable!(),
+            }
         }
+        self.text.instructions.push(format!(
+            "jmp .START_LOOP_{}\n.END_LOOP_{}",
+            our_number_for_mangling, our_number_for_mangling
+        ))
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr) {
@@ -517,6 +563,68 @@ syscall
 section .bss
 _x resq 1
 _y resq 1
+";
+        assert_eq!(format!("{}", code), correct_code);
+    }
+    fn codegen_loop() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input =
+            "set x to 0 . loop, change x to x + 1. if x > 10, break.!!";
+        let output = tokenizer.lex(String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        // TODO spelling. one is spelled with y and other with i
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        analyze::analize(&mut ast).unwrap();
+        code.codegen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov qword [_x], 0
+.START_LOOP_0
+push qword [_x]
+push 1
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov qword [_x], r8
+push qword [_x]
+push 10
+pop r8
+pop r9
+cmp r9, r8
+jg .IF_HEADER_3
+jle .IF_HEADER_FAILED_3
+.IF_HEADER_3
+push 1
+jmp .END_IF_HEADER_3
+.IF_HEADER_FAILED_3
+push 0
+.END_IF_HEADER_3
+pop r8
+cmp r8, 1
+je .IF_BODY_1
+jne .IF_END_1
+.IF_BODY_1
+sub rsp, 0 * 8
+jmp .END_LOOP_0
+add rsp, 0 * 8
+.IF_END_1
+jmp .START_LOOP_0
+.END_LOOP_0
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+_x resq 1
+
 ";
         assert_eq!(format!("{}", code), correct_code);
     }

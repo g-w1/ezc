@@ -15,6 +15,8 @@ pub enum Token {
     Kif,
     /// Loop
     Kloop,
+    /// break
+    Kbreak,
     // Iden tokens
     /// Identifier token
     Iden(String),
@@ -64,6 +66,7 @@ pub enum LexError {
 /// let random = get_kword(String::from("random"));
 /// assert!(set == Token::Iden(String::from("random")));
 /// ```
+#[inline]
 fn get_kword(input: &str) -> Token {
     match input {
         "Set" | "set" => Token::Kset,
@@ -71,6 +74,7 @@ fn get_kword(input: &str) -> Token {
         "to" => Token::Kto,
         "If" | "if" => Token::Kif,
         "Loop" | "loop" => Token::Kloop,
+        "Break" | "break" => Token::Kbreak,
         _ => Token::Iden(input.to_string()),
     }
 }
