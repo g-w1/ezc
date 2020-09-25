@@ -10,7 +10,7 @@ pub mod parser;
 use std::env::args;
 use std::fs;
 
-const ERROR: &str = "\x1B[31mERROR: \x1B[0m";
+const ERROR: &str = "\x1B[31;1mERROR: \x1B[0m";
 
 fn main() {
     let input;
