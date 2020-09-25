@@ -101,6 +101,7 @@ impl Analyser {
                     vars_declared,
                 } => {
                     self.check_expr(guard.clone(), level)?;
+                    // TODO inloop should be false because set in if in loop should work but doesn't fix: add another var for in if. pretty high priority
                     *vars_declared = Some(self.analyze(body, VarLevel::Local, inloop)?);
                 }
                 ast::AstNode::Loop { body } => {
