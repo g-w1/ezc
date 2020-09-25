@@ -22,17 +22,29 @@ fn main() {
         exit(1);
     }
     // assemble it
-    if let Err(e) = Command::new("nasm")
-        .arg("-felf64")
-        .arg("-F")
-        .arg("dwarf")
-        .arg("-g")
-        .arg("out.asm")
-        .arg("-oout.o")
-        .output()
-    {
-        eprintln!("{}Failed to execute nasm: {}", ERROR, e);
-        exit(1);
+    if !opts.debug {
+        if let Err(e) = Command::new("nasm")
+            .arg("-felf64")
+            .arg("-F")
+            .arg("dwarf")
+            .arg("-g")
+            .arg("out.asm")
+            .arg("-oout.o")
+            .output()
+        {
+            eprintln!("{}Failed to execute nasm: {}", ERROR, e);
+            exit(1);
+        }
+    } else {
+        if let Err(e) = Command::new("nasm")
+            .arg("-felf64")
+            .arg("out.asm")
+            .arg("-oout.o")
+            .output()
+        {
+            eprintln!("{}Failed to execute nasm: {}", ERROR, e);
+            exit(1);
+        }
     }
     // link it
     if let Err(e) = Command::new("ld")

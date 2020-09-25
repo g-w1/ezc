@@ -13,7 +13,7 @@ This is for an independent study in school.
 
 ## Instructions
 
-To run (and open in gdb. only works on linux x86_64. To edit input code change `main.rs`): `cargo run -q > out.asm; yasm -g dwarf2 -f elf64 out.asm&&ld out.o -o out && gdb ./out`
+To run just do `ezc file` use `-g` flag for debug info (it will generate a out.asm file). then you can open in gdb or lldb
 
 
 To test: `cargo test`
