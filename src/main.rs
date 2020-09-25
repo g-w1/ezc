@@ -9,7 +9,13 @@ pub mod parser;
 
 fn main() {
     let mut tokenizer = lexer::Tokenizer::new();
-    let input = "set x to 1. loop, change x to x + 1. if x > 100000000, break.!!";
+    let input = "set x to 0.
+    loop,
+        if x >= 922481444,
+            break.
+        !
+        change x to x + 1.
+!";
     // let input = "set z to 4. change z to 3. set x to z + z.";
     let output = tokenizer.lex(String::from(input));
     let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
