@@ -61,3 +61,5 @@ To test: `cargo test`
 - [ ] standard library
 
 - [ ] io
+
+- [ ] arrays
