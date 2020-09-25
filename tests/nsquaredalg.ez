@@ -1,0 +1,20 @@
+set inner to 0.
+set outer to 0.
+set count to 0.
+
+loop,
+  if outer >= 10,
+    break.
+  !
+  loop,
+    if inner >= 10,
+      break.
+    !
+    change count to count + 1.
+    change inner to inner + 1.
+  !
+  change count to count + 1.
+  change outer to outer + 1.
+  change inner to 0.
+
+!
