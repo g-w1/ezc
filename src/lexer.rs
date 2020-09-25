@@ -87,6 +87,7 @@ enum LexerState {
     SawLessThan,
     SawEquals,
     SawGreaterThan,
+    InComment,
 }
 
 #[derive(Debug, PartialEq)]
@@ -162,12 +163,18 @@ impl Tokenizer {
                         '>' => self.state = LexerState::SawGreaterThan,
                         '<' => self.state = LexerState::SawLessThan,
                         '=' => self.state = LexerState::SawEquals,
+                        '[' => self.state = LexerState::InComment,
+                        ']' => self.state = LexerState::Start,
                         ' ' | '\n' => {}
                         _ => {
                             return (Err(LexError::UnexpectedChar(c)), output_poss);
                         }
                     }
                 }
+                LexerState::InComment => match c {
+                    ']' => self.state = LexerState::Start,
+                    _ => {}
+                },
                 LexerState::InWord => match c {
                     'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => self.intermidiate_string.push(c),
                     _ => {
@@ -361,6 +368,34 @@ mod tests {
         for i in outputs {
             assert_eq!(i.1.len(), i.0.unwrap().len());
         }
+    }
+    #[test]
+    fn lexer_comments() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(String::from("[initalize vars] set x to 5. change x to (5 + x)."));
+        assert!(res.0.is_ok());
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Kset,
+                Token::Iden(String::from("x")),
+                Token::Kto,
+                Token::IntLit(String::from("5")),
+                Token::EndOfLine,
+                Token::Kchange,
+                Token::Iden(String::from("x")),
+                Token::Kto,
+                Token::Lparen,
+                Token::IntLit(String::from("5")),
+                Token::BoPlus,
+                Token::Iden(String::from("x")),
+                Token::Rparen,
+                Token::EndOfLine,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
     }
     #[test]
     fn lexer_expr() {

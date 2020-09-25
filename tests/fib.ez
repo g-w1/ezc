@@ -1,9 +1,13 @@
+[initalize variables]
 set n to 6.
 set counter to 0.
 set a to 0.
 set b to 1.
 
+[start the loop]
+
 loop,
+  [if the counter > than the number to calc break]
   if counter > n,
     break.
   !
