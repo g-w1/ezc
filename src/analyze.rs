@@ -157,7 +157,7 @@ impl Analyser {
 
 /// check if a num literal is > 64 bit
 fn check_num(num: String) -> Result<(), AnalysisError> {
-    match num.parse::<u64>() {
+    match num.parse::<u32>() {
         Ok(_) => Ok(()),
         Err(_) => Err(AnalysisError::NumberTooBig),
     }
