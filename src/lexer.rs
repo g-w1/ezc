@@ -178,7 +178,9 @@ impl Tokenizer {
                         );
                         // put back char
                         self.pos -= 1;
-                        self.col -= 1;
+                        if self.col != 0 {
+                            self.col -= 1;
+                        }
                     }
                 },
                 LexerState::InNum => match c {

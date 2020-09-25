@@ -122,13 +122,7 @@ impl Parser {
                 self.pos_input += 1;
                 Ok(s)
             }
-            t => {
-                return Err(ParserError::ExectedOneFoundAnother {
-                    found: t,
-                    expected: Token::Iden(String::from("")),
-                    coords: (0, 0),
-                });
-            }
+            t => Err(self.expected_token_err(Token::Iden(String::from("")), t)),
         }
     }
     //

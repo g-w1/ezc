@@ -6,18 +6,26 @@ pub mod ast;
 pub mod codegen;
 pub mod lexer;
 pub mod parser;
+use std::env::args;
+use std::fs;
 
 fn main() {
-    let mut tokenizer = lexer::Tokenizer::new();
-    let input = "set x to 0.
-    loop,
-        if x >= 922481444,
-            break.
-        !
-        change x to x + 1.
-!";
+    let input;
+    if let Some(filename) = args().nth(1) {
+        input = match fs::read_to_string(&filename) {
+            Ok(a) => a,
+            Err(_) => {
+                eprintln!("Error: Cannot read file: `{}`.", filename);
+                std::process::exit(1);
+            }
+        }
+    } else {
+        eprintln!("Error: I need the first command line arg to be the file to compile.");
+        std::process::exit(1);
+    }
     // let input = "set z to 4. change z to 3. set x to z + z.";
-    let output = tokenizer.lex(String::from(input));
+    let mut tokenizer = lexer::Tokenizer::new();
+    let output = tokenizer.lex(input);
     let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
     analyze::analize(&mut ast).unwrap();
     let mut code = codegen::Code::new();

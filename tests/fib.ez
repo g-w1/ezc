@@ -1,0 +1,13 @@
+set n to 6.
+set counter to 0.
+set a to 0.
+set b to 1.
+
+loop,
+  if counter > n,
+    break.
+  !
+  change a to a + b.
+  change b to a + b.
+  change counter to counter + 1.
+!
