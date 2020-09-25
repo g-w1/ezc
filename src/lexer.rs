@@ -372,7 +372,9 @@ mod tests {
     #[test]
     fn lexer_comments() {
         let mut tokenizer = Tokenizer::new();
-        let res = tokenizer.lex(String::from("[initalize vars] set x to 5. change x to (5 + x)."));
+        let res = tokenizer.lex(String::from(
+            "[initalize vars] set x to 5. change x to (5 + x).",
+        ));
         assert!(res.0.is_ok());
         let ts = res.0.unwrap();
         assert_eq!(

@@ -4,6 +4,7 @@
 pub mod analyze;
 pub mod ast;
 pub mod codegen;
+pub mod errors;
 pub mod lexer;
 pub mod parser;
 use std::env::args;
@@ -26,9 +27,25 @@ fn main() {
     // let input = "set z to 4. change z to 3. set x to z + z.";
     let mut tokenizer = lexer::Tokenizer::new();
     let output = tokenizer.lex(input);
-    let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-    analyze::analize(&mut ast).unwrap();
-    let mut code = codegen::Code::new();
-    code.codegen(ast);
-    println!("{}", code);
+    if let Err(e) = output.0 {
+        println!("{}", e);
+        std::process::exit(1);
+    }
+    match parser::parse(output.0.unwrap(), output.1) {
+        Ok(mut res) => match analyze::analize(&mut res) {
+            Ok(_) => {
+                let mut code = codegen::Code::new();
+                code.codegen(res);
+                println!("{}", code);
+            }
+            Err(e) => {
+                println!("{}", e);
+                std::process::exit(1);
+            }
+        },
+        Err(e) => {
+            println!("{}", e);
+            std::process::exit(1);
+        }
+    }
 }

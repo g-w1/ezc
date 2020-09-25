@@ -5,7 +5,6 @@ set a to 0.
 set b to 1.
 
 [start the loop]
-
 loop,
   [if the counter > than the number to calc break]
   if counter > n,
@@ -13,5 +12,6 @@ loop,
   !
   change a to a + b.
   change b to a + b.
-  change counter to counter + 1.
+  [update by 2 because we change 2 vars]
+  change counter to counter + 2.
 !
