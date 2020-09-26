@@ -1,0 +1,7 @@
+set y to 4.
+
+loop,
+  if y = 10,
+    break
+  !
+!

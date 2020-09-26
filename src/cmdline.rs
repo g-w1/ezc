@@ -88,7 +88,7 @@ pub fn driver() {
     }
     // assemble it
     if opts.debug {
-        if let Err(e) = Command::new("nasm")
+        match Command::new("nasm")
             .arg("-felf64")
             .arg("-F")
             .arg("dwarf")
@@ -97,29 +97,77 @@ pub fn driver() {
             .arg("-oout.o")
             .output()
         {
-            eprintln!("{}Failed to execute nasm: {}", ERROR, e);
-            exit(1);
+            Ok(output) => {
+                if !output.status.success() {
+                    eprintln!("{}Nasm failed:", ERROR);
+                    eprintln!(
+                        "Nasm stderr:\n{}",
+                        String::from_utf8(output.stderr).expect("invalid nasm stderr")
+                    );
+                    eprintln!(
+                        "Nasm stdout:\n{}",
+                        String::from_utf8(output.stdout).expect("invalid nasm stderr")
+                    );
+                    exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("{}Failed to execute nasm: {}", ERROR, e);
+                exit(1);
+            }
         }
     } else {
-        if let Err(e) = Command::new("nasm")
+        match Command::new("nasm")
             .arg("-felf64")
             .arg("out.asm")
             .arg("-oout.o")
             .output()
         {
-            eprintln!("{}Failed to execute nasm: {}", ERROR, e);
-            exit(1);
+            Ok(output) => {
+                if !output.status.success() {
+                    eprintln!("{}nasm failed:", ERROR);
+                    eprintln!(
+                        "nasm stderr:\n{}",
+                        String::from_utf8(output.stderr).expect("invalid nasm stderr")
+                    );
+                    eprintln!(
+                        "nasm stdout:\n{}",
+                        String::from_utf8(output.stdout).expect("invalid nasm stderr")
+                    );
+                    exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("{}Failed to execute nasm: {}", ERROR, e);
+                exit(1);
+            }
         }
     }
     // link it
-    if let Err(e) = Command::new("ld")
+    match Command::new("ld")
         .arg("out.o")
         .arg("-o")
         .arg("a.out")
         .output()
     {
-        eprintln!("{}Failed to execute ld: {}", ERROR, e);
-        exit(1);
+        Ok(output) => {
+            if !output.status.success() {
+                eprintln!("{}ld failed:", ERROR);
+                eprintln!(
+                    "ld stderr:\n{}",
+                    String::from_utf8(output.stderr).expect("invalid nasm stderr")
+                );
+                eprintln!(
+                    "ld stdout:\n{}",
+                    String::from_utf8(output.stdout).expect("invalid nasm stderr")
+                );
+                exit(1);
+            }
+        }
+        Err(e) => {
+            eprintln!("{}Failed to execute ld: {}", ERROR, e);
+            exit(1);
+        }
     }
     // remove temp files
     if !opts.debug {
