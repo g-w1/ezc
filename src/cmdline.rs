@@ -10,7 +10,51 @@ use crate::parser;
 
 const ERROR: &str = "\x1B[31;1mERROR: \x1B[0m";
 
-fn parse_cmds_to_code(input: String) -> String {
+/// the driver function for the whole compiler
+pub fn driver() {
+    // generate the code
+    let opts = parse_cmd_line_opts();
+    let code = parse_input_to_code(opts.input);
+    // write the code to temp asm file
+    fs::write("out.asm", code).unwrap_or_else(|e| {
+        eprintln!("{}Cannot write assembly to temporary file: {}", ERROR, e);
+        exit(1);
+    });
+    // assemble it
+    if opts.debug {
+        command_run_error_printing(
+            "nasm",
+            Command::new("nasm")
+                .arg("-felf64")
+                .arg("-F")
+                .arg("dwarf")
+                .arg("-g")
+                .arg("out.asm")
+                .arg("-oout.o"),
+        );
+    } else {
+        command_run_error_printing(
+            "nasm",
+            Command::new("nasm")
+                .arg("-felf64")
+                .arg("out.asm")
+                .arg("-oout.o"),
+        );
+    }
+    // link it
+    command_run_error_printing("ld", Command::new("ld").arg("out.o").arg("-o").arg("a.out"));
+    // remove temp files if not in debug mode
+    if !opts.debug {
+        if let Err(e) = fs::remove_file("out.asm") {
+            eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
+        }
+    }
+    if let Err(e) = fs::remove_file("out.o") {
+        eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
+    }
+}
+
+fn parse_input_to_code(input: String) -> String {
     let mut tokenizer = lexer::Tokenizer::new();
     let output = tokenizer.lex(input);
     if let Err(e) = output.0 {
@@ -38,8 +82,7 @@ fn parse_cmds_to_code(input: String) -> String {
     code_text
 }
 
-#[derive(Debug)]
-pub struct CmdArgInfo {
+struct CmdArgInfo {
     debug: bool,
     input: String,
 }
@@ -78,104 +121,28 @@ fn arg_not_found(arg: &str) {
     exit(1);
 }
 
-pub fn driver() {
-    let opts = parse_cmd_line_opts();
-    let code = parse_cmds_to_code(opts.input);
-    // write the code to temp asm file
-    if let Err(e) = fs::write("out.asm", code) {
-        eprintln!("{}Cannot write assembly to temporary file: {}", ERROR, e);
-        exit(1);
-    }
-    // assemble it
-    if opts.debug {
-        match Command::new("nasm")
-            .arg("-felf64")
-            .arg("-F")
-            .arg("dwarf")
-            .arg("-g")
-            .arg("out.asm")
-            .arg("-oout.o")
-            .output()
-        {
-            Ok(output) => {
-                if !output.status.success() {
-                    eprintln!("{}Nasm failed:", ERROR);
-                    eprintln!(
-                        "Nasm stderr:\n{}",
-                        String::from_utf8(output.stderr).expect("invalid nasm stderr")
-                    );
-                    eprintln!(
-                        "Nasm stdout:\n{}",
-                        String::from_utf8(output.stdout).expect("invalid nasm stderr")
-                    );
-                    exit(1);
-                }
-            }
-            Err(e) => {
-                eprintln!("{}Failed to execute nasm: {}", ERROR, e);
-                exit(1);
-            }
-        }
-    } else {
-        match Command::new("nasm")
-            .arg("-felf64")
-            .arg("out.asm")
-            .arg("-oout.o")
-            .output()
-        {
-            Ok(output) => {
-                if !output.status.success() {
-                    eprintln!("{}nasm failed:", ERROR);
-                    eprintln!(
-                        "nasm stderr:\n{}",
-                        String::from_utf8(output.stderr).expect("invalid nasm stderr")
-                    );
-                    eprintln!(
-                        "nasm stdout:\n{}",
-                        String::from_utf8(output.stdout).expect("invalid nasm stderr")
-                    );
-                    exit(1);
-                }
-            }
-            Err(e) => {
-                eprintln!("{}Failed to execute nasm: {}", ERROR, e);
-                exit(1);
-            }
-        }
-    }
-    // link it
-    match Command::new("ld")
-        .arg("out.o")
-        .arg("-o")
-        .arg("a.out")
-        .output()
-    {
+
+fn command_run_error_printing(cmd_name: &'static str, cmd: &mut Command) {
+    match cmd.output() {
         Ok(output) => {
             if !output.status.success() {
-                eprintln!("{}ld failed:", ERROR);
+                eprintln!("{}{} failed:", ERROR, cmd_name);
                 eprintln!(
-                    "ld stderr:\n{}",
+                    "{} stderr:\n{}",
+                    cmd_name,
                     String::from_utf8(output.stderr).expect("invalid nasm stderr")
                 );
                 eprintln!(
-                    "ld stdout:\n{}",
+                    "{} stdout:\n{}",
+                    cmd_name,
                     String::from_utf8(output.stdout).expect("invalid nasm stderr")
                 );
                 exit(1);
             }
         }
         Err(e) => {
-            eprintln!("{}Failed to execute ld: {}", ERROR, e);
+            eprintln!("{}Failed to execute {}: {}", ERROR, cmd_name, e);
             exit(1);
         }
-    }
-    // remove temp files
-    if !opts.debug {
-        if let Err(e) = fs::remove_file("out.asm") {
-            eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
-        }
-    }
-    if let Err(e) = fs::remove_file("out.o") {
-        eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
     }
 }
