@@ -19,19 +19,19 @@ pub enum AnalysisError {
     BreakWithoutLoop,
 }
 
-/// the level of the variable: static, fn, local
+/// a way to see what ur in
 #[derive(Debug, Copy, Clone)]
-enum VarLevel {
-    /// static variable scope
-    Static,
-    /// local scope: if stmts...
-    Local,
+enum Scope {
+    InLoop,
+    InLoopAndIf,
+    InNone,
+    InIf,
 }
 
 /// a wrapper function to analize the ast
 pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
     let mut analizer = Analyser::new();
-    analizer.analyze(&mut ast.tree, VarLevel::Static, false)?;
+    analizer.analyze(&mut ast.tree, Scope::InNone)?;
     ast.static_vars = Some(get_all_var_decls(&ast.tree));
     Ok(())
 }
@@ -56,8 +56,7 @@ impl Analyser {
     pub fn analyze(
         self: &mut Self,
         tree: &mut Vec<ast::AstNode>,
-        level: VarLevel,
-        inloop: bool,
+        scope: Scope,
     ) -> Result<HashMap<String, u32>, AnalysisError> {
         let mut new_locals: HashMap<String, u32> = HashMap::new();
         let mut num_vars_declared: u32 = 0;
@@ -69,30 +68,31 @@ impl Analyser {
                     change,
                 } => {
                     if !*change {
-                        if inloop {
+                        if let Scope::InLoop = scope {
                             return Err(AnalysisError::SetInLoop);
                         }
                         if !self.initialized_static_vars.contains(sete)
                             && !self.initialized_local_vars.contains_key(sete)
                         {
-                            self.check_expr(setor.clone(), level)?;
-                            match level {
-                                VarLevel::Static => {
-                                    self.initialized_static_vars.insert(sete.clone());
+                            self.check_expr(setor)?;
+                            match scope {
+                                Scope::InNone => {
+                                    self.initialized_static_vars.insert(sete.to_owned());
                                 }
-                                VarLevel::Local => {
+                                Scope::InLoopAndIf | Scope::InIf => {
                                     num_vars_declared += 1;
                                     self.initialized_local_vars
-                                        .insert(sete.clone(), num_vars_declared);
-                                    new_locals.insert(sete.clone(), num_vars_declared);
+                                        .insert(sete.to_owned(), num_vars_declared);
+                                    new_locals.insert(sete.to_owned(), num_vars_declared);
                                 }
+                                Scope::InLoop => unreachable!(),
                             }
                         } else {
                             return Err(AnalysisError::DoubleSet);
                         }
                     } else {
-                        self.make_sure_var_exists(sete.clone(), level)?;
-                        self.check_expr(setor.clone(), level)?;
+                        self.make_sure_var_exists(sete)?;
+                        self.check_expr(setor)?;
                     }
                 }
                 ast::AstNode::If {
@@ -100,15 +100,19 @@ impl Analyser {
                     body,
                     vars_declared,
                 } => {
-                    self.check_expr(guard.clone(), level)?;
-                    // TODO inloop should be false because set in if in loop should work but doesn't fix: add another var for in if. pretty high priority
-                    *vars_declared = Some(self.analyze(body, VarLevel::Local, inloop)?);
+                    self.check_expr(guard)?;
+                    if let Scope::InLoop | Scope::InLoopAndIf = scope {
+                        *vars_declared = Some(self.analyze(body, Scope::InLoopAndIf)?);
+                    } else {
+                        *vars_declared = Some(self.analyze(body, Scope::InIf)?);
+                    }
                 }
                 ast::AstNode::Loop { body } => {
-                    self.analyze(body, VarLevel::Local, true)?;
+                    self.analyze(body, Scope::InLoop)?;
                 }
                 ast::AstNode::Break => {
-                    if !inloop {
+                    if let Scope::InLoop | Scope::InLoopAndIf = scope {
+                    } else {
                         return Err(AnalysisError::BreakWithoutLoop);
                     }
                 }
@@ -120,36 +124,21 @@ impl Analyser {
         }
         Ok(new_locals)
     }
-    fn make_sure_var_exists(
-        self: &Self,
-        var: String,
-        level: VarLevel,
-    ) -> Result<(), AnalysisError> {
-        // TODO why did i put this in anyways. if its static no local vars should exist??? im confusion whatever its an extra check. maybe remove it
-        match level {
-            VarLevel::Static => {
-                if !self.initialized_static_vars.contains(&var) {
-                    return Err(AnalysisError::VarNotExist(var));
-                }
-            }
-            VarLevel::Local => {
-                // TODO change for functions. prolly needs a whole redoing
-                if !self.initialized_local_vars.contains_key(&var)
-                    && !self.initialized_static_vars.contains(&var)
-                {
-                    return Err(AnalysisError::VarNotExist(var));
-                }
-            }
+    fn make_sure_var_exists(self: &Self, var: &String) -> Result<(), AnalysisError> {
+        if !self.initialized_local_vars.contains_key(var)
+            && !self.initialized_static_vars.contains(var)
+        {
+            return Err(AnalysisError::VarNotExist(var.to_owned()));
         }
         Ok(())
     }
-    fn check_expr(self: &Self, expr: Expr, level: VarLevel) -> Result<(), AnalysisError> {
+    fn check_expr(self: &Self, expr: &Expr) -> Result<(), AnalysisError> {
         match expr {
             Expr::Number(n) => check_num(n)?,
-            Expr::Iden(s) => self.make_sure_var_exists(s, level)?,
+            Expr::Iden(s) => self.make_sure_var_exists(&s)?,
             Expr::BinOp { lhs, op: _, rhs } => {
-                self.check_expr(*lhs, level)?;
-                self.check_expr(*rhs, level)?;
+                self.check_expr(lhs)?;
+                self.check_expr(rhs)?;
             }
         }
         Ok(())
@@ -157,7 +146,7 @@ impl Analyser {
 }
 
 /// check if a num literal is > 64 bit
-fn check_num(num: String) -> Result<(), AnalysisError> {
+fn check_num(num: &String) -> Result<(), AnalysisError> {
     match num.parse::<u32>() {
         Ok(_) => Ok(()),
         Err(_) => Err(AnalysisError::NumberTooBig),
@@ -253,7 +242,9 @@ mod tests {
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
-        let input = "Set x to 10.if x > 10, set z to 4.change  z to 445235.! change z to 4.";
+        let input = "Set x to 10. if x > 10,
+                    set z to 4. change  z to 445235.
+            ! change z to 4.";
         let output = tokenizer.lex(String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
