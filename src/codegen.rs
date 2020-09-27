@@ -35,7 +35,7 @@ pub struct Code {
 
 /// a helper function to provide `qword [_varname]` from `varname`
 fn qword_deref_helper(input: String) -> String {
-    format!("qword [_{}]", input)
+    format!("qword [__{}]", input)
 }
 
 impl Code {
@@ -58,7 +58,7 @@ impl Code {
     /// generate the code. dont deal with any of the sections
     pub fn codegen(self: &mut Self, tree: AstRoot) {
         for var in tree.static_vars.unwrap() {
-            self.bss.instructions.push(format!("_{} resq 1", var));
+            self.bss.instructions.push(format!("__{} resq 1", var));
         }
         for node in tree.tree {
             match node {
