@@ -1,6 +1,6 @@
 # ezc
 
-![https://github.com/{github_id}/{repository}/workflows/{workflow_name}/badge.svg](Build)
+![https://github.com/g-w1/ezc/workflows/Rust/badge.svg](Build)
 
 Compiler for `ez`.
 
