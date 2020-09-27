@@ -35,7 +35,7 @@ pub struct Code {
 
 /// a helper function to provide `qword [_varname]` from `varname`
 fn qword_deref_helper(input: String) -> String {
-    format!("qword [__{}]", input)
+    format!("qword [MaNgLe_{}]", input)
 }
 
 impl Code {
@@ -58,7 +58,7 @@ impl Code {
     /// generate the code. dont deal with any of the sections
     pub fn codegen(self: &mut Self, tree: AstRoot) {
         for var in tree.static_vars.unwrap() {
-            self.bss.instructions.push(format!("__{} resq 1", var));
+            self.bss.instructions.push(format!("MaNgLe_{} resq 1", var));
         }
         for node in tree.tree {
             match node {
@@ -443,16 +443,16 @@ mod tests {
         let correct_code = "global _start
 section .text
 _start:
-mov qword [_x], 10
-mov qword [_y], 5
-mov qword [_test], 445235
+mov qword [MaNgLe_x], 10
+mov qword [MaNgLe_y], 5
+mov qword [MaNgLe_test], 445235
 mov rax, 60
 xor rdi, rdi
 syscall
 section .bss
-_x resq 1
-_y resq 1
-_test resq 1
+MaNgLe_x resq 1
+MaNgLe_y resq 1
+MaNgLe_test resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }
@@ -474,8 +474,8 @@ _test resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [_y], 5
-push qword [_y]
+mov qword [MaNgLe_y], 5
+push qword [MaNgLe_y]
 push 5
 pop r8
 pop r9
@@ -486,7 +486,7 @@ pop r8
 pop r9
 sub r9, r8
 push r9
-push qword [_y]
+push qword [MaNgLe_y]
 pop r8
 pop r9
 add r9, r8
@@ -497,17 +497,17 @@ pop r9
 sub r9, r8
 push r9
 pop r8
-mov qword [_x], r8
-push qword [_x]
+mov qword [MaNgLe_x], r8
+push qword [MaNgLe_x]
 push 4
 pop r8
 pop r9
 add r9, r8
 push r9
 pop r8
-mov qword [_z], r8
-push qword [_x]
-push qword [_z]
+mov qword [MaNgLe_z], r8
+push qword [MaNgLe_x]
+push qword [MaNgLe_z]
 pop r8
 pop r9
 sub r9, r8
@@ -525,15 +525,15 @@ jmp .END_IF_HEADER_8
 push 0
 .END_IF_HEADER_8
 pop r8
-mov qword [_res_of_bop], r8
+mov qword [MaNgLe_res_of_bop], r8
 mov rax, 60
 xor rdi, rdi
 syscall
 section .bss
-_y resq 1
-_x resq 1
-_z resq 1
-_res_of_bop resq 1
+MaNgLe_y resq 1
+MaNgLe_x resq 1
+MaNgLe_z resq 1
+MaNgLe_res_of_bop resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }
@@ -554,15 +554,15 @@ _res_of_bop resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [_x], 10
-mov qword [_y], 5
-mov qword [_x], 445235
+mov qword [MaNgLe_x], 10
+mov qword [MaNgLe_y], 5
+mov qword [MaNgLe_x], 445235
 mov rax, 60
 xor rdi, rdi
 syscall
 section .bss
-_x resq 1
-_y resq 1
+MaNgLe_x resq 1
+MaNgLe_y resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }
@@ -585,17 +585,17 @@ _y resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [_x], 0
+mov qword [MaNgLe_x], 0
 .START_LOOP_0
-push qword [_x]
+push qword [MaNgLe_x]
 push 1
 pop r8
 pop r9
 add r9, r8
 push r9
 pop r8
-mov qword [_x], r8
-push qword [_x]
+mov qword [MaNgLe_x], r8
+push qword [MaNgLe_x]
 push 10
 pop r8
 pop r9
@@ -623,7 +623,7 @@ mov rax, 60
 xor rdi, rdi
 syscall
 section .bss
-_x resq 1
+MaNgLe_x resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }
@@ -647,8 +647,8 @@ _x resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [_y], 5
-push qword [_y]
+mov qword [MaNgLe_y], 5
+push qword [MaNgLe_y]
 push 5
 pop r8
 pop r9
@@ -659,7 +659,7 @@ pop r8
 pop r9
 sub r9, r8
 push r9
-push qword [_y]
+push qword [MaNgLe_y]
 pop r8
 pop r9
 add r9, r8
@@ -670,17 +670,17 @@ pop r9
 sub r9, r8
 push r9
 pop r8
-mov qword [_x], r8
-push qword [_x]
+mov qword [MaNgLe_x], r8
+push qword [MaNgLe_x]
 push 4
 pop r8
 pop r9
 add r9, r8
 push r9
 pop r8
-mov qword [_z], r8
-push qword [_x]
-push qword [_z]
+mov qword [MaNgLe_z], r8
+push qword [MaNgLe_x]
+push qword [MaNgLe_z]
 pop r8
 pop r9
 sub r9, r8
@@ -698,15 +698,15 @@ jmp .END_IF_HEADER_8
 push 0
 .END_IF_HEADER_8
 pop r8
-mov qword [_res_of_bop], r8
+mov qword [MaNgLe_res_of_bop], r8
 mov rax, 60
 xor rdi, rdi
 syscall
 section .bss
-_y resq 1
-_x resq 1
-_z resq 1
-_res_of_bop resq 1
+MaNgLe_y resq 1
+MaNgLe_x resq 1
+MaNgLe_z resq 1
+MaNgLe_res_of_bop resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }

@@ -10,6 +10,15 @@ use crate::parser;
 
 const ERROR: &str = "\x1B[31;1mERROR: \x1B[0m";
 
+const HELP_MESSAGE: &'static str = "ezc
+
+Usage: ezc [file] [options] ...
+Options:
+-g              Include Debug Info
+-h | --help     Show This Help Message and Exit
+
+To Report Bugs Go To: github.com/g-w1/ezc/issues/";
+
 /// the driver function for the whole compiler
 pub fn driver() {
     // generate the code
@@ -85,6 +94,7 @@ fn parse_input_to_code(input: String) -> String {
 struct CmdArgInfo {
     debug: bool,
     input: String,
+    help: bool,
 }
 
 fn parse_cmd_line_opts() -> CmdArgInfo {
@@ -96,6 +106,13 @@ fn parse_cmd_line_opts() -> CmdArgInfo {
     let mut cmd_line_args: Vec<&str> = cmd_args_tmp.iter_mut().map(|x| x.as_str()).collect();
     cmd_line_args.remove(0);
     let filename = cmd_line_args.remove(0);
+    match filename {
+        "-h" | "--help" => {
+            println!("{}", HELP_MESSAGE);
+            exit(0);
+        }
+        _ => {}
+    }
     let input = match fs::read_to_string(&filename) {
         Ok(a) => a,
         Err(_) => {
@@ -105,11 +122,17 @@ fn parse_cmd_line_opts() -> CmdArgInfo {
     };
     let mut arg_info = CmdArgInfo {
         debug: false,
+        help: true,
         input,
     };
     for i in cmd_line_args {
         match i {
             "-g" => arg_info.debug = true,
+            "-h" | "--help" => {
+                arg_info.help = true;
+                println!("{}", HELP_MESSAGE);
+                exit(0);
+            }
             e => arg_not_found(e),
         }
     }

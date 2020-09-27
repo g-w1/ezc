@@ -57,7 +57,6 @@ fn special_error_printing_with_caret(input_code: &str, pos: &u32) -> String {
     )
 }
 
-
 /// A function to put an up caret under a bad code sample for coolness
 fn up_caret(num: &usize) -> String {
     let mut res = String::new();
