@@ -435,7 +435,7 @@ mod tests {
 
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. set y to 5 . set   test to 445235 .";
-        let output = tokenizer.lex(String::from(input));
+        let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
@@ -466,7 +466,7 @@ _test resq 1
         let mut tokenizer = lexer::Tokenizer::new();
         let input =
             "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
-        let output = tokenizer.lex(String::from(input));
+        let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
@@ -546,7 +546,7 @@ _res_of_bop resq 1
 
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. set y to 5 . change   x to 445235 .";
-        let output = tokenizer.lex(String::from(input));
+        let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
@@ -575,7 +575,7 @@ _y resq 1
 
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "set x to 0. loop, change x to x + 1. if x > 10, break.!!";
-        let output = tokenizer.lex(String::from(input));
+        let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         // TODO spelling. one is spelled with y and other with i
         analyze::analize(&mut ast).unwrap();
@@ -637,7 +637,7 @@ _x resq 1
         let mut tokenizer = lexer::Tokenizer::new();
         let input =
             "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
-        let output = tokenizer.lex(String::from(input));
+        let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         // TODO spelling. one is spelled with y and other with i
         analyze::analize(&mut ast).unwrap();

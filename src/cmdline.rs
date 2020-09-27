@@ -56,9 +56,9 @@ pub fn driver() {
 
 fn parse_input_to_code(input: String) -> String {
     let mut tokenizer = lexer::Tokenizer::new();
-    let output = tokenizer.lex(input);
+    let output = tokenizer.lex(&input);
     if let Err(e) = output.0 {
-        println!("{}{}", ERROR, e);
+        println!("{}{}", ERROR, e.print_the_error(&input));
         exit(1);
     }
     let code_text;
@@ -75,7 +75,7 @@ fn parse_input_to_code(input: String) -> String {
             }
         },
         Err(e) => {
-            println!("{}{}", ERROR, e);
+            println!("{}{}", ERROR, e.print_the_error(&input));
             exit(1);
         }
     }
@@ -120,7 +120,6 @@ fn arg_not_found(arg: &str) {
     eprintln!("{}Invalid option: {}", ERROR, arg);
     exit(1);
 }
-
 
 fn command_run_error_printing(cmd_name: &'static str, cmd: &mut Command) {
     match cmd.output() {

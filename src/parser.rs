@@ -4,7 +4,7 @@ use crate::ast::*;
 use crate::lexer::{Locs, Token};
 
 /// AstRoot <- Vec<Ast>
-pub fn parse(input: Vec<Token>, locs_input: Vec<(u32, u32)>) -> Result<AstRoot, ParserError> {
+pub fn parse(input: Vec<Token>, locs_input: Vec<u32>) -> Result<AstRoot, ParserError> {
     Ok(AstRoot {
         static_vars: None,
         tree: Parser::new(input, locs_input).parse(true)?,
@@ -28,7 +28,7 @@ pub enum ParserError {
     ExectedOneFoundAnother {
         expected: Token,
         found: Token,
-        coords: (u32, u32),
+        pos: u32,
     },
 }
 
@@ -63,10 +63,7 @@ impl Parser {
         ParserError::ExectedOneFoundAnother {
             expected,
             found,
-            coords: (
-                self.locs_input[self.pos_input].0,
-                self.locs_input[self.pos_input].1,
-            ),
+            pos: self.locs_input[self.pos_input],
         }
     }
     // /// Peek one token ahead without eating it. may need in future
@@ -227,12 +224,15 @@ impl Parser {
     }
     /// IfNode <- Kif Expr OpenBlock Ast CloseBlock
     fn parse_if_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
-        // TODO add syntactic sugar so that u dont need endofline when a '!' is next. harder than u think
         // Kif
         self.expect_eat_token(Token::Kif)?;
+        // Expr
         let guard: Expr = self.parse_expr()?;
+        // OpenBlock
         self.expect_eat_token(Token::OpenBlock)?;
+        // Ast
         let body: Vec<AstNode> = self.parse(false)?;
+        // CloseBlock
         self.expect_eat_token(Token::CloseBlock)?;
         tree.push(AstNode::If {
             guard,
@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn parser_set() {
         let mut tokenizer = lexer::Tokenizer::new();
-        let output = tokenizer.lex(String::from(
+        let output = tokenizer.lex(&String::from(
             "Set x to 10. set y to 5 . set  xarst to 555134234523452345  \n.\n\n",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
@@ -319,7 +319,7 @@ mod tests {
     #[test]
     fn parser_loop() {
         let mut tokenizer = lexer::Tokenizer::new();
-        let output = tokenizer.lex(String::from("Set x to 1. loop, change x to x+1.!"));
+        let output = tokenizer.lex(&String::from("Set x to 1. loop, change x to x+1.!"));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
         let ast = parser.parse(true).unwrap();
         assert_eq!(
@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn parser_change() {
         let mut tokenizer = lexer::Tokenizer::new();
-        let output = tokenizer.lex(String::from(
+        let output = tokenizer.lex(&String::from(
             "Set x to 10. set y to 5 . change  x to y  \n.\n\n",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn parser_if_stmt() {
         let mut tokenizer = lexer::Tokenizer::new();
-        let output = tokenizer.lex(String::from(
+        let output = tokenizer.lex(&String::from(
             "Set x to (5 + 10).set y to 32. if x > 10, if y > 4, change x to 5.!! ",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn parser_parens_expr() {
         let mut tokenizer = lexer::Tokenizer::new();
-        let output = tokenizer.lex(String::from(
+        let output = tokenizer.lex(&String::from(
             "Set x to (5 + 10). change y to (1-x)+x . set  xarst to y+x  \n.\n\n",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);
@@ -471,7 +471,7 @@ mod tests {
     #[should_panic]
     fn parser_bad_stuff() {
         let mut tokenizer = lexer::Tokenizer::new();
-        let output = tokenizer.lex(String::from(
+        let output = tokenizer.lex(&String::from(
             "Set x to 10. set y to 5 . set  xarst to 555134234523452345. set 6 to lol.",
         ));
         let mut parser = Parser::new(output.0.unwrap(), output.1);

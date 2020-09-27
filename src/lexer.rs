@@ -56,7 +56,7 @@ pub enum Token {
 #[derive(Debug)]
 pub enum LexError {
     /// char not expected
-    UnexpectedChar(char),
+    UnexpectedChar(char, u32),
 }
 
 /// see if a word is an iden or a kword TODO: get this inine test to work
@@ -99,16 +99,12 @@ pub struct Tokenizer {
     intermidiate_string: String,
     // /// the output of the tokenizer
     // pub output: Vec<Token>,
-    /// the row
-    row: u32,
-    /// the colunm
-    col: u32,
     /// the position that the tokenizer is at
-    pos: usize,
+    pos: u32,
 }
 
 /// the type alias for a return type from lexing
-pub type Locs = Vec<(u32, u32)>;
+pub type Locs = Vec<u32>;
 
 impl Tokenizer {
     /// The constructor for a tokenizer
@@ -116,29 +112,20 @@ impl Tokenizer {
         Tokenizer {
             state: LexerState::Start,
             intermidiate_string: String::new(),
-            row: 0,
-            col: 0,
             pos: 0,
         }
     }
     /// the lex function
-    pub fn lex(self: &mut Self, input_string: String) -> (Result<Vec<Token>, LexError>, Locs) {
+    pub fn lex(self: &mut Self, input_string: &String) -> (Result<Vec<Token>, LexError>, Locs) {
         let input: Vec<char> = input_string.chars().collect();
         let mut output = Vec::new();
         let mut output_poss: Locs = Vec::new();
         let mut c: char;
         loop {
-            if input.len() <= self.pos {
+            if input.len() <= self.pos as usize {
                 break;
             } else {
-                c = input[self.pos];
-            }
-            match c {
-                '\n' => {
-                    self.row += 1;
-                    self.col = 0;
-                }
-                _ => self.col += 1,
+                c = input[self.pos as usize];
             }
             match self.state {
                 LexerState::Start => {
@@ -167,7 +154,7 @@ impl Tokenizer {
                         ']' => self.state = LexerState::Start,
                         ' ' | '\n' => {}
                         _ => {
-                            return (Err(LexError::UnexpectedChar(c)), output_poss);
+                            return (Err(LexError::UnexpectedChar(c, self.pos)), output_poss);
                         }
                     }
                 }
@@ -185,9 +172,6 @@ impl Tokenizer {
                         );
                         // put back char
                         self.pos -= 1;
-                        if self.col != 0 {
-                            self.col -= 1;
-                        }
                     }
                 },
                 LexerState::InNum => match c {
@@ -200,9 +184,6 @@ impl Tokenizer {
                         );
                         // put back char
                         self.pos -= 1;
-                        if self.col != 0 {
-                            self.col -= 1
-                        };
                     }
                 },
                 LexerState::SawGreaterThan => match c {
@@ -210,7 +191,6 @@ impl Tokenizer {
                     _ => {
                         self.end_token(&mut output, &mut output_poss, Token::BoG);
                         self.pos -= 1;
-                        self.col -= 1;
                     }
                 },
                 LexerState::SawLessThan => match c {
@@ -219,14 +199,12 @@ impl Tokenizer {
                         // TODO col could alaerdy be 0
                         self.end_token(&mut output, &mut output_poss, Token::BoL);
                         self.pos -= 1;
-                        self.col -= 1;
                     }
                 },
                 LexerState::SawEquals => {
                     // TODO col could alaerdy be 0
                     self.end_token(&mut output, &mut output_poss, Token::BoE);
                     self.pos -= 1;
-                    self.col -= 1;
                 }
             }
             self.pos += 1;
@@ -262,8 +240,8 @@ impl Tokenizer {
         token_type: Token,
     ) {
         output.push(token_type);
-        output_poss.push((self.col, self.row));
         self.intermidiate_string = String::from("");
+        output_poss.push(self.pos);
         self.state = LexerState::Start;
     }
 }
@@ -274,15 +252,13 @@ mod tests {
     #[test]
     fn lexer_one_line() {
         let mut tokenizer = Tokenizer::new();
-        let res = tokenizer.lex(String::from("set x to 5."));
+        let res = tokenizer.lex(&String::from("set x to 5."));
         assert!(res.0.is_ok());
         assert_eq!(
             tokenizer,
             Tokenizer {
                 state: LexerState::Start,
                 intermidiate_string: String::from(""),
-                row: 0,
-                col: 11,
                 pos: 11,
             }
         );
@@ -303,14 +279,12 @@ mod tests {
     #[test]
     fn lexer_bad_ast() {
         let mut tokenizer = Tokenizer::new();
-        let res = tokenizer.lex(String::from("set x to 5. b"));
+        let res = tokenizer.lex(&String::from("set x to 5. b"));
         assert_eq!(
             tokenizer,
             Tokenizer {
                 state: LexerState::Start,
                 intermidiate_string: String::from(""),
-                row: 0,
-                col: 13,
                 pos: 13,
             }
         );
@@ -332,7 +306,7 @@ mod tests {
     #[test]
     fn lexer_loop() {
         let mut tokenizer = Tokenizer::new();
-        let res = tokenizer.lex(String::from("set x to 4. loop, change x to x + 1.!"));
+        let res = tokenizer.lex(&String::from("set x to 4. loop, change x to x + 1.!"));
         let ts = res.0.unwrap();
         assert_eq!(
             ts,
@@ -363,7 +337,7 @@ mod tests {
         let bad_inputs = ["set x to 5.", "change y to 10."];
         for i in bad_inputs.iter() {
             let mut tokenizer = Tokenizer::new();
-            outputs.push(tokenizer.lex(i.to_string()));
+            outputs.push(tokenizer.lex(&i.to_string()));
         }
         for i in outputs {
             assert_eq!(i.1.len(), i.0.unwrap().len());
@@ -372,7 +346,7 @@ mod tests {
     #[test]
     fn lexer_comments() {
         let mut tokenizer = Tokenizer::new();
-        let res = tokenizer.lex(String::from(
+        let res = tokenizer.lex(&String::from(
             "[initalize vars] set x to 5. change x to (5 + x).",
         ));
         assert!(res.0.is_ok());
@@ -402,7 +376,7 @@ mod tests {
     #[test]
     fn lexer_expr() {
         let mut tokenizer = Tokenizer::new();
-        let res = tokenizer.lex(String::from("set x to 5. change x to (5 + x)."));
+        let res = tokenizer.lex(&String::from("set x to 5. change x to (5 + x)."));
         assert!(res.0.is_ok());
         let ts = res.0.unwrap();
         assert_eq!(
@@ -430,7 +404,7 @@ mod tests {
     #[test]
     fn lexer_if_stmt() {
         let mut tokenizer = Tokenizer::new();
-        let res = tokenizer.lex(String::from(
+        let res = tokenizer.lex(&String::from(
             "
 if x >= 5,
     set y to 4.
