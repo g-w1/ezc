@@ -53,6 +53,8 @@ To test: `cargo test`
 
 - [x] loops
 
+- [ ] fancy errors
+
 - [ ] functions
 
 - [ ] modules (should be easy since using c abi calling convention)
