@@ -1,1 +1,5 @@
-Set x to 1. set y to 0 . if y and x, change x to 10.!
+function test(y,z,b),
+
+set y to 4.
+
+!

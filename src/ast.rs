@@ -45,7 +45,7 @@ pub enum BinOp {
     Gte,
     Ne,
     And,
-    Or
+    Or,
 }
 
 /// all the types of an ast node. it is like a tagged union. it also holds the values of the ast node type
@@ -65,6 +65,12 @@ pub enum AstNode {
         vars_declared: Option<HashMap<String, u32>>,
     },
     Loop {
+        body: Vec<AstNode>,
+    },
+    Func {
+        name: String,
+        /// the arguments used in the function
+        args: Vec<String>,
         body: Vec<AstNode>,
     },
     Break,

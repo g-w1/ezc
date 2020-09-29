@@ -16,6 +16,8 @@ pub enum Token {
     Kloop,
     /// break
     Kbreak,
+    /// Function
+    Kfunc,
     // Iden tokens
     /// Identifier token
     Iden(String),
@@ -82,6 +84,7 @@ fn get_kword(input: &str) -> Token {
         "Break" | "break" => Token::Kbreak,
         "and" | "And" => Token::BoAnd,
         "or" | "Or" => Token::BoOr,
+        "function" | "Function" => Token::Kfunc,
         _ => Token::Iden(input.to_string()),
     }
 }

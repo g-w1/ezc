@@ -73,6 +73,7 @@ impl Code {
                     vars_declared,
                 } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None), // we unwrap because it was analised
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
+                AstNode::Func { name, args, body } => unimplemented!(),
                 _ => unreachable!(),
             }
         }
@@ -139,6 +140,7 @@ impl Code {
         }
         for node in body {
             match node {
+                AstNode::Func { name, args, body } => unimplemented!(),
                 AstNode::If {
                     body,
                     guard,
@@ -179,6 +181,7 @@ impl Code {
             .push(format!(".START_LOOP_{}", our_number_for_mangling));
         for node in body {
             match node {
+                AstNode::Func { name, args, body } => unimplemented!(),
                 AstNode::SetOrChange {
                     sete,
                     change: true,
@@ -634,7 +637,6 @@ MaNgLe_x resq 1
 MaNgLe_y resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
-
     }
     #[test]
     fn codegen_change_stmt() {

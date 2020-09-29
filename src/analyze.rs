@@ -110,6 +110,7 @@ impl Analyser {
                 ast::AstNode::Loop { body } => {
                     self.analyze(body, Scope::InLoop)?;
                 }
+                ast::AstNode::Func { name, args, body } => unimplemented!(),
                 ast::AstNode::Break => {
                     if let Scope::InLoop | Scope::InLoopAndIf = scope {
                     } else {

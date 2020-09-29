@@ -105,13 +105,14 @@ impl Parser {
                 Token::Kloop => self.parse_loop_stmt(&mut tree)?,
                 Token::Kif => self.parse_if_stmt(&mut tree)?,
                 Token::CloseBlock if !toplevel => break,
+                Token::Kfunc if toplevel => self.parse_func(&mut tree)?,
                 Token::Kbreak => {
                     self.expect_eat_token(Token::Kbreak)?;
                     self.expect_eat_token(Token::EndOfLine)?;
                     tree.push(AstNode::Break);
                 }
                 Token::Eof => break,
-                t => return Err(self.expected_token_err(t, Token::Eof)),
+                t => return Err(self.expected_token_err(Token::Eof, t)),
             }
         }
         Ok(tree)
@@ -205,6 +206,26 @@ impl Parser {
         let _ = self.next();
         Ok(parsed_expr)
     }
+    /// FnProto <- Iden Lparen (Iden ,)* Rparen
+    fn parse_func_proto(&mut self) -> Result<(String, Vec<String>), ParserError> {
+        let func_name = self.parse_iden()?;
+        let mut items_in_func = Vec::new();
+        self.expect_eat_token(Token::Lparen)?;
+        while let Token::Iden(_) = self.cur_tok() {
+            items_in_func.push(self.parse_iden()?);
+            // OpenBlock is just ','. maybe rename
+            match self.cur_tok() {
+                Token::OpenBlock => self.expect_eat_token(Token::OpenBlock)?,
+                Token::Rparen => {
+                    self.expect_eat_token(Token::Rparen)?;
+                    break;
+                }
+                t => return Err(self.expected_token_err(Token::Rparen, t)),
+            }
+        }
+        // self.expect_eat_token(Token::Rparen)?;
+        Ok((func_name, items_in_func))
+    }
     /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr (parsing an expression but not top level)
     fn parse_expr_primary(self: &mut Self) -> Result<Expr, ParserError> {
         match self.cur_tok() {
@@ -217,6 +238,16 @@ impl Parser {
     //
     // Parsing stmts
     //
+    /// Function <- FnProto OpenBlock Ast CloseBlock
+    fn parse_func(&mut self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
+        self.expect_eat_token(Token::Kfunc)?;
+        let (name, args) = self.parse_func_proto()?;
+        self.expect_eat_token(Token::OpenBlock)?;
+        let body = self.parse(false)?;
+        self.expect_eat_token(Token::CloseBlock)?;
+        tree.push(AstNode::Func { name, args, body });
+        Ok(())
+    }
     /// LoopNode <- Kloop OpenBlock Ast CloseBlock
     fn parse_loop_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         self.expect_eat_token(Token::Kloop)?;
