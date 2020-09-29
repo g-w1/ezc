@@ -625,7 +625,7 @@ jne .IF_END_0
 sub rsp, 0 * 8
 mov qword [MaNgLe_x], 10
 add rsp, 0 * 8
-.IF_END_1
+.IF_END_0
 mov rax, 60
 xor rdi, rdi
 syscall
