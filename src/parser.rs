@@ -55,6 +55,7 @@ impl Parser {
             Token::BoLe => 5,
             Token::BoGe => 5,
             Token::BoE => 5,
+            Token::BoNe => 5,
             _ => -1,
         }
     }

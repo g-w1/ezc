@@ -366,11 +366,12 @@ impl Code {
     /// takes 2 things on the stack. pops them, does an arg and then pushes the result
     fn cgen_for_stack(self: &mut Self, b_op: &BinOp) -> [String; 4] {
         match b_op {
-            &BinOp::Add => add_or_sub_op("add"),
-            &BinOp::Sub => add_or_sub_op("sub"),
+            &BinOp::Add => special_bop("add"),
+            &BinOp::Sub => special_bop("sub"),
             &BinOp::Gt => crate::eq_op!("jg", self),
             &BinOp::Lt => crate::eq_op!("jl", self),
             &BinOp::Equ => crate::eq_op!("je", self),
+            &BinOp::Ne => crate::eq_op!("jne", self),
             &BinOp::Lte => crate::eq_op!("jle", self),
             &BinOp::Gte => crate::eq_op!("jge", self),
         }
@@ -378,8 +379,9 @@ impl Code {
 }
 
 // inline cuz y not
+// TODO test if this works
 #[inline]
-fn add_or_sub_op(op: &str) -> [String; 4] {
+fn special_bop(op: &str) -> [String; 4] {
     [
         String::from("pop r8"),
         String::from("pop r9"),
@@ -396,7 +398,7 @@ fn get_op_of_eq_op(jump_cond: &str) -> &str {
         "jle" => "jg",
         "jge" => "jl",
         "je" => "jne",
-        "jn" => "je",
+        "jne" => "je",
         _ => unreachable!(),
     }
 }
@@ -458,6 +460,57 @@ MaNgLe_test resq 1
     }
     #[test]
     fn codegen_if_stmt() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Set x to 10. set y to 5 . if y != x, change x to y.!";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.codegen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov qword [MaNgLe_x], 10
+mov qword [MaNgLe_y], 5
+push qword [MaNgLe_y]
+push qword [MaNgLe_x]
+pop r8
+pop r9
+cmp r9, r8
+jne .IF_HEADER_2
+je .IF_HEADER_FAILED_2
+.IF_HEADER_2
+push 1
+jmp .END_IF_HEADER_2
+.IF_HEADER_FAILED_2
+push 0
+.END_IF_HEADER_2
+pop r8
+cmp r8, 1
+je .IF_BODY_0
+jne .IF_END_0
+.IF_BODY_0
+sub rsp, 0 * 8
+mov r8, qword [MaNgLe_y]
+mov qword [MaNgLe_x], r8
+add rsp, 0 * 8
+.IF_END_0
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+MaNgLe_x resq 1
+MaNgLe_y resq 1
+";
+        assert_eq!(format!("{}", code), correct_code);
+    }
+    #[test]
+    fn codegen_expr() {
         use crate::analyze;
         use crate::codegen;
         use crate::lexer;
@@ -624,89 +677,6 @@ xor rdi, rdi
 syscall
 section .bss
 MaNgLe_x resq 1
-";
-        assert_eq!(format!("{}", code), correct_code);
-    }
-    #[test]
-    fn codegen_expr() {
-        use crate::analyze;
-        use crate::codegen;
-        use crate::lexer;
-        use crate::parser;
-
-        let mut tokenizer = lexer::Tokenizer::new();
-        let input =
-            "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
-        let output = tokenizer.lex(&String::from(input));
-        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        // TODO spelling. one is spelled with y and other with i
-        analyze::analize(&mut ast).unwrap();
-        let mut code = codegen::Code::new();
-        analyze::analize(&mut ast).unwrap();
-        code.codegen(ast);
-        let correct_code = "global _start
-section .text
-_start:
-mov qword [MaNgLe_y], 5
-push qword [MaNgLe_y]
-push 5
-pop r8
-pop r9
-add r9, r8
-push r9
-push 10
-pop r8
-pop r9
-sub r9, r8
-push r9
-push qword [MaNgLe_y]
-pop r8
-pop r9
-add r9, r8
-push r9
-push 15
-pop r8
-pop r9
-sub r9, r8
-push r9
-pop r8
-mov qword [MaNgLe_x], r8
-push qword [MaNgLe_x]
-push 4
-pop r8
-pop r9
-add r9, r8
-push r9
-pop r8
-mov qword [MaNgLe_z], r8
-push qword [MaNgLe_x]
-push qword [MaNgLe_z]
-pop r8
-pop r9
-sub r9, r8
-push r9
-push 10
-pop r8
-pop r9
-cmp r9, r8
-jl .IF_HEADER_8
-jge .IF_HEADER_FAILED_8
-.IF_HEADER_8
-push 1
-jmp .END_IF_HEADER_8
-.IF_HEADER_FAILED_8
-push 0
-.END_IF_HEADER_8
-pop r8
-mov qword [MaNgLe_res_of_bop], r8
-mov rax, 60
-xor rdi, rdi
-syscall
-section .bss
-MaNgLe_y resq 1
-MaNgLe_x resq 1
-MaNgLe_z resq 1
-MaNgLe_res_of_bop resq 1
 ";
         assert_eq!(format!("{}", code), correct_code);
     }

@@ -1,5 +1,4 @@
 //! The module responsible for lexing the source code
-//! TODO: revamp debug info. not really working. just use pos and then calc row and col from that
 
 /// The tokens that get parsed from source
 #[derive(Clone, Debug, PartialEq)]
@@ -50,6 +49,8 @@ pub enum Token {
     BoLe,
     /// '=='
     BoE,
+    /// '!='
+    BoNe,
 }
 
 /// The Error type of a lex
@@ -87,6 +88,7 @@ enum LexerState {
     SawLessThan,
     SawEquals,
     SawGreaterThan,
+    SawBang,
     InComment,
 }
 
@@ -141,12 +143,11 @@ impl Tokenizer {
                         }
                         '.' => self.end_token(&mut output, &mut output_poss, Token::EndOfLine),
                         ',' => self.end_token(&mut output, &mut output_poss, Token::OpenBlock),
-                        // TODO make != work
-                        '!' => self.end_token(&mut output, &mut output_poss, Token::CloseBlock),
                         '(' => self.end_token(&mut output, &mut output_poss, Token::Lparen),
                         ')' => self.end_token(&mut output, &mut output_poss, Token::Rparen),
                         '+' => self.end_token(&mut output, &mut output_poss, Token::BoPlus),
                         '-' => self.end_token(&mut output, &mut output_poss, Token::BoMinus),
+                        '!' => self.state = LexerState::SawBang,
                         '>' => self.state = LexerState::SawGreaterThan,
                         '<' => self.state = LexerState::SawLessThan,
                         '=' => self.state = LexerState::SawEquals,
@@ -193,41 +194,54 @@ impl Tokenizer {
                         self.pos -= 1;
                     }
                 },
+                LexerState::SawBang => match c {
+                    '=' => {
+                        self.end_token(&mut output, &mut output_poss, Token::BoNe);
+                    }
+                    _ => {
+                        self.end_token(&mut output, &mut output_poss, Token::CloseBlock);
+                        self.pos -= 1;
+                    }
+                },
                 LexerState::SawLessThan => match c {
                     '=' => self.end_token(&mut output, &mut output_poss, Token::BoLe),
                     _ => {
-                        // TODO col could alaerdy be 0
                         self.end_token(&mut output, &mut output_poss, Token::BoL);
                         self.pos -= 1;
                     }
                 },
                 LexerState::SawEquals => {
-                    // TODO col could alaerdy be 0
                     self.end_token(&mut output, &mut output_poss, Token::BoE);
+                    // TODO ????????? maybe because i wasted cycle. investigate
                     self.pos -= 1;
                 }
             }
             self.pos += 1;
         }
-        match self.intermidiate_string.as_str() {
-            "" => {}
-            _ => match self.state {
-                LexerState::InWord => {
-                    self.end_token(
-                        &mut output,
-                        &mut output_poss,
-                        get_kword(&self.intermidiate_string),
-                    );
-                }
-                LexerState::InNum => {
-                    self.end_token(
-                        &mut output,
-                        &mut output_poss,
-                        Token::IntLit(self.intermidiate_string.to_owned()),
-                    );
-                }
-                _ => {}
+        // clean up state
+        match self.state {
+            LexerState::SawBang => self.end_token(&mut output, &mut output_poss, Token::CloseBlock),
+            LexerState::InWord => match self.intermidiate_string.as_str() {
+                "" => {}
+                _ => self.end_token(
+                    // TODO i use &mut output and &mut output_poss in every one just make it in self
+                    &mut output,
+                    &mut output_poss,
+                    get_kword(&self.intermidiate_string),
+                ),
             },
+            LexerState::InNum => {
+                self.end_token(
+                    &mut output,
+                    &mut output_poss,
+                    Token::IntLit(self.intermidiate_string.to_owned()),
+                );
+            }
+            LexerState::Start => {}
+            LexerState::SawEquals => self.end_token(&mut output, &mut output_poss, Token::BoE),
+            LexerState::SawGreaterThan => self.end_token(&mut output, &mut output_poss, Token::BoG),
+            LexerState::SawLessThan => self.end_token(&mut output, &mut output_poss, Token::BoL),
+            LexerState::InComment => {}
         }
         self.end_token(&mut output, &mut output_poss, Token::Eof);
         (Ok(output), output_poss)
@@ -396,6 +410,28 @@ mod tests {
                 Token::Iden(String::from("x")),
                 Token::Rparen,
                 Token::EndOfLine,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
+    }
+    #[test]
+    fn lexer_bangs() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(&String::from("if x != 5, break. !"));
+        assert!(res.0.is_ok());
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Kif,
+                Token::Iden(String::from("x")),
+                Token::BoNe,
+                Token::IntLit(String::from("5")),
+                Token::OpenBlock,
+                Token::Kbreak,
+                Token::EndOfLine,
+                Token::CloseBlock,
                 Token::Eof,
             ]
         );
