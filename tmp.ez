@@ -1,1 +1,1 @@
-Set x to 10. set y to 5 . if y != x, change x to y.!
+Set x to 1. set y to 0 . if y and x, change x to 10.!

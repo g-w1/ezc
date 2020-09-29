@@ -368,6 +368,8 @@ impl Code {
         match b_op {
             &BinOp::Add => special_bop("add"),
             &BinOp::Sub => special_bop("sub"),
+            &BinOp::Or => special_bop("or"),
+            &BinOp::And => special_bop("and"),
             &BinOp::Gt => crate::eq_op!("jg", self),
             &BinOp::Lt => crate::eq_op!("jl", self),
             &BinOp::Equ => crate::eq_op!("je", self),

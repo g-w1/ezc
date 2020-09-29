@@ -28,6 +28,8 @@ pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {
         Token::BoGe => BinOp::Gte,
         Token::BoE => BinOp::Equ,
         Token::BoNe => BinOp::Ne,
+        Token::BoAnd => BinOp::And,
+        Token::BoOr => BinOp::Or,
         _ => unreachable!(),
     }
 }
@@ -42,6 +44,8 @@ pub enum BinOp {
     Lte,
     Gte,
     Ne,
+    And,
+    Or
 }
 
 /// all the types of an ast node. it is like a tagged union. it also holds the values of the ast node type

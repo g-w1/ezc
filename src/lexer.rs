@@ -51,6 +51,10 @@ pub enum Token {
     BoE,
     /// '!='
     BoNe,
+    /// and
+    BoAnd,
+    /// or
+    BoOr,
 }
 
 /// The Error type of a lex
@@ -76,6 +80,8 @@ fn get_kword(input: &str) -> Token {
         "If" | "if" => Token::Kif,
         "Loop" | "loop" => Token::Kloop,
         "Break" | "break" => Token::Kbreak,
+        "and" | "And" => Token::BoAnd,
+        "or" | "Or" => Token::BoOr,
         _ => Token::Iden(input.to_string()),
     }
 }

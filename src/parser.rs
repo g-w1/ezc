@@ -56,6 +56,9 @@ impl Parser {
             Token::BoGe => 5,
             Token::BoE => 5,
             Token::BoNe => 5,
+            // TODO should it be higher
+            Token::BoOr => 5,
+            Token::BoAnd => 5,
             _ => -1,
         }
     }
