@@ -593,6 +593,50 @@ MaNgLe_res_of_bop resq 1
         assert_eq!(format!("{}", code), correct_code);
     }
     #[test]
+    fn codegen_and_bop() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Set x to 1. set y to 0 . if y and x, change x to 10.!";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.codegen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov qword [MaNgLe_x], 1
+mov qword [MaNgLe_y], 0
+push qword [MaNgLe_y]
+push qword [MaNgLe_x]
+pop r8
+pop r9
+and r9, r8
+push r9
+pop r8
+cmp r8, 1
+je .IF_BODY_0
+jne .IF_END_0
+.IF_BODY_0
+sub rsp, 0 * 8
+mov qword [MaNgLe_x], 10
+add rsp, 0 * 8
+.IF_END_1
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+MaNgLe_x resq 1
+MaNgLe_y resq 1
+";
+        assert_eq!(format!("{}", code), correct_code);
+
+    }
+    #[test]
     fn codegen_change_stmt() {
         use crate::analyze;
         use crate::codegen;
