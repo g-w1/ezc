@@ -409,6 +409,30 @@ mod tests {
         );
     }
     #[test]
+    fn parser_function_stmt() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(&String::from(
+            "function test(y,z,b),
+                set y to 4.
+            !
+",
+        ));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![AstNode::Func {
+                args: vec![String::from("y"), String::from("z"), String::from("b")],
+                body: vec![AstNode::SetOrChange {
+                    sete: String::from("y"),
+                    setor: Expr::Number(String::from("4")),
+                    change: false,
+                }],
+                name: String::from("test")
+            },],
+            ast
+        );
+    }
+    #[test]
     fn parser_if_stmt() {
         let mut tokenizer = lexer::Tokenizer::new();
         let output = tokenizer.lex(&String::from(
