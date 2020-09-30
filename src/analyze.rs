@@ -426,4 +426,92 @@ mod tests {
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
+    #[test]
+    fn analyze_functions() {
+        use crate::analyze;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        // number is too big
+        let input = "set x to 4.
+
+function test(y,z,b),
+
+    loop,
+      change y to y + 1.
+      if y > 10,
+        break.
+        return 6.
+      !
+    !
+
+    return y.
+
+!
+
+function lol(),
+    return 0.
+!
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn analyze_bad_functions_0() {
+        use crate::analyze;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        // number is too big
+        let input = "set x to 4.
+function test(y,z,b),
+
+    change x to 6.
+    loop,
+      change y to y + 1.
+      if y > 10,
+        break.
+      !
+    !
+    return y.
+!
+
+function lol(y),
+!
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn analyze_bad_functions_1() {
+        use crate::analyze;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        // number is too big
+        let input = "
+function test(y,z,b),
+
+    loop,
+      if y != 10,
+        break.
+        loop,
+        !
+      !
+    !
+    return y.
+!
+change y to 4.
+
+function lol(y),
+!
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+    }
 }
