@@ -72,10 +72,10 @@ fn parse_input_to_code(input: String) -> String {
     }
     let code_text;
     let output = parser::parse(output.0.unwrap(), output.1);
-    dbg!(&output);
     match output {
         Ok(mut res) => match analyze::analize(&mut res) {
-            Ok(_) => {
+            Ok(t) => {
+                dbg!(&res);
                 let mut code = codegen::Code::new();
                 code.codegen(res);
                 code_text = format!("{}", code);

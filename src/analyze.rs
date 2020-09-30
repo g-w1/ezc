@@ -136,6 +136,7 @@ impl Analyser {
                                 num_vars_declared += 1;
                                 self.initialized_function_vars
                                     .insert(sete.clone(), num_vars_declared);
+                                new_locals.insert(sete.to_owned(), num_vars_declared);
                             } else {
                                 return Err(AnalysisError::DoubleSet(sete.clone()));
                             }
@@ -209,7 +210,8 @@ impl Analyser {
                     }
                     ////////////////////// Making sure there no duplicate args
                     let mut args_map = HashSet::new();
-                    for n in args {
+                    // TODO get rid of this .clone()
+                    for n in args.clone() {
                         if !args_map.insert(n.clone()) {
                             return Err(AnalysisError::SameArgForFunction(n.to_owned()));
                         }
@@ -223,7 +225,11 @@ impl Analyser {
                         in_func: true,
                         in_loop: false,
                     };
-                    *vars_declared = Some(self.analyze(body)?);
+                    /////////////////// Clean up:
+                    //we now remove all of the arguments from the variables declared to help out in codegen
+                    let mut tmp_res = self.analyze(body)?;
+                    tmp_res.retain(|x, _| !args.contains(x));
+                    *vars_declared = Some(tmp_res);
                     self.scope = tmp_scope;
                     // clear the function vars since we may wanna do another function
                     self.initialized_function_vars.clear();
@@ -251,7 +257,11 @@ impl Analyser {
         }
         // drop all the local vars.
         for (key, _) in new_locals.iter() {
-            self.initialized_local_vars.remove(key);
+            if self.scope.in_func {
+                self.initialized_function_vars.remove(key);
+            } else {
+                self.initialized_local_vars.remove(key);
+            }
         }
         Ok(new_locals)
     }

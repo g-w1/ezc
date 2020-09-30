@@ -78,10 +78,20 @@ impl Code {
                     args,
                     body,
                     vars_declared,
-                } => unimplemented!(),
+                } => self.cgen_function(name, args, body, vars_declared.unwrap()),
                 _ => unreachable!(),
             }
         }
+    }
+    /// codegen for a function decl
+    fn cgen_function(
+        &mut self,
+        name: String,
+        args: Vec<String>,
+        body: Vec<AstNode>,
+        vars_declared: HashMap<String, u32>,
+    ) {
+        unimplemented!()
     }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(
@@ -150,7 +160,7 @@ impl Code {
                     args,
                     body,
                     vars_declared,
-                } => unimplemented!(),
+                } => unreachable!(),
                 AstNode::Return { val } => unimplemented!(),
                 AstNode::If {
                     body,
@@ -198,7 +208,7 @@ impl Code {
                     args,
                     body,
                     vars_declared,
-                } => unimplemented!(),
+                } => unreachable!(),
                 AstNode::SetOrChange {
                     sete,
                     change: true,
