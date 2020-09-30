@@ -2,17 +2,16 @@ set x to 4.
 
 function test(y,z,b),
 
-    change y to y + 1.
+    loop,
+      change y to y + 1.
+      if y > 10,
+        break.
+      !
+    !
 
     return y.
 
 !
 
-
-function p(),
-  set y to 10.
-  if y > 10,
-    change y to 4.
-  !
-  return y.
+function lol(y),
 !

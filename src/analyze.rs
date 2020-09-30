@@ -189,8 +189,8 @@ impl Analyser {
                     let tmp_scope = self.scope;
                     self.scope = Scope {
                         in_loop: true,
-                        in_func: false,
                         in_if: false,
+                        ..self.scope
                     };
                     // self.analyze(body, Scope::InLoop)?;
                     self.analyze(body)?;
@@ -233,7 +233,7 @@ impl Analyser {
                     if let Scope {
                         in_if: _,
                         in_loop: true,
-                        in_func: false,
+                        in_func: _,
                     } = self.scope
                     {
                     } else {
