@@ -21,17 +21,16 @@ pub enum AnalysisError {
 
 /// a way to see what ur in
 #[derive(Debug, Copy, Clone)]
-enum Scope {
-    InLoop,
-    InLoopAndIf,
-    InNone,
-    InIf,
+struct Scope {
+    in_if: bool,
+    in_loop: bool,
+    in_func: bool,
 }
 
 /// a wrapper function to analize the ast
 pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
     let mut analizer = Analyser::new();
-    analizer.analyze(&mut ast.tree, Scope::InNone)?;
+    analizer.analyze(&mut ast.tree)?;
     ast.static_vars = Some(get_all_var_decls(&ast.tree));
     Ok(())
 }
@@ -41,6 +40,10 @@ struct Analyser {
     initialized_static_vars: HashSet<String>,
     /// the initialized_local_vars
     initialized_local_vars: HashMap<String, u32>,
+    /// the initialized_function_names
+    initialized_function_names: HashSet<String>,
+    /// scope that the analizer is in rn
+    scope: Scope,
 }
 
 impl Analyser {
@@ -49,6 +52,12 @@ impl Analyser {
         Self {
             initialized_static_vars: HashSet::new(),
             initialized_local_vars: HashMap::new(),
+            initialized_function_names: HashSet::new(),
+            scope: Scope {
+                in_func: false,
+                in_if: false,
+                in_loop: false,
+            },
         }
     }
 
@@ -56,7 +65,6 @@ impl Analyser {
     pub fn analyze(
         self: &mut Self,
         tree: &mut Vec<ast::AstNode>,
-        scope: Scope,
     ) -> Result<HashMap<String, u32>, AnalysisError> {
         let mut new_locals: HashMap<String, u32> = HashMap::new();
         let mut num_vars_declared: u32 = 0;
@@ -68,24 +76,40 @@ impl Analyser {
                     change,
                 } => {
                     if !*change {
-                        if let Scope::InLoop = scope {
+                        if self.scope.in_loop {
                             return Err(AnalysisError::SetInLoop);
                         }
                         if !self.initialized_static_vars.contains(sete)
                             && !self.initialized_local_vars.contains_key(sete)
                         {
                             self.check_expr(setor)?;
-                            match scope {
-                                Scope::InNone => {
+                            match self.scope {
+                                // Scope::InNone => {
+                                Scope {
+                                    in_loop: false,
+                                    in_func: false,
+                                    in_if: false,
+                                } => {
                                     self.initialized_static_vars.insert(sete.to_owned());
                                 }
-                                Scope::InLoopAndIf | Scope::InIf => {
+                                // Scope::InLoopAndIf | Scope::InIf => {
+                                Scope {
+                                    in_if: true,
+                                    in_loop: _,
+                                    in_func: false,
+                                } => {
                                     num_vars_declared += 1;
                                     self.initialized_local_vars
                                         .insert(sete.to_owned(), num_vars_declared);
                                     new_locals.insert(sete.to_owned(), num_vars_declared);
                                 }
-                                Scope::InLoop => unreachable!(),
+                                // Scope::InLoop => unreachable!(),
+                                Scope {
+                                    in_loop: true,
+                                    in_if: _,
+                                    in_func: false,
+                                } => unreachable!(),
+                                _ => unimplemented!(),
                             }
                         } else {
                             return Err(AnalysisError::DoubleSet(sete.to_owned()));
@@ -101,18 +125,54 @@ impl Analyser {
                     vars_declared,
                 } => {
                     self.check_expr(guard)?;
-                    if let Scope::InLoop | Scope::InLoopAndIf = scope {
-                        *vars_declared = Some(self.analyze(body, Scope::InLoopAndIf)?);
+                    // if let Scope::InLoop | Scope::InLoopAndIf = scope {
+                    let tmp_scope = self.scope;
+                    if let Scope {
+                        in_if: _,
+                        in_loop: true,
+                        in_func: false,
+                    } = self.scope
+                    {
+                        self.scope = Scope {
+                            in_loop: true,
+                            in_func: false,
+                            in_if: true,
+                        };
+                        // *vars_declared = Some(self.analyze(body, Scope::InLoopAndIf)?);
+                        *vars_declared = Some(self.analyze(body)?);
+                        // return scope to what it was after changing it
+                        self.scope = tmp_scope;
                     } else {
-                        *vars_declared = Some(self.analyze(body, Scope::InIf)?);
+                        self.scope = Scope {
+                            in_loop: false,
+                            in_func: false,
+                            in_if: true,
+                        };
+                        // *vars_declared = Some(self.analyze(body, Scope::InIf)?);
+                        *vars_declared = Some(self.analyze(body)?);
+                        self.scope = tmp_scope;
                     }
                 }
                 ast::AstNode::Loop { body } => {
-                    self.analyze(body, Scope::InLoop)?;
+                    let tmp_scope = self.scope;
+                    self.scope = Scope {
+                        in_loop: true,
+                        in_func: false,
+                        in_if: false,
+                    };
+                    // self.analyze(body, Scope::InLoop)?;
+                    self.analyze(body)?;
+                    self.scope = tmp_scope;
                 }
-                ast::AstNode::Func { name, args, body } => unimplemented!(),
+                ast::AstNode::Func { name, args, body } => {}
                 ast::AstNode::Break => {
-                    if let Scope::InLoop | Scope::InLoopAndIf = scope {
+                    // if let Scope::InLoop | Scope::InLoopAndIf = scope {
+                    if let Scope {
+                        in_if: _,
+                        in_loop: true,
+                        in_func: false,
+                    } = self.scope
+                    {
                     } else {
                         return Err(AnalysisError::BreakWithoutLoop);
                     }
@@ -245,7 +305,8 @@ mod tests {
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to 10. if x > 10,
                     set z to 4. change  z to 445235.
-            ! change z to 4.";
+                !
+            change z to 4.";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
@@ -257,7 +318,8 @@ mod tests {
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
-        let input = "set z to 4.break.";
+        let input = "set z to 4.
+            break.";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
