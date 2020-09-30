@@ -153,30 +153,36 @@ impl Analyser {
                     self.check_expr(guard)?;
                     // if let Scope::InLoop | Scope::InLoopAndIf = scope {
                     let tmp_scope = self.scope;
-                    if let Scope {
-                        in_if: _,
-                        in_loop: true,
-                        in_func: false,
-                    } = self.scope
-                    {
-                        self.scope = Scope {
-                            in_loop: true,
+                    match self.scope {
+                        Scope {
+                            in_if: _,
+                            in_loop: t,
                             in_func: false,
-                            in_if: true,
-                        };
-                        // *vars_declared = Some(self.analyze(body, Scope::InLoopAndIf)?);
-                        *vars_declared = Some(self.analyze(body)?);
-                        // return scope to what it was after changing it
-                        self.scope = tmp_scope;
-                    } else {
-                        self.scope = Scope {
-                            in_loop: false,
-                            in_func: false,
-                            in_if: true,
-                        };
-                        // *vars_declared = Some(self.analyze(body, Scope::InIf)?);
-                        *vars_declared = Some(self.analyze(body)?);
-                        self.scope = tmp_scope;
+                        } => {
+                            self.scope = Scope {
+                                in_loop: t,
+                                in_func: false,
+                                in_if: true,
+                            };
+                            // *vars_declared = Some(self.analyze(body, Scope::InLoopAndIf)?);
+                            *vars_declared = Some(self.analyze(body)?);
+                            // return scope to what it was after changing it
+                            self.scope = tmp_scope;
+                        }
+                        Scope {
+                            in_if: _,
+                            in_loop: t,
+                            in_func: true,
+                        } => {
+                            self.scope = Scope {
+                                in_loop: t,
+                                in_func: true,
+                                in_if: true,
+                            };
+                            // *vars_declared = Some(self.analyze(body, Scope::InIf)?);
+                            *vars_declared = Some(self.analyze(body)?);
+                            self.scope = tmp_scope;
+                        }
                     }
                 }
                 ast::AstNode::Loop { body } => {

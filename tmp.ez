@@ -11,5 +11,8 @@ function test(y,z,b),
 
 function p(),
   set y to 10.
-  return 5.
+  if y > 10,
+    change y to 4.
+  !
+  return y.
 !
