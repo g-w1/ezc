@@ -18,6 +18,8 @@ pub enum Token {
     Kbreak,
     /// Function
     Kfunc,
+    /// Return
+    Kreturn,
     // Iden tokens
     /// Identifier token
     Iden(String),
@@ -85,6 +87,7 @@ fn get_kword(input: &str) -> Token {
         "and" | "And" => Token::BoAnd,
         "or" | "Or" => Token::BoOr,
         "function" | "Function" => Token::Kfunc,
+        "return" | "Return" => Token::Kreturn,
         _ => Token::Iden(input.to_string()),
     }
 }

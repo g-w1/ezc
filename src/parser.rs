@@ -245,7 +245,7 @@ impl Parser {
         self.expect_eat_token(Token::OpenBlock)?;
         let body = self.parse(false)?;
         self.expect_eat_token(Token::CloseBlock)?;
-        tree.push(AstNode::Func { name, args, body });
+        tree.push(AstNode::Func { name, args, body, vars_declared: None});
         Ok(())
     }
     /// LoopNode <- Kloop OpenBlock Ast CloseBlock
@@ -427,7 +427,8 @@ mod tests {
                     setor: Expr::Number(String::from("4")),
                     change: false,
                 }],
-                name: String::from("test")
+                name: String::from("test"),
+                vars_declared: None,
             },],
             ast
         );

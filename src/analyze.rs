@@ -164,7 +164,7 @@ impl Analyser {
                     self.analyze(body)?;
                     self.scope = tmp_scope;
                 }
-                ast::AstNode::Func { name, args, body } => {}
+                ast::AstNode::Func { name, args, body, vars_declared } => {}
                 ast::AstNode::Break => {
                     // if let Scope::InLoop | Scope::InLoopAndIf = scope {
                     if let Scope {
@@ -177,6 +177,7 @@ impl Analyser {
                         return Err(AnalysisError::BreakWithoutLoop);
                     }
                 }
+                ast::AstNode::Return { val } => unimplemented!()
             }
         }
         // drop all the local vars.
