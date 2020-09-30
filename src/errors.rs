@@ -70,13 +70,16 @@ fn up_caret(num: &usize) -> String {
 impl fmt::Display for AnalysisError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            AnalysisError::FuncAlreadyExists(s) =>write!(f, "Analysis Error: function is declared twice: {}", s),
+            AnalysisError::SameArgForFunction(s) => write!(f, "Analysis Error: the same arg was used in a function definition: {}", s),
             AnalysisError::BreakWithoutLoop => write!(f, "Analysis Error: there was a break statement outside of a loop."),
             // TODO add info about which var it was
             AnalysisError::DoubleSet(v) => write!(f, "Analysis Error: the same variable `{}` was set twice. \nHint: use `change` to change the value of the variable once it is set: Ex `set x to 0. change x to 4.`", v),
-            AnalysisError::VarNotExist(v) => write!(f, "Analysis Error: the variable `{}` was used, but it doesn't exist.", v),
+            AnalysisError::VarNotExist(v) => write!(f, "Analysis Error: the variable `{}` was used, but it doesn't exist in this scope.", v),
             // TODO get info on whch num
             AnalysisError::NumberTooBig(num) => write!(f, "Analysis Error: Number too big: `{}`", num),
-            AnalysisError::SetInLoop => write!(f, "A set statement was used in a loop. Not allowed.")
+            AnalysisError::SetInLoop => write!(f, "A set statement was used in a loop. Not allowed."),
+            AnalysisError::ReturnOutSideOfFunc => write!(f, "A return statement was used outside of a function. Not allowed.")
         }
     }
 }

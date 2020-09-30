@@ -73,7 +73,12 @@ impl Code {
                     vars_declared,
                 } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None), // we unwrap because it was analised
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
-                AstNode::Func { name, args, body, vars_declared } => unimplemented!(),
+                AstNode::Func {
+                    name,
+                    args,
+                    body,
+                    vars_declared,
+                } => unimplemented!(),
                 _ => unreachable!(),
             }
         }
@@ -140,7 +145,12 @@ impl Code {
         }
         for node in body {
             match node {
-                AstNode::Func { name, args, body, vars_declared } => unimplemented!(),
+                AstNode::Func {
+                    name,
+                    args,
+                    body,
+                    vars_declared,
+                } => unimplemented!(),
                 AstNode::Return { val } => unimplemented!(),
                 AstNode::If {
                     body,
@@ -182,8 +192,13 @@ impl Code {
             .push(format!(".START_LOOP_{}", our_number_for_mangling));
         for node in body {
             match node {
-                AstNode::Return {val } => unimplemented!(),
-                AstNode::Func { name, args, body, vars_declared } => unimplemented!(),
+                AstNode::Return { val } => unimplemented!(),
+                AstNode::Func {
+                    name,
+                    args,
+                    body,
+                    vars_declared,
+                } => unimplemented!(),
                 AstNode::SetOrChange {
                     sete,
                     change: true,

@@ -1,8 +1,15 @@
+set x to 4.
+
 function test(y,z,b),
 
-set y to 4.
-change y to y + 1.
+    change y to y + 1.
 
-return y.
+    return y.
 
+!
+
+
+function p(),
+  set y to 10.
+  return 5.
 !

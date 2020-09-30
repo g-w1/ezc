@@ -17,6 +17,12 @@ pub enum AnalysisError {
     SetInLoop,
     /// a break without a loop
     BreakWithoutLoop,
+    /// Return outside of func
+    ReturnOutSideOfFunc,
+    /// the function already exists
+    FuncAlreadyExists(String),
+    /// same arg for function
+    SameArgForFunction(String),
 }
 
 /// a way to see what ur in
@@ -42,6 +48,7 @@ struct Analyser {
     initialized_local_vars: HashMap<String, u32>,
     /// the initialized_function_names
     initialized_function_names: HashSet<String>,
+    initialized_function_vars: HashMap<String, u32>,
     /// scope that the analizer is in rn
     scope: Scope,
 }
@@ -53,6 +60,7 @@ impl Analyser {
             initialized_static_vars: HashSet::new(),
             initialized_local_vars: HashMap::new(),
             initialized_function_names: HashSet::new(),
+            initialized_function_vars: HashMap::new(),
             scope: Scope {
                 in_func: false,
                 in_if: false,
@@ -79,40 +87,58 @@ impl Analyser {
                         if self.scope.in_loop {
                             return Err(AnalysisError::SetInLoop);
                         }
-                        if !self.initialized_static_vars.contains(sete)
-                            && !self.initialized_local_vars.contains_key(sete)
-                        {
-                            self.check_expr(setor)?;
-                            match self.scope {
-                                // Scope::InNone => {
-                                Scope {
-                                    in_loop: false,
-                                    in_func: false,
-                                    in_if: false,
-                                } => {
-                                    self.initialized_static_vars.insert(sete.to_owned());
+                        if !self.scope.in_func {
+                            if !self.initialized_static_vars.contains(sete)
+                                && !self.initialized_local_vars.contains_key(sete)
+                            {
+                                self.check_expr(setor)?;
+                                match self.scope {
+                                    // Scope::InNone => {
+                                    Scope {
+                                        in_loop: false,
+                                        in_func: false,
+                                        in_if: false,
+                                    } => {
+                                        self.initialized_static_vars.insert(sete.to_owned());
+                                    }
+                                    // Scope::InLoopAndIf | Scope::InIf => {
+                                    Scope {
+                                        in_if: true,
+                                        in_loop: _,
+                                        in_func: false,
+                                    } => {
+                                        num_vars_declared += 1;
+                                        self.initialized_local_vars
+                                            .insert(sete.to_owned(), num_vars_declared);
+                                        new_locals.insert(sete.to_owned(), num_vars_declared);
+                                    }
+                                    // Scope::InLoop => unreachable!(),
+                                    Scope {
+                                        in_loop: true,
+                                        in_if: _,
+                                        in_func: _,
+                                    } => return Err(AnalysisError::SetInLoop),
+                                    Scope {
+                                        in_func: true,
+                                        in_if: _,
+                                        in_loop: _,
+                                    } => unreachable!(),
                                 }
-                                // Scope::InLoopAndIf | Scope::InIf => {
-                                Scope {
-                                    in_if: true,
-                                    in_loop: _,
-                                    in_func: false,
-                                } => {
-                                    num_vars_declared += 1;
-                                    self.initialized_local_vars
-                                        .insert(sete.to_owned(), num_vars_declared);
-                                    new_locals.insert(sete.to_owned(), num_vars_declared);
-                                }
-                                // Scope::InLoop => unreachable!(),
-                                Scope {
-                                    in_loop: true,
-                                    in_if: _,
-                                    in_func: false,
-                                } => unreachable!(),
-                                _ => unimplemented!(),
+                            } else {
+                                return Err(AnalysisError::DoubleSet(sete.to_owned()));
                             }
                         } else {
-                            return Err(AnalysisError::DoubleSet(sete.to_owned()));
+                            ////////// WE must be in function scope
+                            if self.scope.in_loop {
+                                return Err(AnalysisError::SetInLoop);
+                            }
+                            if !self.initialized_function_vars.contains_key(sete) {
+                                num_vars_declared += 1;
+                                self.initialized_function_vars
+                                    .insert(sete.clone(), num_vars_declared);
+                            } else {
+                                return Err(AnalysisError::DoubleSet(sete.clone()));
+                            }
                         }
                     } else {
                         self.make_sure_var_exists(sete)?;
@@ -164,7 +190,38 @@ impl Analyser {
                     self.analyze(body)?;
                     self.scope = tmp_scope;
                 }
-                ast::AstNode::Func { name, args, body, vars_declared } => {}
+                ast::AstNode::Func {
+                    name,
+                    args,
+                    body,
+                    vars_declared,
+                } => {
+                    // TODO get rid of .clone
+                    /////////////// Making sure function name doesn't exist
+                    if !self.initialized_function_names.insert(name.clone()) {
+                        return Err(AnalysisError::FuncAlreadyExists(name.clone()));
+                    }
+                    ////////////////////// Making sure there no duplicate args
+                    let mut args_map = HashSet::new();
+                    for n in args {
+                        if !args_map.insert(n.clone()) {
+                            return Err(AnalysisError::SameArgForFunction(n.to_owned()));
+                        }
+                        // TODO it is 0 because its not really allocated its just weird. idk
+                        self.initialized_function_vars.insert(n.clone(), 0);
+                    }
+                    /////////////////// The body
+                    let tmp_scope = self.scope;
+                    self.scope = Scope {
+                        in_if: false,
+                        in_func: true,
+                        in_loop: false,
+                    };
+                    *vars_declared = Some(self.analyze(body)?);
+                    self.scope = tmp_scope;
+                    // clear the function vars since we may wanna do another function
+                    self.initialized_function_vars.clear();
+                }
                 ast::AstNode::Break => {
                     // if let Scope::InLoop | Scope::InLoopAndIf = scope {
                     if let Scope {
@@ -177,7 +234,13 @@ impl Analyser {
                         return Err(AnalysisError::BreakWithoutLoop);
                     }
                 }
-                ast::AstNode::Return { val } => unimplemented!()
+                ast::AstNode::Return { val } => {
+                    if self.scope.in_func {
+                        self.check_expr(val)?;
+                    } else {
+                        return Err(AnalysisError::ReturnOutSideOfFunc);
+                    }
+                }
             }
         }
         // drop all the local vars.
@@ -186,14 +249,22 @@ impl Analyser {
         }
         Ok(new_locals)
     }
-    fn make_sure_var_exists(self: &Self, var: &String) -> Result<(), AnalysisError> {
-        if !self.initialized_local_vars.contains_key(var)
-            && !self.initialized_static_vars.contains(var)
-        {
-            return Err(AnalysisError::VarNotExist(var.to_owned()));
+    /// a helper function to make sure a variable exists
+    fn make_sure_var_exists(&self, var: &String) -> Result<(), AnalysisError> {
+        if !self.scope.in_func {
+            if !self.initialized_local_vars.contains_key(var)
+                && !self.initialized_static_vars.contains(var)
+            {
+                return Err(AnalysisError::VarNotExist(var.to_owned()));
+            }
+        } else {
+            if !self.initialized_function_vars.contains_key(var) {
+                return Err(AnalysisError::VarNotExist(var.to_owned()));
+            }
         }
         Ok(())
     }
+    /// analyze an expression
     fn check_expr(self: &Self, expr: &Expr) -> Result<(), AnalysisError> {
         match expr {
             Expr::Number(n) => check_num(n)?,
