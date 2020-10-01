@@ -3,11 +3,11 @@ set outer to 0.
 set count to 0.
 
 loop,
-  if outer >= 10,
+  if outer >= 100000,
     break.
   !
   loop,
-    if inner >= 10,
+    if inner >= 1000,
       break.
     !
     change count to count + 1.

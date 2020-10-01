@@ -4,6 +4,18 @@ use crate::ast::{AstNode, AstRoot, BinOp, Expr};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
+
+const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+
+#[inline]
+fn get_fn_param(x: u32) -> Option<&'static str> {
+    if x <= 6 {
+        return Some(FUNCTION_PARAMS[x as usize]);
+    } else {
+        None
+    }
+}
+
 /// section .bss
 #[derive(Debug)]
 pub struct Bss {
@@ -20,6 +32,8 @@ pub struct Data {
 #[derive(Debug)]
 pub struct Text {
     pub instructions: Vec<String>,
+    pub functions: Vec<String>,
+    pub functions_names: Vec<String>,
 }
 
 /// represent asm
@@ -46,6 +60,8 @@ impl Code {
             },
             text: Text {
                 instructions: Vec::new(),
+                functions_names: Vec::new(),
+                functions: Vec::new(),
             },
             bss: Bss {
                 instructions: Vec::new(),
@@ -84,17 +100,41 @@ impl Code {
         }
     }
     // ////////////////////////////////////////////////////////////  Systemv abi: https://wiki.osdev.org/Calling_Conventions
-    // Platform | Return Value | Parameter Registers        | Additional Parameters |Stack Alignment | Scratch Registers 	                       | Preserved Registers 	            | Call List
-    // 86_64    | rax, rdx 	   | rdi, rsi, rdx, rcx, r8, r9 | stack (right to left) |16-byte at call | rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11 | rbx, rsp, rbp, r12, r13, r14, r15 	| rbp
+    // Platform | Return Value | Parameter Registers        | Additional Parameters |Stack Alignment | Scratch Registers 	                     | Preserved Registers 	             | Call List
+    // 86_64    | rax, rdx 	   | rdi, rsi, rdx, rcx, r8, r9 | stack (right to left) |16-byte at call | rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11 | rbx, rsp, rbp, r12, r13, r14, r15 | rbp
     /// codegen for a function decl
     fn cgen_function(
         &mut self,
         name: String,
-        args: Vec<String>,
+        args: HashMap<String, u32>,
         body: Vec<AstNode>,
         vars_declared: HashMap<String, u32>,
     ) {
-        unimplemented!()
+        self.text.functions_names.push(format!("MaNgLe_{}", name)); // declaring it global
+        self.text.functions.push(format!("MaNgLe_{}:", name));
+        ////
+        ////////// SETUP STACK //////////////////////
+        ////
+        self.text
+            .instructions
+            .push(String::from("push rbp\nmov rbp, rsp"));
+        self.stack_p_offset += 1;
+        let mem_len = vars_declared.len();
+        self.stack_p_offset += mem_len as u32;
+        self.text
+            .functions
+            .push(format!("sub rsp, {} * 8", mem_len));
+        ////
+        //////////////////////////////////////  UNSETUP STACK ////////////////////////////////////////
+        ////
+        self.text
+            .instructions
+            .push(format!("add rsp, {} * 8", vars_declared.len())); // deallocate locals
+        self.stack_p_offset -= mem_len as u32;
+        self.text.functions.push(String::from("pop rbp"));
+        self.stack_p_offset -= 1;
+        self.text.functions.push(String::from("mov rax, 0")); //return 0 if havent returned b4
+        self.text.functions.push(String::from("ret"));
     }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(
@@ -159,10 +199,10 @@ impl Code {
         for node in body {
             match node {
                 AstNode::Func {
-                    name,
-                    args,
-                    body,
-                    vars_declared,
+                    name: _,
+                    args: _,
+                    body: _,
+                    vars_declared: _,
                 } => unreachable!(),
                 AstNode::Return { val } => unimplemented!(),
                 AstNode::If {
@@ -207,10 +247,10 @@ impl Code {
             match node {
                 AstNode::Return { val } => unimplemented!(),
                 AstNode::Func {
-                    name,
-                    args,
-                    body,
-                    vars_declared,
+                    name: _,
+                    args: _,
+                    body: _,
+                    vars_declared: _,
                 } => unreachable!(),
                 AstNode::SetOrChange {
                     sete,
@@ -766,7 +806,13 @@ impl fmt::Display for Code {
         // adding the sections
         if self.text.instructions.clone().len() > 0 {
             writeln!(f, "global _start")?;
+            for i in &self.text.functions_names {
+                writeln!(f, "global {}", i)?;
+            }
             writeln!(f, "section .text")?;
+            for i in &self.text.functions {
+                writeln!(f, "{}", i)?;
+            }
             writeln!(f, "_start:")?;
             for i in self.text.instructions.clone() {
                 writeln!(f, "{}", i)?;

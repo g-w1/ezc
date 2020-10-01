@@ -2,6 +2,7 @@
 
 use crate::ast::*;
 use crate::lexer::{Locs, Token};
+use std::collections::HashMap;
 
 /// AstRoot <- Vec<Ast>
 pub fn parse(input: Vec<Token>, locs_input: Vec<u32>) -> Result<AstRoot, ParserError> {
@@ -213,16 +214,18 @@ impl Parser {
         Ok(parsed_expr)
     }
     /// FnProto <- Iden Lparen (Iden ,)* Rparen
-    fn parse_func_proto(&mut self) -> Result<(String, Vec<String>), ParserError> {
+    fn parse_func_proto(&mut self) -> Result<(String, HashMap<String, u32>), ParserError> {
         let func_name = self.parse_iden()?;
-        let mut items_in_func = Vec::new();
+        let mut items_in_func = HashMap::new();
         self.expect_eat_token(Token::Lparen)?;
         if self.cur_tok() == Token::Rparen {
             self.expect_eat_token(Token::Rparen)?;
             return Ok((func_name, items_in_func));
         }
+        let mut i = 1;
         while let Token::Iden(_) = self.cur_tok() {
-            items_in_func.push(self.parse_iden()?);
+            items_in_func.insert(self.parse_iden()?, i);
+            i +=1;
             // OpenBlock is just ','. maybe rename
             match self.cur_tok() {
                 Token::OpenBlock => self.expect_eat_token(Token::OpenBlock)?,
@@ -437,7 +440,13 @@ mod tests {
         let ast = parser.parse(true).unwrap();
         assert_eq!(
             vec![AstNode::Func {
-                args: vec![String::from("y"), String::from("z"), String::from("b")],
+                args: {
+                    let mut m = HashMap::new();
+                    for (i, v) in vec![String::from("y"), String::from("z"), String::from("b")].iter().enumerate() {
+                        m.insert(v.to_owned(),i as u32 + 1);
+                    }
+                    m
+                },
                 body: vec![
                     AstNode::SetOrChange {
                         sete: String::from("y"),

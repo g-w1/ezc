@@ -14,6 +14,7 @@ const HELP_MESSAGE: &'static str = "ezc
 
 Usage: ezc [file] [options] ...
 Options:
+
 -g              Include Debug Info
 -h | --help     Show This Help Message and Exit
 
