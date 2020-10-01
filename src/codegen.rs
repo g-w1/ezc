@@ -83,6 +83,9 @@ impl Code {
             }
         }
     }
+    // ////////////////////////////////////////////////////////////  Systemv abi: https://wiki.osdev.org/Calling_Conventions
+    // Platform | Return Value | Parameter Registers        | Additional Parameters |Stack Alignment | Scratch Registers 	                       | Preserved Registers 	            | Call List
+    // 86_64    | rax, rdx 	   | rdi, rsi, rdx, rcx, r8, r9 | stack (right to left) |16-byte at call | rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11 | rbx, rsp, rbp, r12, r13, r14, r15 	| rbp
     /// codegen for a function decl
     fn cgen_function(
         &mut self,

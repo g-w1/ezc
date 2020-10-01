@@ -447,6 +447,7 @@ mod tests {
 
 function test(y,z,b),
 
+    set p to 4.
     loop,
       change y to y + 1.
       if y > 10,
@@ -463,9 +464,26 @@ function lol(),
     return 0.
 !
 ";
+        use std::collections::HashMap;
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
+        match ast.tree[1].clone() {
+            crate::ast::AstNode::Func {
+                vars_declared,
+                name: _,
+                args: _,
+                body: _,
+            } => assert_eq!(
+                {
+                    let mut m = HashMap::new();
+                    m.insert(String::from("p"), 1);
+                    m
+                },
+                vars_declared.unwrap()
+            ),
+            _ => unreachable!(),
+        }
     }
     #[test]
     #[should_panic]
