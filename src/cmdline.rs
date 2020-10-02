@@ -75,7 +75,7 @@ fn parse_input_to_code(input: String) -> String {
     let output = parser::parse(output.0.unwrap(), output.1);
     match output {
         Ok(mut res) => match analyze::analize(&mut res) {
-            Ok(t) => {
+            Ok(_) => {
                 dbg!(&res);
                 let mut code = codegen::Code::new();
                 code.codegen(res);

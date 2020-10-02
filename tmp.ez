@@ -1,6 +1,4 @@
 function test(y,z,b),
-
   set p to 4.
   return y.
-
 !

@@ -5,14 +5,33 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
 
+/// A function parameter
+enum Fparam {
+    Reg(&'static str),
+    Stack(u32),
+}
+
 const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 
 #[inline]
-fn get_fn_param(x: u32) -> Option<&'static str> {
-    if x <= 6 {
-        return Some(FUNCTION_PARAMS[x as usize]);
+fn reg_to_farness(s: &'static str) -> u32 {
+    match s {
+        "rdi" => 1,
+        "rsi" => 2,
+        "rdx" => 3,
+        "rcx" => 4,
+        "r8" => 5,
+        "r9" => 6,
+        _ => unreachable!(),
+    }
+}
+
+#[inline]
+fn get_fn_param(x: &u32, len: usize) -> Fparam {
+    if x <= &6 {
+        Fparam::Reg(FUNCTION_PARAMS[len - *x as usize]) // we do len - because the first six are not stack based
     } else {
-        None
+        Fparam::Stack(*x)
     }
 }
 
@@ -45,6 +64,7 @@ pub struct Code {
     initalized_local_vars: HashMap<String, u32>,
     number_for_mangling: u32,
     stack_p_offset: u32,
+    in_func: bool,
 }
 
 /// a helper function to provide `qword [_varname]` from `varname`
@@ -69,6 +89,7 @@ impl Code {
             number_for_mangling: 0,
             stack_p_offset: 0,
             initalized_local_vars: HashMap::new(),
+            in_func: false,
         }
     }
     /// generate the code. dont deal with any of the sections
@@ -99,6 +120,19 @@ impl Code {
             }
         }
     }
+    fn cgen_return_stmt(&mut self, val: Expr) {
+        match val.to_owned() {
+            Expr::BinOp { lhs, op, rhs } => {
+                self.cgen_expr(*lhs, op, *rhs);
+                self.text.instructions.push(format!("pop rax\nret"));
+            }
+            Expr::Number(s) => self.text.instructions.push(format!("mov rax, {}\nret", s)),
+            Expr::Iden(_) => self
+                .text
+                .instructions
+                .push(format!("mov rax, {}\nret", self.get_display_asm(&val))),
+        }
+    }
     // ////////////////////////////////////////////////////////////  Systemv abi: https://wiki.osdev.org/Calling_Conventions
     // Platform | Return Value | Parameter Registers        | Additional Parameters |Stack Alignment | Scratch Registers 	                     | Preserved Registers 	             | Call List
     // 86_64    | rax, rdx 	   | rdi, rsi, rdx, rcx, r8, r9 | stack (right to left) |16-byte at call | rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11 | rbx, rsp, rbp, r12, r13, r14, r15 | rbp
@@ -110,6 +144,12 @@ impl Code {
         body: Vec<AstNode>,
         vars_declared: HashMap<String, u32>,
     ) {
+        ////////////////////////////// Some setup /////////////////////////
+        let was_in_func_before_called = self.in_func;
+        self.in_func = true;
+        // clear local vars bc a func starts with none
+        self.initalized_local_vars.clear();
+        // doing the args
         self.text.functions_names.push(format!("MaNgLe_{}", name)); // declaring it global
         self.text.functions.push(format!("MaNgLe_{}:", name));
         ////
@@ -124,9 +164,84 @@ impl Code {
         self.text
             .functions
             .push(format!("sub rsp, {} * 8", mem_len));
+        let mut double_keys: HashSet<String> = HashSet::new();
+        // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
+        // set z to 5. if z = 5,
+        //     set a to 5.
+        //     if a > 4,
+        //         set test to a.
+        //     !
+        //     set test to 5.
+        // !
+        for (arg, place) in &args {
+            match get_fn_param(place, args.len()) {
+                // this part basically pushes all the register args to the stack because i like the stack and not registers but i also like systemv abi.
+                // TODO does this logic actually work or was i just wishful?
+                Fparam::Reg(s) => {
+                    dbg!(self.stack_p_offset);
+                    self.initalized_local_vars.insert(
+                        arg.to_owned(),
+                        self.stack_p_offset as u32 - reg_to_farness(s),
+                    );
+                    self.stack_p_offset += 1;
+                    self.text.instructions.push(String::from("add rsp, 8"));
+                }
+                Fparam::Stack(n) => {
+                    self.initalized_local_vars
+                        .insert(arg.to_owned(), self.stack_p_offset as u32 + n);
+                }
+            }
+        }
+        for (varname, place) in &vars_declared {
+            if self.initalized_local_vars.contains_key(varname) {
+                double_keys.insert(varname.clone());
+            }
+            self.initalized_local_vars
+                .insert(varname.to_owned(), self.stack_p_offset as u32 - place);
+        }
+        ////
+        //////////////////// BODY /////////////////////
+        ////
+        for node in body {
+            match node {
+                AstNode::SetOrChange {
+                    sete,
+                    setor,
+                    change: _,
+                } => self.cgen_set_or_change_stmt(sete, setor),
+                AstNode::If {
+                    body,
+                    guard,
+                    vars_declared,
+                } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None),
+                AstNode::Return { val } => self.cgen_return_stmt(val),
+                AstNode::Loop { body } => self.cgen_loop_stmt(body),
+                _ => unreachable!(), // function or break statement
+            }
+        }
         ////
         //////////////////////////////////////  UNSETUP STACK ////////////////////////////////////////
         ////
+        for (var, _) in &vars_declared {
+            if !double_keys.contains(var) {
+                self.initalized_local_vars.remove(var);
+            }
+        }
+        for (arg, place) in &args {
+            match get_fn_param(place, args.len()) {
+                // this part basically pushes all the register args to the stack because i like the stack and not registers but i also like systemv abi.
+                // TODO does this logic actually work or was i just wishful?
+                Fparam::Reg(s) => {
+                    self.stack_p_offset -= 1;
+                    self.text.instructions.push(String::from("sub rsp, 8"));
+                }
+                _ => {}
+            }
+        }
+        for (arg, place) in args {
+            self.initalized_local_vars
+                .insert(arg, self.stack_p_offset as u32 + place);
+        }
         self.text
             .instructions
             .push(format!("add rsp, {} * 8", vars_declared.len())); // deallocate locals
@@ -135,6 +250,9 @@ impl Code {
         self.stack_p_offset -= 1;
         self.text.functions.push(String::from("mov rax, 0")); //return 0 if havent returned b4
         self.text.functions.push(String::from("ret"));
+        ////////////////// cleanup ///////////////
+        self.initalized_local_vars.clear(); // clear initalized vars
+        self.in_func = was_in_func_before_called;
     }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(
@@ -175,7 +293,7 @@ impl Code {
             .push(format!(".IF_BODY_{}", our_number_for_mangling));
         ///////////// ALLOCATION FOR THE IF STMT //////////////////////////////
         let mut double_keys: HashSet<String> = HashSet::new();
-        // the use of this is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
+        // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
         // set z to 5. if z = 5,
         //     set a to 5.
         //     if a > 4,
@@ -204,7 +322,7 @@ impl Code {
                     body: _,
                     vars_declared: _,
                 } => unreachable!(),
-                AstNode::Return { val } => unimplemented!(),
+                AstNode::Return { val } => self.cgen_return_stmt(val),
                 AstNode::If {
                     body,
                     guard,
@@ -245,7 +363,7 @@ impl Code {
             .push(format!(".START_LOOP_{}", our_number_for_mangling));
         for node in body {
             match node {
-                AstNode::Return { val } => unimplemented!(),
+                AstNode::Return { val } => self.cgen_return_stmt(val),
                 AstNode::Func {
                     name: _,
                     args: _,
@@ -444,11 +562,11 @@ impl Code {
             &BinOp::Or => special_bop("or"),
             &BinOp::And => special_bop("and"),
             &BinOp::Gt => crate::eq_op!("jg", self),
+            &BinOp::Gte => crate::eq_op!("jge", self),
             &BinOp::Lt => crate::eq_op!("jl", self),
             &BinOp::Equ => crate::eq_op!("je", self),
             &BinOp::Ne => crate::eq_op!("jne", self),
             &BinOp::Lte => crate::eq_op!("jle", self),
-            &BinOp::Gte => crate::eq_op!("jge", self),
         }
     }
 }
@@ -464,7 +582,6 @@ fn special_bop(op: &str) -> [String; 4] {
         String::from("push r9"),
     ]
 }
-
 #[inline]
 fn get_op_of_eq_op(jump_cond: &str) -> &str {
     match jump_cond {

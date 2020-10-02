@@ -225,7 +225,7 @@ impl Parser {
         let mut i = 1;
         while let Token::Iden(_) = self.cur_tok() {
             items_in_func.insert(self.parse_iden()?, i);
-            i +=1;
+            i += 1;
             // OpenBlock is just ','. maybe rename
             match self.cur_tok() {
                 Token::OpenBlock => self.expect_eat_token(Token::OpenBlock)?,
@@ -442,8 +442,11 @@ mod tests {
             vec![AstNode::Func {
                 args: {
                     let mut m = HashMap::new();
-                    for (i, v) in vec![String::from("y"), String::from("z"), String::from("b")].iter().enumerate() {
-                        m.insert(v.to_owned(),i as u32 + 1);
+                    for (i, v) in vec![String::from("y"), String::from("z"), String::from("b")]
+                        .iter()
+                        .enumerate()
+                    {
+                        m.insert(v.to_owned(), i as u32 + 1);
                     }
                     m
                 },
