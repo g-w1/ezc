@@ -108,14 +108,14 @@ impl Code {
                 self.cgen_expr(*lhs, op, *rhs);
                 self.text
                     .instructions
-                    .push(format!("pop rax\njmp RETURN_{}", self.cur_func));
+                    .push(format!("pop rax\njmp .RETURN_{}", self.cur_func));
             }
             Expr::Number(s) => self
                 .text
                 .instructions
-                .push(format!("mov rax, {}\njmp RETURN_{}", s, self.cur_func)),
+                .push(format!("mov rax, {}\njmp .RETURN_{}", s, self.cur_func)),
             Expr::Iden(_) => self.text.instructions.push(format!(
-                "mov rax, {}\njmp RETURN_{}",
+                "mov rax, {}\njmp .RETURN_{}",
                 self.get_display_asm(&val),
                 self.cur_func
             )),
@@ -213,7 +213,7 @@ impl Code {
         self.text.instructions.push(String::from("mov rax, 0")); //return 0 if havent returned b4
         self.text
             .instructions
-            .push(format!("RETURN_{}:", self.cur_func));
+            .push(format!(".RETURN_{}", self.cur_func));
         for (var, _) in &vars_declared {
             if !double_keys.contains(var) {
                 self.initalized_local_vars.remove(var);

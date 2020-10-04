@@ -1,5 +1,5 @@
 [initalize variables]
-set n to 6.
+set n to 1000000000.
 set counter to 0.
 set a to 0.
 set b to 1.
