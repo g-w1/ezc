@@ -33,6 +33,7 @@ pub struct Code {
     initalized_local_vars: HashMap<String, u32>,
     number_for_mangling: u32,
     stack_p_offset: u32,
+    cur_func: String,
 }
 
 /// a helper function to provide `qword [_varname]` from `varname`
@@ -56,6 +57,7 @@ impl Code {
             number_for_mangling: 0,
             stack_p_offset: 0,
             initalized_local_vars: HashMap::new(),
+            cur_func: String::new(),
         }
     }
     /// generate the code. dont deal with any of the sections
@@ -100,17 +102,23 @@ impl Code {
             }
         }
     }
-    fn cgen_return_stmt(&mut self, val: Expr) {
+    fn cgen_return_stmt(&mut self, val: Expr,) {
         match val.to_owned() {
             Expr::BinOp { lhs, op, rhs } => {
                 self.cgen_expr(*lhs, op, *rhs);
-                self.text.instructions.push(format!("pop rax\nret"));
+                self.text
+                    .instructions
+                    .push(format!("pop rax\njmp RETURN_{}", self.cur_func));
             }
-            Expr::Number(s) => self.text.instructions.push(format!("mov rax, {}\nret", s)),
-            Expr::Iden(_) => self
+            Expr::Number(s) => self
                 .text
                 .instructions
-                .push(format!("mov rax, {}\nret", self.get_display_asm(&val))),
+                .push(format!("mov rax, {}\njmp RETURN_{}", s, self.cur_func)),
+            Expr::Iden(_) => self.text.instructions.push(format!(
+                "mov rax, {}\njmp RETURN_{}",
+                self.get_display_asm(&val),
+                self.cur_func
+            )),
         }
     }
     /// a little helper fn
@@ -140,9 +148,10 @@ impl Code {
         ////////////////////////////// Some setup /////////////////////////
         // clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
+        self.cur_func = name.clone();
         // doing the args
-        self.text.functions_names.push(format!("MaNgLe_{}", name)); // declaring it global
-        self.text.instructions.push(format!("MaNgLe_{}:", name));
+        self.text.functions_names.push(format!("MaNgLe_{}", &name)); // declaring it global
+        self.text.instructions.push(format!("MaNgLe_{}:", &name));
         ////
         ////////// SETUP STACK //////////////////////
         ////
@@ -193,7 +202,7 @@ impl Code {
                     guard,
                     vars_declared,
                 } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None),
-                AstNode::Return { val } => self.cgen_return_stmt(val),
+                AstNode::Return { val } => self.cgen_return_stmt(val,),
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
                 _ => unreachable!(), // function or break statement
             }
@@ -201,6 +210,10 @@ impl Code {
         ////
         //////////////////////////////////////  UNSETUP STACK ////////////////////////////////////////
         ////
+        self.text.instructions.push(String::from("mov rax, 0")); //return 0 if havent returned b4
+        self.text
+            .instructions
+            .push(format!("RETURN_{}:", self.cur_func));
         for (var, _) in &vars_declared {
             if !double_keys.contains(var) {
                 self.initalized_local_vars.remove(var);
@@ -219,7 +232,6 @@ impl Code {
         self.stack_p_offset -= mem_len as u32;
         self.text.instructions.push(String::from("pop rbp"));
         self.stack_p_offset -= 1;
-        self.text.instructions.push(String::from("mov rax, 0")); //return 0 if havent returned b4
         self.text.instructions.push(String::from("ret"));
         ////////////////// cleanup ///////////////
         self.initalized_local_vars.clear(); // clear initalized vars
