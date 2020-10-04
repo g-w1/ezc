@@ -1,5 +1,5 @@
 build:
-	ezc lib.ez -g -c
+	cargo run -- lib.ez -g -c
 	gcc main.c -g -c
 	gcc main.o out.o -o out
 clean:

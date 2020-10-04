@@ -178,7 +178,6 @@ impl Code {
         let mut tmp;
         for (i, arg) in args.iter().enumerate() {
             tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32;
-
             // TODO does this work
             self.initalized_local_vars.insert(arg.clone(), tmp);
         }
@@ -934,12 +933,15 @@ impl Code {
                 }
             }
             // exit 0
-            writeln!(
-                f,
-                "mov rax, 60
+            if !lib {
+                writeln!(
+                    f,
+                    "mov rax, 60
 xor rdi, rdi
 syscall"
-            ).unwrap();
+                )
+                .unwrap();
+            }
         }
         if self.data.instructions.len() > 0 {
             writeln!(f, "section .data").unwrap();

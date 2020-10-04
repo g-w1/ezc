@@ -7,7 +7,7 @@ loop,
     break.
   !
   loop,
-    if inner >= 1000,
+    if inner >= 10000,
       break.
     !
     change count to count + 1.
@@ -16,5 +16,4 @@ loop,
   change count to count + 1.
   change outer to outer + 1.
   change inner to 0.
-
 !
