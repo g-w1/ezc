@@ -1,0 +1,3 @@
+function another_test(a),
+  return a + 1 + 5.
+!
