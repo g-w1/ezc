@@ -2,13 +2,48 @@
 
 use crate::ast::*;
 use crate::lexer::{Locs, Token};
-use std::collections::HashMap;
+use std::cmp::Ordering;
 
 /// AstRoot <- Vec<Ast>
 pub fn parse(input: Vec<Token>, locs_input: Vec<u32>) -> Result<AstRoot, ParserError> {
+    let mut tree = Parser::new(input, locs_input).parse(true)?;
+    // sort it so that funcs are on top of vec so that codegen is MUCH easier
+    tree.sort_by(|a, b| {
+        if let AstNode::Func {
+            body: _,
+            vars_declared: _,
+            args: _,
+            name: _,
+        } = a
+        {
+            if let AstNode::Func {
+                body: _,
+                vars_declared: _,
+                args: _,
+                name: _,
+            } = b
+            {
+                Ordering::Equal
+            } else {
+                Ordering::Less
+            }
+        } else {
+            if let AstNode::Func {
+                body: _,
+                vars_declared: _,
+                args: _,
+                name: _,
+            } = a
+            {
+                Ordering::Equal
+            } else {
+                Ordering::Greater
+            }
+        }
+    });
     Ok(AstRoot {
         static_vars: None,
-        tree: Parser::new(input, locs_input).parse(true)?,
+        tree,
     })
 }
 
@@ -71,10 +106,10 @@ impl Parser {
             pos: self.locs_input[self.pos_input],
         }
     }
-    /// Peek one token ahead without eating it. may need in future
-    fn peek(self: &mut Self) -> Token {
-        self.input[self.pos_input + 1].clone()
-    }
+    // /// Peek one token ahead without eating it. may need in future
+    // fn peek(self: &mut Self) -> Token {
+    //     self.input[self.pos_input + 1].clone()
+    // }
     /// Get the current token in the stream
     fn cur_tok(self: &Self) -> Token {
         self.input[self.pos_input].clone()
@@ -214,18 +249,16 @@ impl Parser {
         Ok(parsed_expr)
     }
     /// FnProto <- Iden Lparen (Iden ,)* Rparen
-    fn parse_func_proto(&mut self) -> Result<(String, HashMap<String, u32>), ParserError> {
+    fn parse_func_proto(&mut self) -> Result<(String, Vec<String>), ParserError> {
         let func_name = self.parse_iden()?;
-        let mut items_in_func = HashMap::new();
+        let mut items_in_func = Vec::new();
         self.expect_eat_token(Token::Lparen)?;
         if self.cur_tok() == Token::Rparen {
             self.expect_eat_token(Token::Rparen)?;
             return Ok((func_name, items_in_func));
         }
-        let mut i = 1;
         while let Token::Iden(_) = self.cur_tok() {
-            items_in_func.insert(self.parse_iden()?, i);
-            i += 1;
+            items_in_func.push(self.parse_iden()?);
             // OpenBlock is just ','. maybe rename
             match self.cur_tok() {
                 Token::OpenBlock => self.expect_eat_token(Token::OpenBlock)?,
@@ -440,16 +473,7 @@ mod tests {
         let ast = parser.parse(true).unwrap();
         assert_eq!(
             vec![AstNode::Func {
-                args: {
-                    let mut m = HashMap::new();
-                    for (i, v) in vec![String::from("y"), String::from("z"), String::from("b")]
-                        .iter()
-                        .enumerate()
-                    {
-                        m.insert(v.to_owned(), i as u32 + 1);
-                    }
-                    m
-                },
+                args: vec![String::from("y"), String::from("z"), String::from("b")],
                 body: vec![
                     AstNode::SetOrChange {
                         sete: String::from("y"),

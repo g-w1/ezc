@@ -70,7 +70,7 @@ pub enum AstNode {
     Func {
         name: String,
         /// the arguments used in the function
-        args: HashMap<String, u32>,
+        args: Vec<String>,
         body: Vec<AstNode>,
         /// for the variables declared inside the function at top level
         vars_declared: Option<HashMap<String, u32>>,

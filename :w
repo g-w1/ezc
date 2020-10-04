@@ -21,6 +21,7 @@ pub struct Data {
 #[derive(Debug)]
 pub struct Text {
     pub instructions: Vec<String>,
+    pub functions: Vec<String>,
     pub functions_names: Vec<String>,
 }
 
@@ -33,6 +34,7 @@ pub struct Code {
     initalized_local_vars: HashMap<String, u32>,
     number_for_mangling: u32,
     stack_p_offset: u32,
+    in_func: bool,
 }
 
 /// a helper function to provide `qword [_varname]` from `varname`
@@ -49,6 +51,7 @@ impl Code {
             text: Text {
                 instructions: Vec::new(),
                 functions_names: Vec::new(),
+                functions: Vec::new(),
             },
             bss: Bss {
                 instructions: Vec::new(),
@@ -56,6 +59,7 @@ impl Code {
             number_for_mangling: 0,
             stack_p_offset: 0,
             initalized_local_vars: HashMap::new(),
+            in_func: false,
         }
     }
     /// generate the code. dont deal with any of the sections
@@ -63,20 +67,7 @@ impl Code {
         for var in tree.static_vars.unwrap() {
             self.bss.instructions.push(format!("MaNgLe_{} resq 1", var));
         }
-        let started_tl = false;
         for node in tree.tree {
-            if let AstNode::Func {
-                name: _,
-                args: _,
-                body: _,
-                vars_declared: _,
-            } = node
-            {
-            } else {
-                if !started_tl {
-                    self.text.instructions.push(String::from("_start:")); // TODO change if going recursive
-                }
-            }
             match node {
                 AstNode::SetOrChange {
                     sete,
@@ -137,11 +128,13 @@ impl Code {
         vars_declared: HashMap<String, u32>,
     ) {
         ////////////////////////////// Some setup /////////////////////////
+        let was_in_func_before_called = self.in_func;
+        self.in_func = true;
         // clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
         // doing the args
         self.text.functions_names.push(format!("MaNgLe_{}", name)); // declaring it global
-        self.text.instructions.push(format!("MaNgLe_{}:", name));
+        self.text.functions.push(format!("MaNgLe_{}:", name));
         ////
         ////////// SETUP STACK //////////////////////
         ////
@@ -152,7 +145,7 @@ impl Code {
         let mem_len = vars_declared.len();
         self.stack_p_offset += mem_len as u32;
         self.text
-            .instructions
+            .functions
             .push(format!("sub rsp, {} * 8", mem_len));
         let mut double_keys: HashSet<String> = HashSet::new();
         // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
@@ -163,12 +156,12 @@ impl Code {
         //     !
         //     set test to 5.
         // !
-        let mut tmp;
         for (i, arg) in args.iter().enumerate() {
-            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32;
-
             // TODO does this work
-            self.initalized_local_vars.insert(arg.clone(), tmp);
+            self.initalized_local_vars.insert(
+                arg.clone(),
+                self.stack_p_offset - self.reg_to_farness_stack(i) as u32,
+            );
         }
         for (varname, place) in &vars_declared {
             if self.initalized_local_vars.contains_key(varname) {
@@ -206,7 +199,7 @@ impl Code {
             }
         }
         // deallocate args pushed to stack from regs
-        for (place, _) in args.iter().enumerate() {
+        for (place, arg) in args.iter().enumerate() {
             if place <= 6 {
                 self.stack_p_offset -= 1;
                 self.text.instructions.push(String::from("sub rsp, 8"));
@@ -216,12 +209,13 @@ impl Code {
             .instructions
             .push(format!("add rsp, {} * 8", vars_declared.len())); // deallocate locals
         self.stack_p_offset -= mem_len as u32;
-        self.text.instructions.push(String::from("pop rbp"));
+        self.text.functions.push(String::from("pop rbp"));
         self.stack_p_offset -= 1;
-        self.text.instructions.push(String::from("mov rax, 0")); //return 0 if havent returned b4
-        self.text.instructions.push(String::from("ret"));
+        self.text.functions.push(String::from("mov rax, 0")); //return 0 if havent returned b4
+        self.text.functions.push(String::from("ret"));
         ////////////////// cleanup ///////////////
         self.initalized_local_vars.clear(); // clear initalized vars
+        self.in_func = was_in_func_before_called;
     }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(
@@ -896,7 +890,10 @@ impl fmt::Display for Code {
                 writeln!(f, "global {}", i)?;
             }
             writeln!(f, "section .text")?;
-            // writeln!(f, "_start:")?;
+            for i in &self.text.functions {
+                writeln!(f, "{}", i)?;
+            }
+            writeln!(f, "_start:")?;
             for i in self.text.instructions.clone() {
                 writeln!(f, "{}", i)?;
             }

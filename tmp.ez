@@ -2,3 +2,10 @@ function test(y,z,b),
   set p to 4.
   return y.
 !
+
+set y to 5.
+
+function another_test(a),
+  set another to 4.
+  return another.
+!

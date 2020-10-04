@@ -213,10 +213,10 @@ impl Analyser {
                     // TODO get rid of this .clone()
                     for n in args.clone() {
                         if !args_map.insert(n.clone()) {
-                            return Err(AnalysisError::SameArgForFunction(n.to_owned().0));
+                            return Err(AnalysisError::SameArgForFunction(n.to_owned()));
                         }
                         // TODO it is 0 because its not really allocated its just weird. idk
-                        self.initialized_function_vars.insert(n.0.clone(), 0);
+                        self.initialized_function_vars.insert(n.clone(), 0);
                     }
                     /////////////////// The body
                     let tmp_scope = self.scope;
@@ -228,7 +228,7 @@ impl Analyser {
                     /////////////////// Clean up:
                     //we now remove all of the arguments from the variables declared to help out in codegen
                     let mut tmp_res = self.analyze(body)?;
-                    tmp_res.retain(|x, _| !args.contains_key(x));
+                    tmp_res.retain(|x, _| !args.contains(x));
                     *vars_declared = Some(tmp_res);
                     self.scope = tmp_scope;
                     // clear the function vars since we may wanna do another function
@@ -468,7 +468,7 @@ function lol(),
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
-        match ast.tree[1].clone() {
+        match ast.tree[0].clone() {
             crate::ast::AstNode::Func {
                 vars_declared,
                 name: _,
