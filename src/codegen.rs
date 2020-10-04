@@ -221,12 +221,12 @@ impl Code {
             }
         }
         // // deallocate args pushed to stack from regs
-        // for (place, _) in args.iter().enumerate() {
-        //     if place <= 6 {
-        //         self.stack_p_offset -= 1;
-        //         self.text.instructions.push(String::from("sub rsp, 8"));
-        //     }
-        // }
+        for (place, _) in args.iter().enumerate() {
+            if place <= 6 {
+                self.stack_p_offset -= 1;
+                self.text.instructions.push(String::from("sub rsp, 8"));
+            }
+        }
         // self.text
         //     .instructions
         //     .push(format!("sub rsp, {} * 8", vars_declared.len())); // deallocate locals

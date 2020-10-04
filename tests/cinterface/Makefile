@@ -3,5 +3,5 @@ build:
 	gcc main.c -g -c
 	gcc main.o out.o -o out
 clean:
-	rm out*
-	rm main.o
+	rm *out*
+	rm *.o
