@@ -3,7 +3,6 @@
 use crate::ast::{AstNode, AstRoot, BinOp, Expr};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt;
 
 /// section .bss
 #[derive(Debug)]
@@ -77,7 +76,7 @@ impl Code {
             } else {
                 if !started_tl {
                     self.text.instructions.push(String::from("_start:")); // TODO change if going recursive
-                    started_tl = true
+                    started_tl = true;
                 }
             }
             match node {
@@ -101,8 +100,11 @@ impl Code {
                 _ => unreachable!(),
             }
         }
+        if !started_tl {
+            self.text.instructions.push(String::from("_start:"))
+        }
     }
-    fn cgen_return_stmt(&mut self, val: Expr,) {
+    fn cgen_return_stmt(&mut self, val: Expr) {
         match val.to_owned() {
             Expr::BinOp { lhs, op, rhs } => {
                 self.cgen_expr(*lhs, op, *rhs);
@@ -163,7 +165,7 @@ impl Code {
         self.stack_p_offset += mem_len as u32;
         self.text
             .instructions
-            .push(format!("sub rsp, {} * 8", mem_len));
+            .push(format!("add rsp, {} * 8", mem_len));
         let mut double_keys: HashSet<String> = HashSet::new();
         // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
         // set z to 5. if z = 5,
@@ -202,7 +204,7 @@ impl Code {
                     guard,
                     vars_declared,
                 } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None),
-                AstNode::Return { val } => self.cgen_return_stmt(val,),
+                AstNode::Return { val } => self.cgen_return_stmt(val),
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
                 _ => unreachable!(), // function or break statement
             }
@@ -219,16 +221,17 @@ impl Code {
                 self.initalized_local_vars.remove(var);
             }
         }
-        // deallocate args pushed to stack from regs
-        for (place, _) in args.iter().enumerate() {
-            if place <= 6 {
-                self.stack_p_offset -= 1;
-                self.text.instructions.push(String::from("sub rsp, 8"));
-            }
-        }
-        self.text
-            .instructions
-            .push(format!("add rsp, {} * 8", vars_declared.len())); // deallocate locals
+        // // deallocate args pushed to stack from regs
+        // for (place, _) in args.iter().enumerate() {
+        //     if place <= 6 {
+        //         self.stack_p_offset -= 1;
+        //         self.text.instructions.push(String::from("sub rsp, 8"));
+        //     }
+        // }
+        // self.text
+        //     .instructions
+        //     .push(format!("sub rsp, {} * 8", vars_declared.len())); // deallocate locals
+        self.text.instructions.push(String::from("mov rsp, rbp"));
         self.stack_p_offset -= mem_len as u32;
         self.text.instructions.push(String::from("pop rbp"));
         self.stack_p_offset -= 1;
@@ -630,7 +633,7 @@ MaNgLe_x resq 1
 MaNgLe_y resq 1
 MaNgLe_test resq 1
 ";
-        assert_eq!(format!("{}", code), correct_code);
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
     fn codegen_if_stmt() {
@@ -681,7 +684,7 @@ section .bss
 MaNgLe_x resq 1
 MaNgLe_y resq 1
 ";
-        assert_eq!(format!("{}", code), correct_code);
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
     fn codegen_expr() {
@@ -762,7 +765,7 @@ MaNgLe_x resq 1
 MaNgLe_z resq 1
 MaNgLe_res_of_bop resq 1
 ";
-        assert_eq!(format!("{}", code), correct_code);
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
     fn codegen_and_bop() {
@@ -805,7 +808,7 @@ section .bss
 MaNgLe_x resq 1
 MaNgLe_y resq 1
 ";
-        assert_eq!(format!("{}", code), correct_code);
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
     fn codegen_change_stmt() {
@@ -834,7 +837,7 @@ section .bss
 MaNgLe_x resq 1
 MaNgLe_y resq 1
 ";
-        assert_eq!(format!("{}", code), correct_code);
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
     fn codegen_loop() {
@@ -895,23 +898,40 @@ syscall
 section .bss
 MaNgLe_x resq 1
 ";
-        assert_eq!(format!("{}", code), correct_code);
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
 }
 
-impl fmt::Display for Code {
+impl Code {
     /// printing the asm to stdout. should be very easy to port to file because stdout is a file!!!
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub fn fmt(&self, lib: bool) -> String {
         // adding the sections
+        let mut f = String::new();
+        use std::fmt::Write;
         if self.text.instructions.clone().len() > 0 {
-            writeln!(f, "global _start")?;
-            for i in &self.text.functions_names {
-                writeln!(f, "global {}", i)?;
+            if !lib {
+                writeln!(f, "global _start").unwrap();
             }
-            writeln!(f, "section .text")?;
-            // writeln!(f, "_start:")?;
-            for i in self.text.instructions.clone() {
-                writeln!(f, "{}", i)?;
+            for i in &self.text.functions_names {
+                writeln!(f, "global {}", i).unwrap();
+            }
+            writeln!(f, "section .text").unwrap();
+            if lib {
+                for i in self
+                    .text
+                    .instructions
+                    .iter()
+                    .take_while(|s| **s != "_start:".to_string())
+                {
+                    dbg!(i);
+                    writeln!(f, "{}", i).unwrap();
+                }
+            } else {
+                dbg!("elseeeeeeeeeeeeeeeee");
+                dbg!(&self.text.instructions);
+                for i in &self.text.instructions {
+                    writeln!(f, "{}", i).unwrap();
+                }
             }
             // exit 0
             writeln!(
@@ -919,21 +939,21 @@ impl fmt::Display for Code {
                 "mov rax, 60
 xor rdi, rdi
 syscall"
-            )?;
+            ).unwrap();
         }
-        if self.data.instructions.clone().len() > 0 {
-            writeln!(f, "section .data")?;
-            for i in self.data.instructions.clone() {
-                writeln!(f, "{}", i)?;
+        if self.data.instructions.len() > 0 {
+            writeln!(f, "section .data").unwrap();
+            for i in &self.data.instructions {
+                writeln!(f, "{}", i).unwrap();
             }
         }
         if self.bss.instructions.clone().len() > 0 {
-            writeln!(f, "section .bss")?;
-            for i in self.bss.instructions.clone() {
-                writeln!(f, "{}", i)?;
+            writeln!(f, "section .bss").unwrap();
+            for i in &self.bss.instructions {
+                writeln!(f, "{}", i).unwrap();
             }
         }
 
-        Ok(())
+        f
     }
 }

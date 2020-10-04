@@ -16,6 +16,7 @@ Usage: ezc [file] [options] ...
 Options:
 
 -g              Include Debug Info
+-c              Just compile the functions into a library/object (.o) file
 -h | --help     Show This Help Message and Exit
 
 To Report Bugs Go To: github.com/g-w1/ezc/issues/";
@@ -24,7 +25,7 @@ To Report Bugs Go To: github.com/g-w1/ezc/issues/";
 pub fn driver() {
     // generate the code
     let opts = parse_cmd_line_opts();
-    let code = parse_input_to_code(opts.input);
+    let code = parse_input_to_code(opts.input, opts.library);
     // write the code to temp asm file
     fs::write("out.asm", code).unwrap_or_else(|e| {
         eprintln!("{}Cannot write assembly to temporary file: {}", ERROR, e);
@@ -52,19 +53,23 @@ pub fn driver() {
         );
     }
     // link it
-    command_run_error_printing("ld", Command::new("ld").arg("out.o").arg("-o").arg("a.out"));
+    if !opts.library {
+        command_run_error_printing("ld", Command::new("ld").arg("out.o").arg("-o").arg("a.out"));
+    }
     // remove temp files if not in debug mode
     if !opts.debug {
         if let Err(e) = fs::remove_file("out.asm") {
             eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
         }
     }
-    if let Err(e) = fs::remove_file("out.o") {
-        eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
+    if !opts.library {
+        if let Err(e) = fs::remove_file("out.o") {
+            eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
+        }
     }
 }
 
-fn parse_input_to_code(input: String) -> String {
+fn parse_input_to_code(input: String, lib: bool) -> String {
     let mut tokenizer = lexer::Tokenizer::new();
     let output = tokenizer.lex(&input);
     if let Err(e) = output.0 {
@@ -76,10 +81,10 @@ fn parse_input_to_code(input: String) -> String {
     match output {
         Ok(mut res) => match analyze::analize(&mut res) {
             Ok(_) => {
-                dbg!(&res);
+                // dbg!(&res);
                 let mut code = codegen::Code::new();
                 code.codegen(res);
-                code_text = format!("{}", code);
+                code_text = format!("{}", code.fmt(lib));
             }
             Err(e) => {
                 println!("{}{}", ERROR, e);
@@ -97,6 +102,7 @@ fn parse_input_to_code(input: String) -> String {
 struct CmdArgInfo {
     debug: bool,
     input: String,
+    library: bool,
     help: bool,
 }
 
@@ -126,6 +132,7 @@ fn parse_cmd_line_opts() -> CmdArgInfo {
     let mut arg_info = CmdArgInfo {
         debug: false,
         help: true,
+        library: false,
         input,
     };
     for i in cmd_line_args {
@@ -136,6 +143,7 @@ fn parse_cmd_line_opts() -> CmdArgInfo {
                 println!("{}", HELP_MESSAGE);
                 exit(0);
             }
+            "-c" => arg_info.library = true,
             e => arg_not_found(e),
         }
     }
