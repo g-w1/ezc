@@ -63,7 +63,7 @@ impl Code {
         for var in tree.static_vars.unwrap() {
             self.bss.instructions.push(format!("MaNgLe_{} resq 1", var));
         }
-        let started_tl = false;
+        let mut started_tl = false;
         for node in tree.tree {
             if let AstNode::Func {
                 name: _,
@@ -75,6 +75,7 @@ impl Code {
             } else {
                 if !started_tl {
                     self.text.instructions.push(String::from("_start:")); // TODO change if going recursive
+                    started_tl = true
                 }
             }
             match node {
