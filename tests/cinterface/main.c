@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 int main() {
-  extern int MaNgLe_another_test();
-  printf("%d\n", MaNgLe_another_test(11, 10));
+  extern long long MaNgLe_another_test();
+  printf("%lld\n", MaNgLe_another_test(10, 11, 12));
+  return 0;
 }

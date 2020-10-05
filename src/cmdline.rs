@@ -10,17 +10,6 @@ use crate::parser;
 
 const ERROR: &str = "\x1B[31;1mERROR: \x1B[0m";
 
-const HELP_MESSAGE: &'static str = "ezc
-
-Usage: ezc [file] [options] ...
-Options:
-
--g              Include Debug Info
--c              Just compile the functions into a library/object (.o) file
--h | --help     Show This Help Message and Exit
-
-To Report Bugs Go To: github.com/g-w1/ezc/issues/";
-
 /// the driver function for the whole compiler
 pub fn driver() {
     // generate the code
@@ -81,9 +70,8 @@ fn parse_input_to_code(input: String, lib: bool) -> String {
     match output {
         Ok(mut res) => match analyze::analize(&mut res) {
             Ok(_) => {
-                // dbg!(&res);
                 let mut code = codegen::Code::new();
-                code.codegen(res);
+                code.cgen(res);
                 code_text = format!("{}", code.fmt(lib));
             }
             Err(e) => {
@@ -117,7 +105,22 @@ fn parse_cmd_line_opts() -> CmdArgInfo {
     let filename = cmd_line_args.remove(0);
     match filename {
         "-h" | "--help" => {
-            println!("{}", HELP_MESSAGE);
+            println!(
+                "ezc
+
+ezc version {}
+
+Usage: ezc [file] [options] ...
+Options:
+
+-g              Include Debug Info
+-c              Just compile the functions into a library/object (.o) file
+-h | --help     Show This Help Message and Exit
+
+To Report Bugs Go To: github.com/g-w1/ezc/issues/",
+                env!("CARGO_PKG_VERSION")
+            );
+
             exit(0);
         }
         _ => {}
@@ -140,7 +143,22 @@ fn parse_cmd_line_opts() -> CmdArgInfo {
             "-g" => arg_info.debug = true,
             "-h" | "--help" => {
                 arg_info.help = true;
-                println!("{}", HELP_MESSAGE);
+                // TODO make refactor
+                println!(
+                    "ezc
+
+ezc version {}
+
+Usage: ezc [file] [options] ...
+Options:
+
+-g              Include Debug Info
+-c              Just compile the functions into a library/object (.o) file
+-h | --help     Show This Help Message and Exit
+
+To Report Bugs Go To: github.com/g-w1/ezc/issues/",
+                    env!("CARGO_PKG_VERSION")
+                );
                 exit(0);
             }
             "-c" => arg_info.library = true,

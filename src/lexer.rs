@@ -35,9 +35,9 @@ pub enum Token {
     /// Right paren
     Rparen,
     /// Open block (',')
-    OpenBlock,
+    Comma,
     /// Close block ('!')
-    CloseBlock,
+    ExclaimMark,
     // Binops
     /// '+'
     BoPlus,
@@ -154,7 +154,7 @@ impl Tokenizer {
                             self.intermidiate_string.push(c);
                         }
                         '.' => self.end_token(&mut output, &mut output_poss, Token::EndOfLine),
-                        ',' => self.end_token(&mut output, &mut output_poss, Token::OpenBlock),
+                        ',' => self.end_token(&mut output, &mut output_poss, Token::Comma),
                         '(' => self.end_token(&mut output, &mut output_poss, Token::Lparen),
                         ')' => self.end_token(&mut output, &mut output_poss, Token::Rparen),
                         '+' => self.end_token(&mut output, &mut output_poss, Token::BoPlus),
@@ -211,7 +211,7 @@ impl Tokenizer {
                         self.end_token(&mut output, &mut output_poss, Token::BoNe);
                     }
                     _ => {
-                        self.end_token(&mut output, &mut output_poss, Token::CloseBlock);
+                        self.end_token(&mut output, &mut output_poss, Token::ExclaimMark);
                         self.pos -= 1;
                     }
                 },
@@ -232,7 +232,9 @@ impl Tokenizer {
         }
         // clean up state
         match self.state {
-            LexerState::SawBang => self.end_token(&mut output, &mut output_poss, Token::CloseBlock),
+            LexerState::SawBang => {
+                self.end_token(&mut output, &mut output_poss, Token::ExclaimMark)
+            }
             LexerState::InWord => match self.intermidiate_string.as_str() {
                 "" => {}
                 _ => self.end_token(
@@ -343,7 +345,7 @@ mod tests {
                 Token::IntLit(String::from("4")),
                 Token::EndOfLine,
                 Token::Kloop,
-                Token::OpenBlock,
+                Token::Comma,
                 Token::Kchange,
                 Token::Iden(String::from("x")),
                 Token::Kto,
@@ -351,7 +353,7 @@ mod tests {
                 Token::BoPlus,
                 Token::IntLit(String::from("1")),
                 Token::EndOfLine,
-                Token::CloseBlock,
+                Token::ExclaimMark,
                 Token::Eof,
             ]
         );
@@ -440,10 +442,10 @@ mod tests {
                 Token::Iden(String::from("x")),
                 Token::BoNe,
                 Token::IntLit(String::from("5")),
-                Token::OpenBlock,
+                Token::Comma,
                 Token::Kbreak,
                 Token::EndOfLine,
-                Token::CloseBlock,
+                Token::ExclaimMark,
                 Token::Eof,
             ]
         );
@@ -474,37 +476,37 @@ if test <= 4+2,
                 Token::Iden(String::from("x")),
                 Token::BoGe,
                 Token::IntLit(String::from("5")),
-                Token::OpenBlock,
+                Token::Comma,
                 Token::Kset,
                 Token::Iden(String::from("y")),
                 Token::Kto,
                 Token::IntLit(String::from("4")),
                 Token::EndOfLine,
-                Token::CloseBlock,
+                Token::ExclaimMark,
                 Token::Kif,
                 Token::Iden(String::from("y")),
                 Token::BoE,
                 Token::IntLit(String::from("2")),
-                Token::OpenBlock,
+                Token::Comma,
                 Token::Kset,
                 Token::Iden(String::from("z")),
                 Token::Kto,
                 Token::IntLit(String::from("4")),
                 Token::EndOfLine,
-                Token::CloseBlock,
+                Token::ExclaimMark,
                 Token::Kif,
                 Token::Iden(String::from("test")),
                 Token::BoLe,
                 Token::IntLit(String::from("4")),
                 Token::BoPlus,
                 Token::IntLit(String::from("2")),
-                Token::OpenBlock,
+                Token::Comma,
                 Token::Kset,
                 Token::Iden(String::from("z")),
                 Token::Kto,
                 Token::IntLit(String::from("5")),
                 Token::EndOfLine,
-                Token::CloseBlock,
+                Token::ExclaimMark,
                 Token::Eof,
             ]
         );

@@ -140,7 +140,7 @@ impl Parser {
                 Token::Kchange => self.parse_change_stmt(&mut tree)?,
                 Token::Kloop => self.parse_loop_stmt(&mut tree)?,
                 Token::Kif => self.parse_if_stmt(&mut tree)?,
-                Token::CloseBlock if !toplevel => break,
+                Token::ExclaimMark if !toplevel => break,
                 Token::Kfunc if toplevel => self.parse_func(&mut tree)?,
                 Token::Kreturn if !toplevel => {
                     self.expect_eat_token(Token::Kreturn)?;
@@ -261,7 +261,7 @@ impl Parser {
             items_in_func.push(self.parse_iden()?);
             // OpenBlock is just ','. maybe rename
             match self.cur_tok() {
-                Token::OpenBlock => self.expect_eat_token(Token::OpenBlock)?,
+                Token::Comma => self.expect_eat_token(Token::Comma)?,
                 Token::Rparen => {
                     self.expect_eat_token(Token::Rparen)?;
                     break;
@@ -288,9 +288,9 @@ impl Parser {
     fn parse_func(&mut self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         self.expect_eat_token(Token::Kfunc)?;
         let (name, args) = self.parse_func_proto()?;
-        self.expect_eat_token(Token::OpenBlock)?;
+        self.expect_eat_token(Token::Comma)?;
         let body = self.parse(false)?;
-        self.expect_eat_token(Token::CloseBlock)?;
+        self.expect_eat_token(Token::ExclaimMark)?;
         tree.push(AstNode::Func {
             name,
             args,
@@ -302,9 +302,9 @@ impl Parser {
     /// LoopNode <- Kloop OpenBlock Ast CloseBlock
     fn parse_loop_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         self.expect_eat_token(Token::Kloop)?;
-        self.expect_eat_token(Token::OpenBlock)?;
+        self.expect_eat_token(Token::Comma)?;
         let body: Vec<AstNode> = self.parse(false)?;
-        self.expect_eat_token(Token::CloseBlock)?;
+        self.expect_eat_token(Token::ExclaimMark)?;
         tree.push(AstNode::Loop { body });
         Ok(())
     }
@@ -315,11 +315,11 @@ impl Parser {
         // Expr
         let guard: Expr = self.parse_expr()?;
         // OpenBlock
-        self.expect_eat_token(Token::OpenBlock)?;
+        self.expect_eat_token(Token::Comma)?;
         // Ast
         let body: Vec<AstNode> = self.parse(false)?;
         // CloseBlock
-        self.expect_eat_token(Token::CloseBlock)?;
+        self.expect_eat_token(Token::ExclaimMark)?;
         tree.push(AstNode::If {
             guard,
             body,

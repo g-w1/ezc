@@ -3,13 +3,11 @@
 use crate::ast::{AstNode, AstRoot, BinOp, Expr};
 use std::collections::HashMap;
 use std::collections::HashSet;
-
 /// section .bss
 #[derive(Debug)]
 pub struct Bss {
     pub instructions: Vec<String>,
 }
-
 /// section .data
 #[derive(Debug)]
 pub struct Data {
@@ -60,7 +58,7 @@ impl Code {
         }
     }
     /// generate the code. dont deal with any of the sections
-    pub fn codegen(self: &mut Self, tree: AstRoot) {
+    pub fn cgen(self: &mut Self, tree: AstRoot) {
         for var in tree.static_vars.unwrap() {
             self.bss.instructions.push(format!("MaNgLe_{} resq 1", var));
         }
@@ -147,11 +145,9 @@ impl Code {
         body: Vec<AstNode>,
         vars_declared: HashMap<String, u32>,
     ) {
-        ////////////////////////////// Some setup /////////////////////////
-        // clear local vars bc a func starts with none
+        /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
-        self.cur_func = name.clone();
-        // doing the args
+        self.cur_func = name.clone(); //doing the args
         self.text.functions_names.push(format!("MaNgLe_{}", &name)); // declaring it global
         self.text.instructions.push(format!("MaNgLe_{}:", &name));
         ////
@@ -165,7 +161,7 @@ impl Code {
         self.stack_p_offset += mem_len as u32;
         self.text
             .instructions
-            .push(format!("add rsp, {} * 8", mem_len));
+            .push(format!("sub rsp, {} * 8", mem_len));
         let mut double_keys: HashSet<String> = HashSet::new();
         // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
         // set z to 5. if z = 5,
@@ -221,12 +217,12 @@ impl Code {
             }
         }
         // // deallocate args pushed to stack from regs
-        for (place, _) in args.iter().enumerate() {
-            if place <= 6 {
-                self.stack_p_offset -= 1;
-                self.text.instructions.push(String::from("sub rsp, 8"));
-            }
-        }
+        // for (place, _) in args.iter().enumerate() {
+        //     if place <= 6 {
+        //         self.stack_p_offset -= 1;
+        //         self.text.instructions.push(String::from("sub rsp, 8"));
+        //     }
+        // }
         // self.text
         //     .instructions
         //     .push(format!("sub rsp, {} * 8", vars_declared.len())); // deallocate locals
@@ -257,7 +253,9 @@ impl Code {
                 self.text.instructions.push(format!("cmp {}, 1", reg));
             }
             Expr::Number(n) => {
-                self.text.instructions.push(format!("cmp {}, 1", n)); // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
+                self.text
+                    .instructions
+                    .push(format!("mov r8, {}\ncmp r8, 1", n)); // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
             }
             Expr::Iden(_) => {
                 self.text
@@ -436,11 +434,10 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
-                self.stack_p_offset += 1;
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.stack_p_offset += 1;
+                self.stack_p_offset += 2;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
                 // // update it by 2 because 2 was used and dont wanna pass mut
@@ -500,10 +497,10 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
-                self.stack_p_offset += 1;
                 self.cgen_expr(*reclhs, recop, *recrhs);
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
+                self.stack_p_offset += 1;
                 self.number_for_mangling += 2;
             }
             // THE CASE WHERE BOTH ARE RECURSIVE
@@ -617,7 +614,7 @@ mod tests {
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
-        code.codegen(ast);
+        code.cgen(ast);
         let correct_code = "global _start
 section .text
 _start:
@@ -647,7 +644,7 @@ MaNgLe_test resq 1
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
-        code.codegen(ast);
+        code.cgen(ast);
         let correct_code = "global _start
 section .text
 _start:
@@ -699,7 +696,7 @@ MaNgLe_y resq 1
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
-        code.codegen(ast);
+        code.cgen(ast);
         let correct_code = "global _start
 section .text
 _start:
@@ -779,7 +776,7 @@ MaNgLe_res_of_bop resq 1
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
-        code.codegen(ast);
+        code.cgen(ast);
         let correct_code = "global _start
 section .text
 _start:
@@ -822,7 +819,7 @@ MaNgLe_y resq 1
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
-        code.codegen(ast);
+        code.cgen(ast);
         let correct_code = "global _start
 section .text
 _start:
@@ -853,7 +850,7 @@ MaNgLe_y resq 1
         analyze::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         analyze::analize(&mut ast).unwrap();
-        code.codegen(ast);
+        code.cgen(ast);
         let correct_code = "global _start
 section .text
 _start:

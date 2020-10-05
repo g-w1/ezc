@@ -1,3 +1,4 @@
-function another_test(a, b),
-  return a + b.
+function another_test(a, b,c ),
+  set y to a + b + c .
+  return y.
 !
