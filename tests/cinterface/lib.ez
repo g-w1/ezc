@@ -1,5 +1,11 @@
 function another_test(a, b,c ),
   set p to a + b + c + 5 .
   set x to p - 3.
-  return x.
+  [
+  if x > p,
+    return p.
+  !
+  ]
+  return p.
+
 !

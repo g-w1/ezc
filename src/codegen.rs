@@ -331,6 +331,7 @@ impl Code {
         self.text
             .instructions
             .push(format!("add rsp, {} * 8", mem_len)); // deallocate locals?
+        self.stack_p_offset -= mem_len as u32;
         self.text
             .instructions
             .push(format!(".IF_END_{}", our_number_for_mangling));
