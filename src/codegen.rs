@@ -173,7 +173,7 @@ impl Code {
         // !
         let mut tmp;
         for (i, arg) in args.iter().enumerate() {
-            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32;
+            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + 1;
             // TODO does this work
             self.initalized_local_vars.insert(arg.clone(), tmp);
         }
