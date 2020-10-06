@@ -1,5 +1,5 @@
-set y to 4.
+set y to 10.
 
 loop,
   if y = 10,
-    break !  !
+    break.   !

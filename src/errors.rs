@@ -1,5 +1,5 @@
 use crate::analyze::AnalysisError;
-use crate::lexer::LexError;
+use crate::lexer::{LexError, Token, Token::*};
 use crate::parser::ParserError;
 use std::fmt;
 
@@ -24,7 +24,7 @@ impl ParserError {
                 found,
                 pos,
             } => format!(
-                "Parser Error: expected {:?}, found {:?}\n{}",
+                "Parser Error: expected {}, found {}\n{}",
                 expected,
                 found,
                 special_error_printing_with_caret(&input_code, &pos)
@@ -80,6 +80,38 @@ impl fmt::Display for AnalysisError {
             AnalysisError::NumberTooBig(num) => write!(f, "Analysis Error: Number too big: `{}`", num),
             AnalysisError::SetInLoop => write!(f, "A set statement was used in a loop. Not allowed."),
             AnalysisError::ReturnOutSideOfFunc => write!(f, "A return statement was used outside of a function. Not allowed.")
+        }
+    }
+}
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EndOfLine => write!(f, "'.'"),
+            Kset => write!(f, "\"set\""),
+            Kchange => write!(f, "\"change\""),
+            Comma => write!(f, "','"),
+            Kif => write!(f, "\"if\""),
+            Kto => write!(f, "\"to\""),
+            Kloop => write!(f, "\"loop\""),
+            Kfunc => write!(f, "\"func\""),
+            Kreturn => write!(f, "\"return\""),
+            Kbreak => write!(f, "\"break\""),
+            Rparen => write!(f, "')'"),
+            Lparen => write!(f, "'('"),
+            ExclaimMark => write!(f, "'!'"),
+            Iden(i) => write!(f, "\"{}\"", i),
+            IntLit(i) => write!(f, "{}", i),
+            Eof => write!(f, "EOF"),
+            BoPlus => write!(f, "'+'"),
+            BoMinus => write!(f, "'-'"),
+            BoL => write!(f, "'<'"),
+            BoG => write!(f, "'>'"),
+            BoLe => write!(f, "'<='"),
+            BoGe => write!(f, "'>='"),
+            BoE => write!(f, "'='"),
+            BoNe => write!(f, "'!='"),
+            BoAnd => write!(f, "'and'"),
+            BoOr => write!(f, "'or'"),
         }
     }
 }
