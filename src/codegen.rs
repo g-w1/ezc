@@ -124,7 +124,7 @@ impl Code {
     /// a little helper fn
     fn reg_to_farness_stack(&mut self, n: usize) -> i8 {
         const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
-        if n < 6 {
+        if n <= 6 {
             self.text
                 .instructions
                 .push(format!("push {}", FUNCTION_PARAMS[n]));
@@ -156,13 +156,12 @@ impl Code {
         self.text
             .instructions
             .push(String::from("push rbp\nmov rbp, rsp"));
-        // self.stack_p_offset += 1;
+        self.stack_p_offset += 1;
         let mem_len = vars_declared.len();
         self.stack_p_offset += mem_len as u32;
         self.text
             .instructions
             .push(format!("sub rsp, {} * 8", mem_len));
-        self.stack_p_offset += mem_len as u32;
         let mut double_keys: HashSet<String> = HashSet::new();
         // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
         // set z to 5. if z = 5,
@@ -172,19 +171,18 @@ impl Code {
         //     !
         //     set test to 5.
         // !
+        let mut tmp;
+        for (i, arg) in args.iter().enumerate() {
+            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32;
+            // TODO does this work
+            self.initalized_local_vars.insert(arg.clone(), tmp);
+        }
         for (varname, place) in &vars_declared {
             if self.initalized_local_vars.contains_key(varname) {
                 double_keys.insert(varname.clone());
             }
             self.initalized_local_vars
                 .insert(varname.to_owned(), self.stack_p_offset as u32 - place);
-            // self.stack_p_offset += 1;
-        }
-        let mut tmp;
-        for (i, arg) in args.iter().enumerate() {
-            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32;
-            // TODO does this work
-            self.initalized_local_vars.insert(arg.clone(), tmp);
         }
         ////
         //////////////////// BODY /////////////////////
@@ -291,7 +289,6 @@ impl Code {
         self.text
             .instructions
             .push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
-        self.stack_p_offset += mem_len as u32;
         for (varname, place) in vars.to_owned() {
             if self.initalized_local_vars.contains_key(&varname) {
                 double_keys.insert(varname.clone());
@@ -437,11 +434,10 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
-                self.stack_p_offset += 1;
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.stack_p_offset += 1;
+                self.stack_p_offset += 2;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
                 // // update it by 2 because 2 was used and dont wanna pass mut
@@ -501,10 +497,10 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
-                self.stack_p_offset += 1;
                 self.cgen_expr(*reclhs, recop, *recrhs);
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
+                self.stack_p_offset += 1;
                 self.number_for_mangling += 2;
             }
             // THE CASE WHERE BOTH ARE RECURSIVE
@@ -521,12 +517,10 @@ impl Code {
                 },
             ) => {
                 self.cgen_expr(*lreclhs, lrecop, *lrecrhs);
-                self.number_for_mangling += 1;
                 self.cgen_expr(*rreclhs, rrecop, *rrecrhs);
-                self.number_for_mangling += 1;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
-                self.number_for_mangling += 1;
+                self.number_for_mangling += 2;
             }
         }
     }
@@ -544,10 +538,10 @@ impl Code {
     /// takes 2 things on the stack. pops them, does an arg and then pushes the result
     fn cgen_for_stack(self: &mut Self, b_op: &BinOp) -> [String; 4] {
         match b_op {
-            &BinOp::Add => self.special_bop("add"),
-            &BinOp::Sub => self.special_bop("sub"),
-            &BinOp::Or => self.special_bop("or"),
-            &BinOp::And => self.special_bop("and"),
+            &BinOp::Add => special_bop("add"),
+            &BinOp::Sub => special_bop("sub"),
+            &BinOp::Or => special_bop("or"),
+            &BinOp::And => special_bop("and"),
             &BinOp::Gt => crate::eq_op!("jg", self),
             &BinOp::Gte => crate::eq_op!("jge", self),
             &BinOp::Lt => crate::eq_op!("jl", self),
@@ -556,19 +550,19 @@ impl Code {
             &BinOp::Lte => crate::eq_op!("jle", self),
         }
     }
-    // inline cuz y not
-    #[inline]
-    fn special_bop(&mut self, op: &str) -> [String; 4] {
-        self.stack_p_offset -= 1;
-        [
-            String::from("pop r8"),
-            String::from("pop r9"),
-            format!("{} r9, r8", op),
-            String::from("push r9"),
-        ]
-    }
 }
 
+// inline cuz y not
+// TODO test if this works
+#[inline]
+fn special_bop(op: &str) -> [String; 4] {
+    [
+        String::from("pop r8"),
+        String::from("pop r9"),
+        format!("{} r9, r8", op),
+        String::from("push r9"),
+    ]
+}
 #[inline]
 fn get_op_of_eq_op(jump_cond: &str) -> &str {
     match jump_cond {
