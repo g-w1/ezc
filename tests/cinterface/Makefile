@@ -5,3 +5,7 @@ build:
 clean:
 	rm *out*
 	rm *.o
+debug:
+	cargo run -q -- lib.ez -c -g
+	gcc main.c out.o -o out
+	gcc ref.c -o ref

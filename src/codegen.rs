@@ -903,6 +903,137 @@ MaNgLe_y resq 1
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
+    fn codegen_lib_func() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Function fib(n),
+  set counter to 1.
+  set a to 1.
+  set b to 0.
+  [start the loop]
+  loop,
+    change a to a + b.
+    change counter to counter + 1.
+    if counter > n,
+      return a.
+    !
+    change b to a + b.
+    change counter to counter + 1.
+    if counter > n,
+      return b.
+    !
+  !
+!
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.cgen(ast);
+        let correct_code = "global MaNgLe_fib
+section .text
+MaNgLe_fib:
+push rbp
+mov rbp, rsp
+push rdi
+sub rsp, 3 * 8
+mov qword [rsp + 0 * 8], 1
+mov qword [rsp + 1 * 8], 1
+mov qword [rsp + 2 * 8], 0
+.START_LOOP_0
+push qword [rsp + 1 * 8]
+push qword [rsp + 3 * 8]
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov qword [rsp + 1 * 8], r8
+push qword [rsp + 0 * 8]
+push 1
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov qword [rsp + 0 * 8], r8
+push qword [rsp + 0 * 8]
+push qword [rsp + 4 * 8]
+pop r8
+pop r9
+cmp r9, r8
+jg .IF_HEADER_3
+jle .IF_HEADER_FAILED_3
+.IF_HEADER_3
+push 1
+jmp .END_IF_HEADER_3
+.IF_HEADER_FAILED_3
+push 0
+.END_IF_HEADER_3
+pop r8
+cmp r8, 1
+je .IF_BODY_1
+jne .IF_END_1
+.IF_BODY_1
+sub rsp, 0 * 8
+mov rax, qword [rsp + 1 * 8]
+jmp .RETURN_fib
+add rsp, 0 * 8
+.IF_END_1
+push qword [rsp + 1 * 8]
+push qword [rsp + 3 * 8]
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov qword [rsp + 2 * 8], r8
+push qword [rsp + 0 * 8]
+push 1
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov qword [rsp + 0 * 8], r8
+push qword [rsp + 0 * 8]
+push qword [rsp + 4 * 8]
+pop r8
+pop r9
+cmp r9, r8
+jg .IF_HEADER_6
+jle .IF_HEADER_FAILED_6
+.IF_HEADER_6
+push 1
+jmp .END_IF_HEADER_6
+.IF_HEADER_FAILED_6
+push 0
+.END_IF_HEADER_6
+pop r8
+cmp r8, 1
+je .IF_BODY_4
+jne .IF_END_4
+.IF_BODY_4
+sub rsp, 0 * 8
+mov rax, qword [rsp + 2 * 8]
+jmp .RETURN_fib
+add rsp, 0 * 8
+.IF_END_4
+jmp .START_LOOP_0
+.END_LOOP_0
+mov rax, 0
+.RETURN_fib
+mov rsp, rbp
+pop rbp
+ret
+";
+        assert_eq!(format!("{}", code.fmt(true)), correct_code);
+    }
+    #[test]
     fn codegen_loop() {
         use crate::analyze;
         use crate::codegen;
