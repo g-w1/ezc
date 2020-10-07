@@ -123,7 +123,8 @@ impl Code {
             self.stack_p_offset += 1;
             n as i8
         } else {
-            0 - n as i8
+            // 0 - n as i8
+            unreachable!()
         }
     }
     // ////////////////////////////////////////////////////////////  Systemv abi: https://wiki.osdev.org/Calling_Conventions
@@ -165,7 +166,8 @@ impl Code {
         // !
         let mut tmp;
         for (i, arg) in args.iter().enumerate() {
-            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + 1;
+            dbg!(&arg);
+            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
             // TODO does this work
             self.initalized_local_vars.insert(arg.clone(), tmp);
         }
@@ -441,10 +443,10 @@ impl Code {
                 Expr::Number(_),
             ) => {
                 self.cgen_expr(*reclhs, recop, *recrhs);
-                self.stack_p_offset += 1;
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
+                self.stack_p_offset += 1;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
                 self.number_for_mangling += 2;
@@ -515,10 +517,10 @@ impl Code {
     /// takes 2 things on the stack. pops them, does an arg and then pushes the result
     fn cgen_for_stack(self: &mut Self, b_op: &BinOp) -> [String; 4] {
         match b_op {
-            &BinOp::Add => special_bop("add"),
-            &BinOp::Sub => special_bop("sub"),
-            &BinOp::Or => special_bop("or"),
-            &BinOp::And => special_bop("and"),
+            &BinOp::Add => self.special_bop("add"),
+            &BinOp::Sub => self.special_bop("sub"),
+            &BinOp::Or => self.special_bop("or"),
+            &BinOp::And => self.special_bop("and"),
             &BinOp::Gt => crate::eq_op!("jg", self),
             &BinOp::Gte => crate::eq_op!("jge", self),
             &BinOp::Lt => crate::eq_op!("jl", self),
@@ -527,19 +529,20 @@ impl Code {
             &BinOp::Lte => crate::eq_op!("jle", self),
         }
     }
+    // inline cuz y not
+    // TODO test if this works
+    #[inline]
+    fn special_bop(&mut self, op: &str) -> [String; 4] {
+        self.stack_p_offset -= 1;
+        [
+            String::from("pop r8"),
+            String::from("pop r9"),
+            format!("{} r9, r8", op),
+            String::from("push r9"),
+        ]
+    }
 }
 
-// inline cuz y not
-// TODO test if this works
-#[inline]
-fn special_bop(op: &str) -> [String; 4] {
-    [
-        String::from("pop r8"),
-        String::from("pop r9"),
-        format!("{} r9, r8", op),
-        String::from("push r9"),
-    ]
-}
 #[inline]
 fn get_op_of_eq_op(jump_cond: &str) -> &str {
     match jump_cond {
