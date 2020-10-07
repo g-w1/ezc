@@ -1,8 +1,5 @@
-Function another_test(a, b, c, d, e),
-  if a >= b or b = c,
-    return 1.
-  !
-  return 0.
+Function another_test(a, b, c, d, e, f),
+  return a + b + c + d + e + f.
 !
 
 [ Function another_test(a, b), ]

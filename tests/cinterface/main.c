@@ -2,6 +2,7 @@
 
 int main() {
   extern long MaNgLe_another_test();
-  printf("%ld\n", MaNgLe_another_test(1, 11, 11, 12, 12));
+  long res = MaNgLe_another_test(1, 2, 3, 4, 5, 6);
+  printf("%ld\n", res);
   return 0;
 }
