@@ -8,11 +8,6 @@ use std::collections::HashSet;
 pub struct Bss {
     pub instructions: Vec<String>,
 }
-/// section .data
-#[derive(Debug)]
-pub struct Data {
-    pub instructions: Vec<String>,
-}
 
 /// section .text
 #[derive(Debug)]
@@ -24,7 +19,6 @@ pub struct Text {
 /// represent asm
 #[derive(Debug)]
 pub struct Code {
-    data: Data,
     bss: Bss,
     text: Text,
     initalized_local_vars: HashMap<String, u32>,
@@ -41,9 +35,6 @@ fn qword_deref_helper(input: String) -> String {
 impl Code {
     pub fn new() -> Self {
         Code {
-            data: Data {
-                instructions: Vec::new(),
-            },
             text: Text {
                 instructions: Vec::new(),
                 functions_names: Vec::new(),
@@ -1133,12 +1124,6 @@ xor rdi, rdi
 syscall"
                 )
                 .unwrap();
-            }
-        }
-        if self.data.instructions.len() > 0 {
-            writeln!(f, "section .data").unwrap();
-            for i in &self.data.instructions {
-                writeln!(f, "{}", i).unwrap();
             }
         }
         if self.bss.instructions.clone().len() > 0 {
