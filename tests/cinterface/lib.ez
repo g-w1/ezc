@@ -1,11 +1,3 @@
-function another_test(a, b,c ),
-  set p to a + b + c + 5 .
-  set x to p - 3.
-  [
-  if x > p,
-    return p.
-  !
-  ]
-  return p.
-
+Function another_test(a, b, c),
+  return a + b + c.
 !
