@@ -104,8 +104,8 @@ impl Analyser {
                                     // Scope::InLoopAndIf | Scope::InIf => {
                                     Scope {
                                         in_if: true,
-                                        in_loop: _,
                                         in_func: false,
+                                        ..
                                     } => {
                                         num_vars_declared += 1;
                                         self.initialized_local_vars
@@ -113,16 +113,10 @@ impl Analyser {
                                         new_locals.insert(sete.to_owned(), num_vars_declared);
                                     }
                                     // Scope::InLoop => unreachable!(),
-                                    Scope {
-                                        in_loop: true,
-                                        in_if: _,
-                                        in_func: _,
-                                    } => return Err(AnalysisError::SetInLoop),
-                                    Scope {
-                                        in_func: true,
-                                        in_if: _,
-                                        in_loop: _,
-                                    } => unreachable!(),
+                                    Scope { in_loop: true, .. } => {
+                                        return Err(AnalysisError::SetInLoop)
+                                    }
+                                    Scope { in_func: true, .. } => unreachable!(),
                                 }
                             } else {
                                 return Err(AnalysisError::DoubleSet(sete.to_owned()));
@@ -156,9 +150,9 @@ impl Analyser {
                     let tmp_scope = self.scope;
                     match self.scope {
                         Scope {
-                            in_if: _,
                             in_loop: t,
                             in_func: false,
+                            ..
                         } => {
                             self.scope = Scope {
                                 in_loop: t,
@@ -171,9 +165,9 @@ impl Analyser {
                             self.scope = tmp_scope;
                         }
                         Scope {
-                            in_if: _,
                             in_loop: t,
                             in_func: true,
+                            ..
                         } => {
                             self.scope = Scope {
                                 in_loop: t,
@@ -236,12 +230,7 @@ impl Analyser {
                 }
                 ast::AstNode::Break => {
                     // if let Scope::InLoop | Scope::InLoopAndIf = scope {
-                    if let Scope {
-                        in_if: _,
-                        in_loop: true,
-                        in_func: _,
-                    } = self.scope
-                    {
+                    if let Scope { in_loop: true, .. } = self.scope {
                     } else {
                         return Err(AnalysisError::BreakWithoutLoop);
                     }
@@ -285,7 +274,7 @@ impl Analyser {
         match expr {
             Expr::Number(n) => check_num(n)?,
             Expr::Iden(s) => self.make_sure_var_exists(&s)?,
-            Expr::BinOp { lhs, op: _, rhs } => {
+            Expr::BinOp { lhs, rhs, .. } => {
                 self.check_expr(lhs)?;
                 self.check_expr(rhs)?;
             }
@@ -309,8 +298,8 @@ fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<String> {
         match node {
             AstNode::SetOrChange {
                 sete,
-                setor: _,
                 change: false,
+                ..
             } => {
                 vars.push(sete.to_owned());
             }
@@ -469,12 +458,7 @@ function lol(),
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
         match ast.tree[0].clone() {
-            crate::ast::AstNode::Func {
-                vars_declared,
-                name: _,
-                args: _,
-                body: _,
-            } => assert_eq!(
+            crate::ast::AstNode::Func { vars_declared, .. } => assert_eq!(
                 {
                     let mut m = HashMap::new();
                     m.insert(String::from("p"), 1);

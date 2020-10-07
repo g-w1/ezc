@@ -64,13 +64,7 @@ impl Code {
         }
         let mut started_tl = false;
         for node in tree.tree {
-            if let AstNode::Func {
-                name: _,
-                args: _,
-                body: _,
-                vars_declared: _,
-            } = node
-            {
+            if let AstNode::Func { .. } = node {
             } else {
                 if !started_tl {
                     self.text.instructions.push(String::from("_start:")); // TODO change if going recursive
@@ -78,11 +72,9 @@ impl Code {
                 }
             }
             match node {
-                AstNode::SetOrChange {
-                    sete,
-                    setor,
-                    change: _,
-                } => self.cgen_set_or_change_stmt(sete, setor),
+                AstNode::SetOrChange { sete, setor, .. } => {
+                    self.cgen_set_or_change_stmt(sete, setor)
+                }
                 AstNode::If {
                     guard,
                     body,
@@ -189,11 +181,9 @@ impl Code {
         ////
         for node in body {
             match node {
-                AstNode::SetOrChange {
-                    sete,
-                    setor,
-                    change: _,
-                } => self.cgen_set_or_change_stmt(sete, setor),
+                AstNode::SetOrChange { sete, setor, .. } => {
+                    self.cgen_set_or_change_stmt(sete, setor)
+                }
                 AstNode::If {
                     body,
                     guard,
@@ -298,23 +288,16 @@ impl Code {
         }
         for node in body {
             match node {
-                AstNode::Func {
-                    name: _,
-                    args: _,
-                    body: _,
-                    vars_declared: _,
-                } => unreachable!(),
+                AstNode::Func { .. } => unreachable!(),
                 AstNode::Return { val } => self.cgen_return_stmt(val),
                 AstNode::If {
                     body,
                     guard,
                     vars_declared,
                 } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None),
-                AstNode::SetOrChange {
-                    sete,
-                    setor,
-                    change: _,
-                } => self.cgen_set_or_change_stmt(sete, setor),
+                AstNode::SetOrChange { sete, setor, .. } => {
+                    self.cgen_set_or_change_stmt(sete, setor)
+                }
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
                 AstNode::Break => self
                     .text
@@ -347,12 +330,7 @@ impl Code {
         for node in body {
             match node {
                 AstNode::Return { val } => self.cgen_return_stmt(val),
-                AstNode::Func {
-                    name: _,
-                    args: _,
-                    body: _,
-                    vars_declared: _,
-                } => unreachable!(),
+                AstNode::Func { .. } => unreachable!(),
                 AstNode::SetOrChange {
                     sete,
                     change: true,
@@ -373,11 +351,7 @@ impl Code {
                     .text
                     .instructions
                     .push(format!("jmp .END_LOOP_{}", our_number_for_mangling)),
-                AstNode::SetOrChange {
-                    sete: _,
-                    setor: _,
-                    change: false,
-                } => unreachable!(),
+                AstNode::SetOrChange { change: false, .. } => unreachable!(),
             }
         }
         self.text.instructions.push(format!(
@@ -635,7 +609,7 @@ MaNgLe_test resq 1
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
-    fn codegen_if_stmt() {
+    fn codegen_if_stmt1() {
         use crate::analyze;
         use crate::codegen;
         use crate::lexer;
@@ -682,6 +656,89 @@ syscall
 section .bss
 MaNgLe_x resq 1
 MaNgLe_y resq 1
+";
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
+    }
+    #[test]
+    fn codegen_if_stmt2() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "
+set c to 0.
+
+if 5 >= 5,
+  set arst to 5.
+  set arstarst to 6.
+  change arst to 7.
+  if arst > arstarst,
+    change c to 5.
+  !
+!
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.cgen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov qword [MaNgLe_c], 0
+push 5
+push 5
+pop r8
+pop r9
+cmp r9, r8
+jge .IF_HEADER_2
+jl .IF_HEADER_FAILED_2
+.IF_HEADER_2
+push 1
+jmp .END_IF_HEADER_2
+.IF_HEADER_FAILED_2
+push 0
+.END_IF_HEADER_2
+pop r8
+cmp r8, 1
+je .IF_BODY_0
+jne .IF_END_0
+.IF_BODY_0
+sub rsp, 2 * 8
+mov qword [rsp + 0 * 8], 5
+mov qword [rsp + 1 * 8], 6
+mov qword [rsp + 0 * 8], 7
+push qword [rsp + 0 * 8]
+push qword [rsp + 2 * 8]
+pop r8
+pop r9
+cmp r9, r8
+jg .IF_HEADER_4
+jle .IF_HEADER_FAILED_4
+.IF_HEADER_4
+push 1
+jmp .END_IF_HEADER_4
+.IF_HEADER_FAILED_4
+push 0
+.END_IF_HEADER_4
+pop r8
+cmp r8, 1
+je .IF_BODY_2
+jne .IF_END_2
+.IF_BODY_2
+sub rsp, 0 * 8
+mov qword [MaNgLe_c], 5
+add rsp, 0 * 8
+.IF_END_2
+add rsp, 2 * 8
+.IF_END_0
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+MaNgLe_c resq 1
 ";
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
@@ -955,7 +1012,6 @@ syscall"
                 writeln!(f, "{}", i).unwrap();
             }
         }
-
         f
     }
 }

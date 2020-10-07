@@ -9,32 +9,14 @@ pub fn parse(input: Vec<Token>, locs_input: Vec<u32>) -> Result<AstRoot, ParserE
     let mut tree = Parser::new(input, locs_input).parse(true)?;
     // sort it so that funcs are on top of vec so that codegen is MUCH easier
     tree.sort_by(|a, b| {
-        if let AstNode::Func {
-            body: _,
-            vars_declared: _,
-            args: _,
-            name: _,
-        } = a
-        {
-            if let AstNode::Func {
-                body: _,
-                vars_declared: _,
-                args: _,
-                name: _,
-            } = b
-            {
+        if let AstNode::Func { .. } = a {
+            if let AstNode::Func { .. } = b {
                 Ordering::Equal
             } else {
                 Ordering::Less
             }
         } else {
-            if let AstNode::Func {
-                body: _,
-                vars_declared: _,
-                args: _,
-                name: _,
-            } = a
-            {
+            if let AstNode::Func { .. } = a {
                 Ordering::Equal
             } else {
                 Ordering::Greater
