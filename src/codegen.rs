@@ -435,10 +435,11 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
+                self.stack_p_offset += 1;
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.stack_p_offset += 2;
+                self.stack_p_offset += 1;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
                 // // update it by 2 because 2 was used and dont wanna pass mut
@@ -466,10 +467,10 @@ impl Code {
                 Expr::Number(_),
             ) => {
                 self.cgen_expr(*reclhs, recop, *recrhs);
+                self.stack_p_offset += 1;
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.stack_p_offset += 1;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
                 self.number_for_mangling += 2;
@@ -498,10 +499,10 @@ impl Code {
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
+                self.stack_p_offset += 1;
                 self.cgen_expr(*reclhs, recop, *recrhs);
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
-                self.stack_p_offset += 1;
                 self.number_for_mangling += 2;
             }
             // THE CASE WHERE BOTH ARE RECURSIVE
@@ -518,10 +519,11 @@ impl Code {
                 },
             ) => {
                 self.cgen_expr(*lreclhs, lrecop, *lrecrhs);
+                self.number_for_mangling += 1;
                 self.cgen_expr(*rreclhs, rrecop, *rrecrhs);
+                self.number_for_mangling += 1;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
-                self.number_for_mangling += 2;
             }
         }
     }

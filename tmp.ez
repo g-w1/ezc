@@ -1,11 +1,10 @@
+set c to 0.
 
-set y to 5.
-
-
-if y >= 5,
-
-set p to 4.
-set v to 55.
-change p to y.
-change y to v.
+if 5 >= 5,
+  set arst to 5.
+  set arstarst to 6.
+  change arst to 7.
+  if arst > arstarst,
+    change c to 5.
+  !
 !
