@@ -116,15 +116,20 @@ impl Code {
     /// a little helper fn
     fn reg_to_farness_stack(&mut self, n: usize) -> i8 {
         const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
-        if n <= 6 {
+        if n < 6 {
             self.text
                 .instructions
                 .push(format!("push {}", FUNCTION_PARAMS[n]));
             self.stack_p_offset += 1;
             n as i8
         } else {
-            // 0 - n as i8
-            unreachable!()
+            unimplemented!();
+            // // TODO this work
+            // self.text
+            //     .instructions
+            //     .push(format!("push qword [rsp - {}]", 8 * (n + 7)));
+            // self.stack_p_offset += 1;
+            // n as i8
         }
     }
     // ////////////////////////////////////////////////////////////  Systemv abi: https://wiki.osdev.org/Calling_Conventions
@@ -151,10 +156,6 @@ impl Code {
             .push(String::from("push rbp\nmov rbp, rsp"));
         self.stack_p_offset += 1;
         let mem_len = vars_declared.len();
-        self.stack_p_offset += mem_len as u32;
-        self.text
-            .instructions
-            .push(format!("sub rsp, {} * 8", mem_len));
         let mut double_keys: HashSet<String> = HashSet::new();
         // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
         // set z to 5. if z = 5,
@@ -166,11 +167,14 @@ impl Code {
         // !
         let mut tmp;
         for (i, arg) in args.iter().enumerate() {
-            dbg!(&arg);
             tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
             // TODO does this work
             self.initalized_local_vars.insert(arg.clone(), tmp);
         }
+        self.text
+            .instructions
+            .push(format!("sub rsp, {} * 8", mem_len));
+        self.stack_p_offset += mem_len as u32;
         for (varname, place) in &vars_declared {
             if self.initalized_local_vars.contains_key(varname) {
                 double_keys.insert(varname.clone());
@@ -982,12 +986,9 @@ impl Code {
                     .iter()
                     .take_while(|s| **s != "_start:".to_string())
                 {
-                    dbg!(i);
                     writeln!(f, "{}", i).unwrap();
                 }
             } else {
-                dbg!("elseeeeeeeeeeeeeeeee");
-                dbg!(&self.text.instructions);
                 for i in &self.text.instructions {
                     writeln!(f, "{}", i).unwrap();
                 }

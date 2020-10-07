@@ -1,8 +1,11 @@
 #include <stdio.h>
 
 int main() {
-  extern long MaNgLe_another_test();
-  long res = MaNgLe_another_test(1, 2, 3, 4, 5, 6);
-  printf("%ld\n", res);
+  //  extern long MaNgLe_another_test();
+  extern unsigned long long MaNgLe_fib();
+  for (int i = 1; i <= 10; i++) {
+    printf("%lld ", MaNgLe_fib(i));
+  }
+  printf("\n");
   return 0;
 }
