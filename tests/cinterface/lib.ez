@@ -1,7 +1,3 @@
-[ Function another_test(a, b, c, d, e, f,g), ]
-[   return g. ]
-[ ! ]
-
 Function fib(n),
   set counter to 1.
   set a to 1.

@@ -48,6 +48,7 @@ struct Analyser {
     initialized_local_vars: HashMap<String, u32>,
     /// the initialized_function_names
     initialized_function_names: HashSet<String>,
+    /// the initialized_function_vars
     initialized_function_vars: HashMap<String, u32>,
     /// scope that the analizer is in rn
     scope: Scope,

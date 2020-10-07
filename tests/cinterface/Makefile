@@ -1,7 +1,7 @@
 build:
-	cargo run -q -- lib.ez -g -c
-	gcc main.c -g -c
-	gcc main.o out.o -o out
+	cargo run -q -- lib.ez -c
+	gcc main.c out.o -o out
+	gcc ref.c -o ref
 clean:
 	rm *out*
 	rm *.o
