@@ -142,7 +142,7 @@ impl Parser {
         Ok(tree)
     }
     /// Iden <- String
-    fn parse_iden(self: &mut Self) -> Result<String, ParserError> {
+    fn parse_iden(&mut self) -> Result<String, ParserError> {
         match self.cur_tok() {
             Token::Iden(s) => {
                 self.pos_input += 1;
@@ -155,15 +155,13 @@ impl Parser {
     // Expression parsing
     //
     /// Iden <- String (this is different than parse_iden because it returns a wrapped expr instead of string so less wrapping is needed at the upper level)
-    fn parse_expr_iden(self: &mut Self) -> Result<Expr, ParserError> {
+    fn parse_expr_iden(&mut self) -> Result<Expr, ParserError> {
         match self.cur_tok() {
             Token::Iden(s) => {
                 self.pos_input += 1;
                 Ok(Expr::Iden(s))
             }
-            t => {
-                return Err(self.expected_token_err(Token::IntLit(String::from("")), t));
-            }
+            t => Err(self.expected_token_err(Token::Iden(String::from("")), t)),
         }
     }
     /// Number <- String
@@ -183,11 +181,7 @@ impl Parser {
     }
     /// Expr <- LParen Expr Rparen.
     // impliments this algorithm https://en.wikipedia.org/wiki/Operator-precedence_parser
-    fn parse_bin_op_rhs(
-        self: &mut Self,
-        passed_pres: i8,
-        old_lhs: &Expr,
-    ) -> Result<Expr, ParserError> {
+    fn parse_bin_op_rhs(&mut self, passed_pres: i8, old_lhs: &Expr) -> Result<Expr, ParserError> {
         let mut pres: i8;
         let mut lhs = old_lhs.clone();
         loop {
@@ -197,8 +191,7 @@ impl Parser {
             }
             // this has to be binop because other things have -1 stuff
             let bin_op = self.cur_tok();
-            // eat the bin op. doing let _ to show that it returns something
-            let _ = self.next();
+            self.next();
             let mut rhs = self.parse_expr_primary()?;
             let next_pres = self.bin_op_pres();
             if pres < next_pres {
@@ -219,7 +212,7 @@ impl Parser {
             Token::Lparen => {}
             t => return Err(self.expected_token_err(Token::Lparen, t)),
         }
-        let _ = self.next();
+        self.next();
         // parse the expression (yay recursion is fun)
         let parsed_expr = self.parse_expr()?;
         // eat Rparen
@@ -227,7 +220,7 @@ impl Parser {
             Token::Rparen => {}
             t => return Err(self.expected_token_err(Token::Rparen, t)),
         }
-        let _ = self.next();
+        self.next();
         Ok(parsed_expr)
     }
     /// FnProto <- Iden Lparen (Iden ,)* Rparen
@@ -273,7 +266,7 @@ impl Parser {
             self.expect_eat_token(Token::Rparen)?;
             return Ok(Expr::FuncCall { func_name, args });
         }
-        while let Token::Iden(_) = self.cur_tok() {
+        while let Token::Iden(_) | Token::IntLit(_) = self.cur_tok() {
             args.push(self.parse_expr()?);
             match self.cur_tok() {
                 Token::Comma => self.expect_eat_token(Token::Comma)?,
@@ -284,6 +277,7 @@ impl Parser {
                 t => return Err(self.expected_token_err(Token::Rparen, t)),
             }
         }
+        dbg!(&args);
         Ok(Expr::FuncCall { func_name, args })
     }
     //

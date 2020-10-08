@@ -190,16 +190,6 @@ impl Code {
                 self.initalized_local_vars.remove(var);
             }
         }
-        // // deallocate args pushed to stack from regs
-        // for (place, _) in args.iter().enumerate() {
-        //     if place <= 6 {
-        //         self.stack_p_offset -= 1;
-        //         self.text.instructions.push(String::from("sub rsp, 8"));
-        //     }
-        // }
-        // self.text
-        //     .instructions
-        //     .push(format!("sub rsp, {} * 8", vars_declared.len())); // deallocate locals
         self.text.instructions.push(String::from("mov rsp, rbp"));
         self.stack_p_offset -= mem_len as u32;
         self.text.instructions.push(String::from("pop rbp"));
@@ -210,8 +200,18 @@ impl Code {
     }
     /// code generation for a function call
     fn cgen_funcall_expr(&mut self, func_name: &str, args: &Vec<Expr>) {
-        for arg in args {}
-        unimplemented!()
+        for (i, arg) in args.iter().enumerate() {
+            if i > 6 {
+                unimplemented!()
+            }
+            self.cgen_expr(arg.clone());
+            self.text
+                .instructions
+                .push(format!("mov {}, r8", FUNCTION_PARAMS[i]));
+        }
+        self.text
+            .instructions
+            .push(format!("call MaNgLe_{}\nmov r8, rax", func_name));
     }
     /// code generation for an expr. moves the result to r8
     fn cgen_expr(&mut self, expr: Expr) {

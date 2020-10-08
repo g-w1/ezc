@@ -67,7 +67,6 @@ fn parse_input_to_code(input: String, lib: bool) -> String {
     }
     let code_text;
     let output = parser::parse(output.0.unwrap(), output.1);
-    dbg!(&output);
     match output {
         Ok(mut res) => match analyze::analize(&mut res) {
             Ok(_) => {
