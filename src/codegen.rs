@@ -517,6 +517,54 @@ macro_rules! eq_op {
         ]
     }};
 }
+impl Code {
+    /// printing the asm to stdout. should be very easy to port to file because stdout is a file!!!
+    pub fn fmt(&self, lib: bool) -> String {
+        // adding the sections
+        let mut f = String::new();
+        use std::fmt::Write;
+        if self.text.instructions.clone().len() > 0 {
+            if !lib {
+                writeln!(f, "global _start").unwrap();
+            }
+            for i in &self.text.functions_names {
+                writeln!(f, "global {}", i).unwrap();
+            }
+            writeln!(f, "section .text").unwrap();
+            if lib {
+                for i in self
+                    .text
+                    .instructions
+                    .iter()
+                    .take_while(|s| **s != "_start:".to_string())
+                {
+                    writeln!(f, "{}", i).unwrap();
+                }
+            } else {
+                for i in &self.text.instructions {
+                    writeln!(f, "{}", i).unwrap();
+                }
+            }
+            // exit 0
+            if !lib {
+                writeln!(
+                    f,
+                    "mov rax, 60
+xor rdi, rdi
+syscall"
+                )
+                .unwrap();
+            }
+        }
+        if self.bss.instructions.clone().len() > 0 {
+            writeln!(f, "section .bss").unwrap();
+            for i in &self.bss.instructions {
+                writeln!(f, "{}", i).unwrap();
+            }
+        }
+        f
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -777,6 +825,140 @@ MaNgLe_res_of_bop resq 1
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
+    fn codegen_funcall() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Function fib(n),
+  if n <= 1,
+      return n.
+  !
+  return fib(n - 1) + fib( n- 2).
+!
+
+set z to fib(50).
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.cgen(ast);
+        let correct_code = "global _start
+global MaNgLe_fib
+section .text
+MaNgLe_fib:
+push rbp
+mov rbp, rsp
+push rdi
+sub rsp, 0 * 8
+push qword [rsp + 0 * 8]
+push 1
+pop r8
+pop r9
+cmp r9, r8
+jle .IF_HEADER_2
+jg .IF_HEADER_FAILED_2
+.IF_HEADER_2
+push 1
+jmp .END_IF_HEADER_2
+.IF_HEADER_FAILED_2
+push 0
+.END_IF_HEADER_2
+pop r8
+cmp r8, 1
+je .IF_BODY_0
+jne .IF_END_0
+.IF_BODY_0
+sub rsp, 0 * 8
+mov r8, qword [rsp + 0 * 8]
+mov rax, r8
+jmp .RETURN_fib
+add rsp, 0 * 8
+.IF_END_0
+push qword [rsp + 0 * 8]
+push 1
+pop r8
+pop r9
+sub r9, r8
+push r9
+pop r8
+mov rdi, r8
+call MaNgLe_fib
+mov r8, rax
+push r8
+push qword [rsp + 1 * 8]
+push 2
+pop r8
+pop r9
+sub r9, r8
+push r9
+pop r8
+mov rdi, r8
+call MaNgLe_fib
+mov r8, rax
+push r8
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov rax, r8
+jmp .RETURN_fib
+mov rax, 0
+.RETURN_fib
+mov rsp, rbp
+pop rbp
+ret
+_start:
+mov r8, 50
+mov rdi, r8
+call MaNgLe_fib
+mov r8, rax
+mov qword [MaNgLe_z], r8
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+MaNgLe_z resq 1
+";
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
+    }
+    #[test]
+    fn codegen_change_stmt() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "Set x to 10. set y to 5 . change   x to 445235 .";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.cgen(ast);
+        let correct_code = "global _start
+section .text
+_start:
+mov r8, 10
+mov qword [MaNgLe_x], r8
+mov r8, 5
+mov qword [MaNgLe_y], r8
+mov r8, 445235
+mov qword [MaNgLe_x], r8
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+MaNgLe_x resq 1
+MaNgLe_y resq 1
+";
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
+    }
+    #[test]
     fn codegen_and_bop() {
         use crate::analyze;
         use crate::codegen;
@@ -813,38 +995,6 @@ mov r8, 10
 mov qword [MaNgLe_x], r8
 add rsp, 0 * 8
 .IF_END_0
-mov rax, 60
-xor rdi, rdi
-syscall
-section .bss
-MaNgLe_x resq 1
-MaNgLe_y resq 1
-";
-        assert_eq!(format!("{}", code.fmt(false)), correct_code);
-    }
-    #[test]
-    fn codegen_change_stmt() {
-        use crate::analyze;
-        use crate::codegen;
-        use crate::lexer;
-        use crate::parser;
-
-        let mut tokenizer = lexer::Tokenizer::new();
-        let input = "Set x to 10. set y to 5 . change   x to 445235 .";
-        let output = tokenizer.lex(&String::from(input));
-        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
-        let mut code = codegen::Code::new();
-        code.cgen(ast);
-        let correct_code = "global _start
-section .text
-_start:
-mov r8, 10
-mov qword [MaNgLe_x], r8
-mov r8, 5
-mov qword [MaNgLe_y], r8
-mov r8, 445235
-mov qword [MaNgLe_x], r8
 mov rax, 60
 xor rdi, rdi
 syscall
@@ -1051,54 +1201,5 @@ section .bss
 MaNgLe_x resq 1
 ";
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
-    }
-}
-
-impl Code {
-    /// printing the asm to stdout. should be very easy to port to file because stdout is a file!!!
-    pub fn fmt(&self, lib: bool) -> String {
-        // adding the sections
-        let mut f = String::new();
-        use std::fmt::Write;
-        if self.text.instructions.clone().len() > 0 {
-            if !lib {
-                writeln!(f, "global _start").unwrap();
-            }
-            for i in &self.text.functions_names {
-                writeln!(f, "global {}", i).unwrap();
-            }
-            writeln!(f, "section .text").unwrap();
-            if lib {
-                for i in self
-                    .text
-                    .instructions
-                    .iter()
-                    .take_while(|s| **s != "_start:".to_string())
-                {
-                    writeln!(f, "{}", i).unwrap();
-                }
-            } else {
-                for i in &self.text.instructions {
-                    writeln!(f, "{}", i).unwrap();
-                }
-            }
-            // exit 0
-            if !lib {
-                writeln!(
-                    f,
-                    "mov rax, 60
-xor rdi, rdi
-syscall"
-                )
-                .unwrap();
-            }
-        }
-        if self.bss.instructions.clone().len() > 0 {
-            writeln!(f, "section .bss").unwrap();
-            for i in &self.bss.instructions {
-                writeln!(f, "{}", i).unwrap();
-            }
-        }
-        f
     }
 }

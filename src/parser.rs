@@ -402,6 +402,34 @@ mod tests {
         );
     }
     #[test]
+    fn parser_funcall() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(&String::from("set p to fib(a,b). set z to lib()."));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("p"),
+                    change: false,
+                    setor: Expr::FuncCall {
+                        func_name: String::from("fib"),
+                        args: vec![Expr::Iden(String::from("a")), Expr::Iden(String::from("b"))]
+                    }
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("z"),
+                    change: false,
+                    setor: Expr::FuncCall {
+                        func_name: String::from("lib"),
+                        args: vec![]
+                    }
+                },
+            ],
+            ast
+        );
+    }
+    #[test]
     fn parser_loop() {
         let mut tokenizer = lexer::Tokenizer::new();
         let output = tokenizer.lex(&String::from("Set x to 1. loop, change x to x+1.!"));

@@ -56,7 +56,7 @@ To test: `cargo test`
 
 - [x] loops
 
-- [ ] fancy errors
+- [x] fancy errors
 
 - [ ] functions
 

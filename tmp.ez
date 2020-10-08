@@ -5,4 +5,4 @@ Function fib(n),
   return fib(n - 1) + fib( n- 2).
 !
 
-set z to fib(7).
+set z to fib(50).
