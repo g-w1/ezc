@@ -1,9 +1,11 @@
 #include <stdio.h>
 
+static int res[45];
+
 int main() {
-  extern unsigned long long MaNgLe_fib();
-  for (int i = 1; i <= 50; i++) {
-    printf("fib(%d)=%lld ", i, MaNgLe_fib(i));
+  extern unsigned long long MaNgLe_Fib_rec();
+  for (int i = 1; i <= 45; i++) {
+    printf("fib(%d)=%lld \n", i, MaNgLe_Fib_rec(i));
   }
   return 0;
 }

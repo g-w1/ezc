@@ -1,18 +1,6 @@
-Function fib(n),
-  set counter to 1.
-  set a to 1.
-  set b to 0.
-  [start the loop]
-  loop,
-    change a to a + b.
-    change counter to counter + 1.
-    if counter > n,
-      return a.
-    !
-    change b to a + b.
-    change counter to counter + 1.
-    if counter > n,
-      return b.
-    !
+Function Fib_rec(n),
+  if n <= 1,
+      return n.
   !
+  return Fib_rec(n - 1) + Fib_rec( n- 2).
 !
