@@ -222,10 +222,11 @@ impl Code {
                 self.stack_p_offset -= 1;
             }
             Expr::Number(n) => self.text.instructions.push(format!("mov r8, {}", n)), // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
-            Expr::Iden(_) => self
-                .text
-                .instructions
-                .push(format!("mov r8, {}", self.get_display_asm(&expr))),
+            Expr::Iden(_) => {
+                let tmpexpr = self.get_display_asm(&expr);
+                self.text.instructions.push(format!("mov r8, {}", tmpexpr));
+            }
+
             Expr::FuncCall { func_name, args } => self.cgen_funcall_expr(&func_name, &args),
         }
     }
@@ -350,10 +351,8 @@ impl Code {
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Expr) {
         self.cgen_expr(setor);
-        self.text.instructions.push(format!(
-            "mov {}, r8",
-            self.get_display_asm(&Expr::Iden(sete)),
-        ));
+        let tmpsete = self.get_display_asm(&Expr::Iden(sete));
+        self.text.instructions.push(format!("mov {}, r8", tmpsete,));
     }
 
     /// A function to recursively generate code for expressions.
@@ -361,87 +360,6 @@ impl Code {
         let cloned_rhs = rhs.clone();
         let cloned_lhs = lhs.clone();
         match (lhs, rhs) {
-            // base case
-            //       op
-            //     /    \
-            //  num     num
-            (Expr::Iden(_), Expr::Number(_))
-            | (Expr::Number(_), Expr::Iden(_))
-            | (Expr::Number(_), Expr::Number(_))
-            | (Expr::Iden(_), Expr::Iden(_)) => {
-                self.text
-                    .instructions
-                    .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
-                self.stack_p_offset += 1;
-                self.text
-                    .instructions
-                    .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.stack_p_offset += 1;
-                let slice = &self.cgen_for_stack(&op);
-                self.text.instructions.extend_from_slice(slice);
-                // // update it by 2 because 2 was used and dont wanna pass mut
-                // self.number_for_mangling += 2;
-            }
-            //        op
-            //      /    \
-            //     op     num
-            //    /  \
-            // num    num
-            (
-                Expr::BinOp {
-                    lhs: reclhs,
-                    op: recop,
-                    rhs: recrhs,
-                },
-                Expr::Iden(_),
-            )
-            | (
-                Expr::BinOp {
-                    lhs: reclhs,
-                    op: recop,
-                    rhs: recrhs,
-                },
-                Expr::Number(_),
-            ) => {
-                self.cgen_binop_expr(*reclhs, recop, *recrhs);
-                self.text
-                    .instructions
-                    .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
-                self.stack_p_offset += 1;
-                let slice = &self.cgen_for_stack(&op);
-                self.text.instructions.extend_from_slice(slice);
-                self.number_for_mangling += 2;
-            }
-            //        op
-            //      /    \
-            //     num     op
-            //            /  \
-            //         num    num
-            (
-                Expr::Iden(_),
-                Expr::BinOp {
-                    lhs: reclhs,
-                    op: recop,
-                    rhs: recrhs,
-                },
-            )
-            | (
-                Expr::Number(_),
-                Expr::BinOp {
-                    lhs: reclhs,
-                    op: recop,
-                    rhs: recrhs,
-                },
-            ) => {
-                self.text
-                    .instructions
-                    .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
-                self.stack_p_offset += 1;
-                self.cgen_binop_expr(*reclhs, recop, *recrhs);
-                let slice = &self.cgen_for_stack(&op);
-                self.text.instructions.extend_from_slice(slice);
-                self.number_for_mangling += 2;
-            }
             // THE CASE WHERE BOTH ARE RECURSIVE
             (
                 Expr::BinOp {
@@ -462,17 +380,76 @@ impl Code {
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
             }
-            _ => unimplemented!(),
+            //        op
+            //      /    \
+            //     op     num
+            //    /  \
+            // num    num
+            (
+                Expr::BinOp {
+                    lhs: reclhs,
+                    op: recop,
+                    rhs: recrhs,
+                },
+                _,
+            ) => {
+                self.cgen_binop_expr(*reclhs, recop, *recrhs);
+                let tmprhs = self.get_display_asm(&cloned_rhs);
+                self.text.instructions.push(format!("push {}", tmprhs));
+                self.stack_p_offset += 1;
+                let slice = &self.cgen_for_stack(&op);
+                self.text.instructions.extend_from_slice(slice);
+                self.number_for_mangling += 2;
+            }
+            //        op
+            //      /    \
+            //     num     op
+            //            /  \
+            //         num    num
+            (
+                _,
+                Expr::BinOp {
+                    lhs: reclhs,
+                    op: recop,
+                    rhs: recrhs,
+                },
+            ) => {
+                let tmplhs = self.get_display_asm(&cloned_lhs);
+                self.text.instructions.push(format!("push {}", tmplhs));
+                self.stack_p_offset += 1;
+                self.cgen_binop_expr(*reclhs, recop, *recrhs);
+                let slice = &self.cgen_for_stack(&op);
+                self.text.instructions.extend_from_slice(slice);
+                self.number_for_mangling += 2;
+            }
+            // base case
+            //       op
+            //     /    \
+            //  num     num
+            (_, _) => {
+                let tmplhs = self.get_display_asm(&cloned_lhs);
+                self.text.instructions.push(format!("push {}", tmplhs));
+                self.stack_p_offset += 1;
+                let tmprhs = self.get_display_asm(&cloned_rhs);
+                self.text.instructions.push(format!("push {}", tmprhs));
+                self.stack_p_offset += 1;
+                let slice = &self.cgen_for_stack(&op);
+                self.text.instructions.extend_from_slice(slice);
+            }
         }
     }
     /// if its a num or iden give how to display it deferenecd
-    fn get_display_asm(&self, expr: &Expr) -> String {
+    fn get_display_asm(&mut self, expr: &Expr) -> String {
         match expr {
             Expr::Number(n) => n.to_owned(),
             Expr::Iden(a) => match self.initalized_local_vars.get(a) {
                 None => format!("{}", qword_deref_helper(a.to_owned())),
                 Some(num) => format!("qword [rsp + {} * 8]", (self.stack_p_offset - num - 1)),
             },
+            Expr::FuncCall { func_name, args } => {
+                self.cgen_funcall_expr(&func_name, args);
+                format!("r8")
+            }
             _ => unreachable!(),
         }
     }
