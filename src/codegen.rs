@@ -3,6 +3,7 @@
 use crate::ast::{AstNode, AstRoot, BinOp, Expr};
 use std::collections::HashMap;
 use std::collections::HashSet;
+const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
 /// section .bss
 #[derive(Debug)]
 pub struct Bss {
@@ -49,7 +50,7 @@ impl Code {
         }
     }
     /// generate the code. dont deal with any of the sections
-    pub fn cgen(self: &mut Self, tree: AstRoot) {
+    pub fn cgen(&mut self, tree: AstRoot) {
         for var in tree.static_vars.unwrap() {
             self.bss.instructions.push(format!("MaNgLe_{} resq 1", var));
         }
@@ -86,28 +87,13 @@ impl Code {
         }
     }
     fn cgen_return_stmt(&mut self, val: Expr) {
-        match val.to_owned() {
-            Expr::BinOp { lhs, op, rhs } => {
-                self.cgen_expr(*lhs, op, *rhs);
-                self.text
-                    .instructions
-                    .push(format!("pop rax\njmp .RETURN_{}", self.cur_func));
-            }
-            Expr::Number(s) => self
-                .text
-                .instructions
-                .push(format!("mov rax, {}\njmp .RETURN_{}", s, self.cur_func)),
-            Expr::Iden(_) => self.text.instructions.push(format!(
-                "mov rax, {}\njmp .RETURN_{}",
-                self.get_display_asm(&val),
-                self.cur_func
-            )),
-            _ => unimplemented!(),
-        }
+        self.cgen_expr(val.to_owned());
+        self.text
+            .instructions
+            .push(format!("mov rax, r8\njmp .RETURN_{}", self.cur_func));
     }
     /// a little helper fn
     fn reg_to_farness_stack(&mut self, n: usize) -> i8 {
-        const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
         if n < 6 {
             self.text
                 .instructions
@@ -222,9 +208,30 @@ impl Code {
         ////////////////// cleanup ///////////////
         self.initalized_local_vars.clear(); // clear initalized vars
     }
+    /// code generation for a function call
+    fn cgen_funcall_expr(&mut self, func_name: &str, args: &Vec<Expr>) {
+        for arg in args {}
+        unimplemented!()
+    }
+    /// code generation for an expr. moves the result to r8
+    fn cgen_expr(&mut self, expr: Expr) {
+        match expr {
+            Expr::BinOp { lhs, op, rhs } => {
+                self.cgen_binop_expr(*lhs, op, *rhs);
+                self.text.instructions.push(String::from("pop r8"));
+                self.stack_p_offset -= 1;
+            }
+            Expr::Number(n) => self.text.instructions.push(format!("mov r8, {}", n)), // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
+            Expr::Iden(_) => self
+                .text
+                .instructions
+                .push(format!("mov r8, {}", self.get_display_asm(&expr))),
+            Expr::FuncCall { func_name, args } => self.cgen_funcall_expr(&func_name, &args),
+        }
+    }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(
-        self: &mut Self,
+        &mut self,
         guard: Expr,
         vars: HashMap<String, u32>,
         body: Vec<AstNode>,
@@ -232,26 +239,8 @@ impl Code {
     ) {
         ///////////////////////////////////// EVALUATE THE ACTUAL BOOL //////////////////////////////
         let our_number_for_mangling = self.number_for_mangling;
-        match guard {
-            Expr::BinOp { lhs, op, rhs } => {
-                let reg = "r8";
-                self.cgen_expr(*lhs, op, *rhs);
-                self.text.instructions.push(format!("pop {}", reg));
-                self.stack_p_offset -= 1;
-                self.text.instructions.push(format!("cmp {}, 1", reg));
-            }
-            Expr::Number(n) => {
-                self.text
-                    .instructions
-                    .push(format!("mov r8, {}\ncmp r8, 1", n)); // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
-            }
-            Expr::Iden(_) => {
-                self.text
-                    .instructions
-                    .push(format!("cmp {}, 1", self.get_display_asm(&guard)));
-            }
-            _ => unimplemented!(),
-        }
+        self.cgen_expr(guard);
+        self.text.instructions.push(String::from("cmp r8, 1"));
         self.text
             .instructions
             .push(format!("je .IF_BODY_{}", our_number_for_mangling));
@@ -320,7 +309,7 @@ impl Code {
         self.number_for_mangling += 1;
     }
     /// code generation for a loop. very easy
-    fn cgen_loop_stmt(self: &mut Self, body: Vec<AstNode>) {
+    fn cgen_loop_stmt(&mut self, body: Vec<AstNode>) {
         let our_number_for_mangling = self.number_for_mangling;
         self.number_for_mangling += 1;
         self.text
@@ -359,42 +348,16 @@ impl Code {
         ))
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
-    fn cgen_set_or_change_stmt(self: &mut Self, sete: String, setor: Expr) {
-        match setor {
-            Expr::Number(s) => {
-                // if it is just a number push it to .text here
-                self.text.instructions.push(format!(
-                    "mov {}, {}",
-                    self.get_display_asm(&Expr::Iden(sete)),
-                    s
-                ));
-            }
-            Expr::Iden(s) => {
-                // if it is 2 things that are in stack memory, then do it in 2 places bc cant copy mem directoly
-                self.text.instructions.push(format!(
-                    "mov r8, {}\nmov {}, r8",
-                    self.get_display_asm(&Expr::Iden(s)),
-                    self.get_display_asm(&Expr::Iden(sete))
-                ));
-            }
-            // for recursive expressions
-            Expr::BinOp { lhs, rhs, op } => {
-                let reg = "r8";
-                self.cgen_expr(*lhs, op, *rhs);
-                self.text.instructions.push(format!("pop {}", reg));
-                self.stack_p_offset -= 1;
-                self.text.instructions.push(format!(
-                    "mov {}, {}",
-                    self.get_display_asm(&Expr::Iden(sete)),
-                    reg
-                ));
-            }
-            _ => unimplemented!(),
-        }
+    fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Expr) {
+        self.cgen_expr(setor);
+        self.text.instructions.push(format!(
+            "mov {}, r8",
+            self.get_display_asm(&Expr::Iden(sete)),
+        ));
     }
 
     /// A function to recursively generate code for expressions.
-    fn cgen_expr(self: &mut Self, lhs: Expr, op: BinOp, rhs: Expr) {
+    fn cgen_binop_expr(&mut self, lhs: Expr, op: BinOp, rhs: Expr) {
         let cloned_rhs = rhs.clone();
         let cloned_lhs = lhs.clone();
         match (lhs, rhs) {
@@ -440,7 +403,7 @@ impl Code {
                 },
                 Expr::Number(_),
             ) => {
-                self.cgen_expr(*reclhs, recop, *recrhs);
+                self.cgen_binop_expr(*reclhs, recop, *recrhs);
                 self.text
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_rhs)));
@@ -474,7 +437,7 @@ impl Code {
                     .instructions
                     .push(format!("push {}", self.get_display_asm(&cloned_lhs)));
                 self.stack_p_offset += 1;
-                self.cgen_expr(*reclhs, recop, *recrhs);
+                self.cgen_binop_expr(*reclhs, recop, *recrhs);
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
                 self.number_for_mangling += 2;
@@ -492,9 +455,9 @@ impl Code {
                     rhs: rrecrhs,
                 },
             ) => {
-                self.cgen_expr(*lreclhs, lrecop, *lrecrhs);
+                self.cgen_binop_expr(*lreclhs, lrecop, *lrecrhs);
                 self.number_for_mangling += 1;
-                self.cgen_expr(*rreclhs, rrecop, *rrecrhs);
+                self.cgen_binop_expr(*rreclhs, rrecop, *rrecrhs);
                 self.number_for_mangling += 1;
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
@@ -503,7 +466,7 @@ impl Code {
         }
     }
     /// if its a num or iden give how to display it deferenecd
-    fn get_display_asm(self: &Self, expr: &Expr) -> String {
+    fn get_display_asm(&self, expr: &Expr) -> String {
         match expr {
             Expr::Number(n) => n.to_owned(),
             Expr::Iden(a) => match self.initalized_local_vars.get(a) {
@@ -514,7 +477,7 @@ impl Code {
         }
     }
     /// takes 2 things on the stack. pops them, does an arg and then pushes the result
-    fn cgen_for_stack(self: &mut Self, b_op: &BinOp) -> [String; 4] {
+    fn cgen_for_stack(&mut self, b_op: &BinOp) -> [String; 4] {
         match b_op {
             &BinOp::Add => self.special_bop("add"),
             &BinOp::Sub => self.special_bop("sub"),
@@ -597,9 +560,12 @@ mod tests {
         let correct_code = "global _start
 section .text
 _start:
-mov qword [MaNgLe_x], 10
-mov qword [MaNgLe_y], 5
-mov qword [MaNgLe_test], 445235
+mov r8, 10
+mov qword [MaNgLe_x], r8
+mov r8, 5
+mov qword [MaNgLe_y], r8
+mov r8, 445235
+mov qword [MaNgLe_test], r8
 mov rax, 60
 xor rdi, rdi
 syscall
@@ -627,8 +593,10 @@ MaNgLe_test resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [MaNgLe_x], 10
-mov qword [MaNgLe_y], 5
+mov r8, 10
+mov qword [MaNgLe_x], r8
+mov r8, 5
+mov qword [MaNgLe_y], r8
 push qword [MaNgLe_y]
 push qword [MaNgLe_x]
 pop r8
@@ -689,7 +657,8 @@ if 5 >= 5,
         let correct_code = "global _start
 section .text
 _start:
-mov qword [MaNgLe_c], 0
+mov r8, 0
+mov qword [MaNgLe_c], r8
 push 5
 push 5
 pop r8
@@ -709,9 +678,12 @@ je .IF_BODY_0
 jne .IF_END_0
 .IF_BODY_0
 sub rsp, 2 * 8
-mov qword [rsp + 0 * 8], 5
-mov qword [rsp + 1 * 8], 6
-mov qword [rsp + 0 * 8], 7
+mov r8, 5
+mov qword [rsp + 0 * 8], r8
+mov r8, 6
+mov qword [rsp + 1 * 8], r8
+mov r8, 7
+mov qword [rsp + 0 * 8], r8
 push qword [rsp + 0 * 8]
 push qword [rsp + 2 * 8]
 pop r8
@@ -731,7 +703,8 @@ je .IF_BODY_2
 jne .IF_END_2
 .IF_BODY_2
 sub rsp, 0 * 8
-mov qword [MaNgLe_c], 5
+mov r8, 5
+mov qword [MaNgLe_c], r8
 add rsp, 0 * 8
 .IF_END_2
 add rsp, 2 * 8
@@ -762,7 +735,8 @@ MaNgLe_c resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [MaNgLe_y], 5
+mov r8, 5
+mov qword [MaNgLe_y], r8
 push qword [MaNgLe_y]
 push 5
 pop r8
@@ -842,8 +816,10 @@ MaNgLe_res_of_bop resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [MaNgLe_x], 1
-mov qword [MaNgLe_y], 0
+mov r8, 1
+mov qword [MaNgLe_x], r8
+mov r8, 0
+mov qword [MaNgLe_y], r8
 push qword [MaNgLe_y]
 push qword [MaNgLe_x]
 pop r8
@@ -856,7 +832,8 @@ je .IF_BODY_0
 jne .IF_END_0
 .IF_BODY_0
 sub rsp, 0 * 8
-mov qword [MaNgLe_x], 10
+mov r8, 10
+mov qword [MaNgLe_x], r8
 add rsp, 0 * 8
 .IF_END_0
 mov rax, 60
@@ -885,9 +862,12 @@ MaNgLe_y resq 1
         let correct_code = "global _start
 section .text
 _start:
-mov qword [MaNgLe_x], 10
-mov qword [MaNgLe_y], 5
-mov qword [MaNgLe_x], 445235
+mov r8, 10
+mov qword [MaNgLe_x], r8
+mov r8, 5
+mov qword [MaNgLe_y], r8
+mov r8, 445235
+mov qword [MaNgLe_x], r8
 mov rax, 60
 xor rdi, rdi
 syscall
@@ -936,9 +916,12 @@ push rbp
 mov rbp, rsp
 push rdi
 sub rsp, 3 * 8
-mov qword [rsp + 0 * 8], 1
-mov qword [rsp + 1 * 8], 1
-mov qword [rsp + 2 * 8], 0
+mov r8, 1
+mov qword [rsp + 0 * 8], r8
+mov r8, 1
+mov qword [rsp + 1 * 8], r8
+mov r8, 0
+mov qword [rsp + 2 * 8], r8
 .START_LOOP_0
 push qword [rsp + 1 * 8]
 push qword [rsp + 3 * 8]
@@ -975,7 +958,8 @@ je .IF_BODY_1
 jne .IF_END_1
 .IF_BODY_1
 sub rsp, 0 * 8
-mov rax, qword [rsp + 1 * 8]
+mov r8, qword [rsp + 1 * 8]
+mov rax, r8
 jmp .RETURN_fib
 add rsp, 0 * 8
 .IF_END_1
@@ -1014,7 +998,8 @@ je .IF_BODY_4
 jne .IF_END_4
 .IF_BODY_4
 sub rsp, 0 * 8
-mov rax, qword [rsp + 2 * 8]
+mov r8, qword [rsp + 2 * 8]
+mov rax, r8
 jmp .RETURN_fib
 add rsp, 0 * 8
 .IF_END_4
@@ -1047,7 +1032,8 @@ ret
         let correct_code = "global _start
 section .text
 _start:
-mov qword [MaNgLe_x], 0
+mov r8, 0
+mov qword [MaNgLe_x], r8
 .START_LOOP_0
 push qword [MaNgLe_x]
 push 1

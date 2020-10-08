@@ -274,7 +274,7 @@ impl Parser {
             return Ok(Expr::FuncCall { func_name, args });
         }
         while let Token::Iden(_) = self.cur_tok() {
-            args.push(self.parse_iden()?);
+            args.push(self.parse_expr()?);
             match self.cur_tok() {
                 Token::Comma => self.expect_eat_token(Token::Comma)?,
                 Token::Rparen => {

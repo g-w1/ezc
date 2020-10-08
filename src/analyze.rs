@@ -23,6 +23,10 @@ pub enum AnalysisError {
     FuncAlreadyExists(String),
     /// same arg for function
     SameArgForFunction(String),
+    /// function called with wrong number of args
+    FuncCalledWithWrongNumOfArgs(String, u32, u32),
+    /// funccalledbutnoexist
+    FuncCalledButNoExist(String),
 }
 
 /// a way to see what ur in
@@ -47,7 +51,7 @@ struct Analyser {
     /// the initialized_local_vars
     initialized_local_vars: HashMap<String, u32>,
     /// the initialized_function_names
-    initialized_function_names: HashSet<String>,
+    initialized_functions: HashMap<String, u32>,
     /// the initialized_function_vars
     initialized_function_vars: HashMap<String, u32>,
     /// scope that the analizer is in rn
@@ -60,7 +64,7 @@ impl Analyser {
         Self {
             initialized_static_vars: HashSet::new(),
             initialized_local_vars: HashMap::new(),
-            initialized_function_names: HashSet::new(),
+            initialized_functions: HashMap::new(),
             initialized_function_vars: HashMap::new(),
             scope: Scope {
                 in_func: false,
@@ -200,12 +204,14 @@ impl Analyser {
                 } => {
                     // TODO get rid of .clone
                     /////////////// Making sure function name doesn't exist
-                    if !self.initialized_function_names.insert(name.clone()) {
+                    if let Some(_) = self
+                        .initialized_functions
+                        .insert(name.clone(), args.len() as u32)
+                    {
                         return Err(AnalysisError::FuncAlreadyExists(name.clone()));
                     }
                     ////////////////////// Making sure there no duplicate args
                     let mut args_map = HashSet::new();
-                    // TODO get rid of this .clone()
                     for n in args.clone() {
                         if !args_map.insert(n.clone()) {
                             return Err(AnalysisError::SameArgForFunction(n.to_owned()));
@@ -271,7 +277,7 @@ impl Analyser {
         Ok(())
     }
     /// analyze an expression
-    fn check_expr(self: &Self, expr: &Expr) -> Result<(), AnalysisError> {
+    fn check_expr(&self, expr: &Expr) -> Result<(), AnalysisError> {
         match expr {
             Expr::Number(n) => check_num(n)?,
             Expr::Iden(s) => self.make_sure_var_exists(&s)?,
@@ -279,7 +285,26 @@ impl Analyser {
                 self.check_expr(lhs)?;
                 self.check_expr(rhs)?;
             }
-            _ => unimplemented!(),
+            Expr::FuncCall { func_name, args } => self.check_funcall(func_name, args)?,
+        }
+        Ok(())
+    }
+    /// check a function called
+    fn check_funcall(&self, func_name: &str, args: &Vec<Expr>) -> Result<(), AnalysisError> {
+        let args_len = args.len();
+        if let Some(len) = self.initialized_functions.get(func_name) {
+            if *len != args_len as u32 {
+                return Err(AnalysisError::FuncCalledWithWrongNumOfArgs(
+                    func_name.to_string(),
+                    *len as u32,
+                    args_len as u32,
+                ));
+            }
+        } else {
+            return Err(AnalysisError::FuncCalledButNoExist(func_name.to_string()));
+        }
+        for arg in args {
+            self.check_expr(arg)?;
         }
         Ok(())
     }

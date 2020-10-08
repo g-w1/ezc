@@ -79,7 +79,10 @@ impl fmt::Display for AnalysisError {
             // TODO get info on whch num
             AnalysisError::NumberTooBig(num) => write!(f, "Analysis Error: Number too big: `{}`", num),
             AnalysisError::SetInLoop => write!(f, "A set statement was used in a loop. Not allowed."),
-            AnalysisError::ReturnOutSideOfFunc => write!(f, "A return statement was used outside of a function. Not allowed.")
+            AnalysisError::ReturnOutSideOfFunc => write!(f, "A return statement was used outside of a function. Not allowed."),
+            AnalysisError::FuncCalledWithWrongNumOfArgs(name, had, should) => write!(f, "The function {} was called with {} args but it takes {} args.", name, had,should),
+            AnalysisError::FuncCalledButNoExist(name) => write!(f, "The function {} was called but it does not exist.",name),
+
         }
     }
 }

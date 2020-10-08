@@ -17,10 +17,7 @@ pub enum Expr {
         rhs: Box<Expr>,
     },
     /// a function call
-    FuncCall {
-        func_name: String,
-        args: Vec<String>,
-    },
+    FuncCall { func_name: String, args: Vec<Expr> },
 }
 
 pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {
