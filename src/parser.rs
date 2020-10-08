@@ -89,9 +89,9 @@ impl Parser {
         }
     }
     // /// Peek one token ahead without eating it. may need in future
-    // fn peek(self: &mut Self) -> Token {
-    //     self.input[self.pos_input + 1].clone()
-    // }
+    fn peek(self: &mut Self) -> Token {
+        self.input[self.pos_input + 1].clone()
+    }
     /// Get the current token in the stream
     fn cur_tok(self: &Self) -> Token {
         self.input[self.pos_input].clone()
@@ -255,13 +255,36 @@ impl Parser {
         Ok((func_name, items_in_func))
     }
     /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr (parsing an expression but not top level)
-    fn parse_expr_primary(self: &mut Self) -> Result<Expr, ParserError> {
+    fn parse_expr_primary(&mut self) -> Result<Expr, ParserError> {
         match self.cur_tok() {
             Token::IntLit(_) => self.parse_expr_number(),
+            Token::Iden(_) if self.peek() == Token::Lparen => self.parse_expr_funcall(),
             Token::Iden(_) => self.parse_expr_iden(),
             Token::Lparen => self.parse_expr_paren(),
             t => return Err(self.expected_token_err(Token::Lparen, t)),
         }
+    }
+    /// Expr <- Iden Lparen ParenExpr,* Rparen
+    fn parse_expr_funcall(&mut self) -> Result<Expr, ParserError> {
+        let func_name = self.parse_iden()?;
+        self.expect_eat_token(Token::Lparen)?;
+        let mut args = Vec::new();
+        if self.cur_tok() == Token::Rparen {
+            self.expect_eat_token(Token::Rparen)?;
+            return Ok(Expr::FuncCall { func_name, args });
+        }
+        while let Token::Iden(_) = self.cur_tok() {
+            args.push(self.parse_iden()?);
+            match self.cur_tok() {
+                Token::Comma => self.expect_eat_token(Token::Comma)?,
+                Token::Rparen => {
+                    self.expect_eat_token(Token::Rparen)?;
+                    break;
+                }
+                t => return Err(self.expected_token_err(Token::Rparen, t)),
+            }
+        }
+        Ok(Expr::FuncCall { func_name, args })
     }
     //
     // Parsing stmts

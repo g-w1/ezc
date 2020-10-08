@@ -102,6 +102,7 @@ impl Code {
                 self.get_display_asm(&val),
                 self.cur_func
             )),
+            _ => unimplemented!(),
         }
     }
     /// a little helper fn
@@ -249,6 +250,7 @@ impl Code {
                     .instructions
                     .push(format!("cmp {}, 1", self.get_display_asm(&guard)));
             }
+            _ => unimplemented!(),
         }
         self.text
             .instructions
@@ -387,6 +389,7 @@ impl Code {
                     reg
                 ));
             }
+            _ => unimplemented!(),
         }
     }
 
@@ -496,6 +499,7 @@ impl Code {
                 let slice = &self.cgen_for_stack(&op);
                 self.text.instructions.extend_from_slice(slice);
             }
+            _ => unimplemented!(),
         }
     }
     /// if its a num or iden give how to display it deferenecd

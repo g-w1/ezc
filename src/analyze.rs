@@ -279,6 +279,7 @@ impl Analyser {
                 self.check_expr(lhs)?;
                 self.check_expr(rhs)?;
             }
+            _ => unimplemented!(),
         }
         Ok(())
     }
