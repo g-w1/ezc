@@ -14,7 +14,14 @@ const ERROR: &str = "\x1B[31;1mERROR: \x1B[0m";
 pub fn driver() {
     // generate the code
     let opts = parse_cmd_line_opts();
-    let code = parse_input_to_code(opts.input, opts.library);
+    let input = match fs::read_to_string(&opts.filename) {
+        Ok(a) => a,
+        Err(_) => {
+            eprintln!("{}Cannot read file: `{}`.", ERROR, opts.filename);
+            exit(1);
+        }
+    };
+    let code = parse_input_to_code(input, opts.library);
     // write the code to temp asm file
     fs::write("out.asm", code).unwrap_or_else(|e| {
         eprintln!("{}Cannot write assembly to temporary file: {}", ERROR, e);
@@ -30,7 +37,8 @@ pub fn driver() {
                 .arg("dwarf")
                 .arg("-g")
                 .arg("out.asm")
-                .arg("-oout.o"),
+                .arg("-o")
+                .arg(opts.filename.clone() + ".o"),
         );
     } else {
         command_run_error_printing(
@@ -38,7 +46,8 @@ pub fn driver() {
             Command::new("nasm")
                 .arg("-felf64")
                 .arg("out.asm")
-                .arg("-oout.o"),
+                .arg("-o")
+                .arg(opts.filename.clone() + ".o"),
         );
     }
     // link it
@@ -106,7 +115,7 @@ fn parse_input_to_code(input: String, lib: bool) -> String {
 struct CmdArgInfo {
     debug: bool,
     no_link: bool,
-    input: String,
+    filename: String,
     library: bool,
     help: bool,
     stdlib_path: Option<String>,
@@ -144,20 +153,20 @@ To Report Bugs Go To: github.com/g-w1/ezc/issues/",
         }
         _ => {}
     }
-    let input = match fs::read_to_string(&filename) {
-        Ok(a) => a,
-        Err(_) => {
-            eprintln!("{}Cannot read file: `{}`.", ERROR, filename);
-            exit(1);
-        }
-    };
+    // let input = match fs::read_to_string(&filename) {
+    //     Ok(a) => a,
+    //     Err(_) => {
+    //         eprintln!("{}Cannot read file: `{}`.", ERROR, filename);
+    //         exit(1);
+    //     }
+    // };
     let mut arg_info = CmdArgInfo {
         debug: false,
         help: true,
         library: false,
         no_link: false,
         stdlib_path: None,
-        input,
+        filename: filename.to_string(),
     };
     let mut args_iter = cmd_line_args.iter();
     while let Some(&i) = args_iter.next() {

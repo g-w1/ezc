@@ -1,5 +1,6 @@
 external function PutNum(n).
 external function PutChar(n).
+external function AddOne(n).
 
 Function PrintHelloWorld(),
     set tmp to 0.
@@ -31,3 +32,4 @@ Function PrintHelloWorld(),
 !
 
 set tmp to PrintHelloWorld().
+change tmp to PutNum(AddOne(0)).
