@@ -58,7 +58,7 @@ impl Code {
         }
         let mut started_tl = false;
         for node in tree.tree {
-            if let AstNode::Func { .. } = node {
+            if let AstNode::Func { .. } | AstNode::Extern { .. } = node {
             } else {
                 if !started_tl {
                     self.text.instructions.push(String::from("_start:")); // TODO change if going recursive

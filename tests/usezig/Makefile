@@ -1,4 +1,4 @@
 build:
-	cargo run -- main.ez -nolink
+	cargo run -q -- main.ez -nolink -g
 	zig build -Drelease-fast
 	ld out.o zig-cache/lib/*.a -o out

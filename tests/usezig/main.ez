@@ -1,11 +1,33 @@
 external function PutNum(n).
 external function PutChar(n).
-Function Fib(n),
-  if n <= 1,
-      return n.
-  !
-  return Fib(n - 1) + Fib( n- 2).
+
+Function PrintHelloWorld(),
+    set tmp to 0.
+    set h to 72.
+    set e to 101.
+    set l to 108.
+    set o to 111.
+    set w to 119.
+    set r to 114.
+    set d to 100.
+    set space to 32.
+    set newline to 10.
+    set bang to 33.
+    change tmp to PutChar(h).
+    change tmp to PutChar(e).
+    change tmp to PutChar(l).
+    change tmp to PutChar(l).
+    change tmp to PutChar(o).
+    change tmp to PutChar(space).
+    change tmp to PutChar(w).
+    change tmp to PutChar(o).
+    change tmp to PutChar(r).
+    change tmp to PutChar(l).
+    change tmp to PutChar(d).
+    change tmp to PutChar(bang).
+    change tmp to PutChar(space).
+    change tmp to PutChar(newline).
+    return 0.
 !
 
-set z to Fib(7).
-set res to PutChar(z).
+set tmp to PrintHelloWorld().

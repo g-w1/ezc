@@ -42,8 +42,24 @@ pub fn driver() {
         );
     }
     // link it
-    if !opts.library && !opts.no_link {
-        command_run_error_printing("ld", Command::new("ld").arg("out.o").arg("-o").arg("a.out"));
+    if let Some(p) = opts.stdlib_path {
+        if !opts.library && !opts.no_link {
+            command_run_error_printing(
+                "ld",
+                Command::new("ld")
+                    .arg("out.o")
+                    .arg(p.as_str())
+                    .arg("-o")
+                    .arg("a.out"),
+            );
+        }
+    } else {
+        if !opts.library && !opts.no_link {
+            command_run_error_printing(
+                "ld",
+                Command::new("ld").arg("out.o").arg("-o").arg("a.out"),
+            );
+        }
     }
     // remove temp files if not in debug mode
     if !opts.debug {
@@ -70,7 +86,6 @@ fn parse_input_to_code(input: String, lib: bool) -> String {
     match output {
         Ok(mut res) => match analyze::analize(&mut res) {
             Ok(_) => {
-                dbg!(&res);
                 let mut code = codegen::Code::new();
                 code.cgen(res);
                 code_text = format!("{}", code.fmt(lib));
@@ -94,6 +109,7 @@ struct CmdArgInfo {
     input: String,
     library: bool,
     help: bool,
+    stdlib_path: Option<String>,
 }
 
 fn parse_cmd_line_opts() -> CmdArgInfo {
@@ -115,15 +131,15 @@ ezc version {}
 Usage: ezc [file] [options] ...
 Options:
 
--g              Include Debug Info
--lib            Just compile the functions into a library/object (.o) file
--nolink         Just compile it into a .o file. Do not link. But this will contain _start.
+-g                  Include Debug Info
+-lib                Just compile the functions into a library/object (.o) file
+-nolink             Just compile it into a .o file. Do not link. But this will contain _start.
+-stdlib-path path   The path of the standard library object file so we can link to it.
 -h | --help     Show This Help Message and Exit
 
 To Report Bugs Go To: github.com/g-w1/ezc/issues/",
                 env!("CARGO_PKG_VERSION")
             );
-
             exit(0);
         }
         _ => {}
@@ -140,9 +156,11 @@ To Report Bugs Go To: github.com/g-w1/ezc/issues/",
         help: true,
         library: false,
         no_link: false,
+        stdlib_path: None,
         input,
     };
-    for i in cmd_line_args {
+    let mut args_iter = cmd_line_args.iter();
+    while let Some(&i) = args_iter.next() {
         match i {
             "-g" => arg_info.debug = true,
             "-h" | "--help" => {
@@ -156,8 +174,10 @@ ezc version {}
 Usage: ezc [file] [options] ...
 Options:
 
--g              Include Debug Info
--c              Just compile the functions into a library/object (.o) file
+-g                  Include Debug Info
+-lib                Just compile the functions into a library/object (.o) file
+-nolink             Just compile it into a .o file. Do not link. But this will contain _start.
+-stdlib-path path   The path of the standard library object file so we can link to it.
 -h | --help     Show This Help Message and Exit
 
 To Report Bugs Go To: github.com/g-w1/ezc/issues/",
@@ -167,6 +187,16 @@ To Report Bugs Go To: github.com/g-w1/ezc/issues/",
             }
             "-lib" => arg_info.library = true,
             "-nolink" => arg_info.no_link = true,
+            "-stdlib-path" => {
+                arg_info.stdlib_path = Some({
+                    if let Some(x) = args_iter.next() {
+                        x.to_string()
+                    } else {
+                        arg_not_found("Need another option after -stdlib-path: The actual path");
+                        exit(1)
+                    }
+                })
+            }
             e => arg_not_found(e),
         }
     }
