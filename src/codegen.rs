@@ -14,7 +14,8 @@ pub struct Bss {
 #[derive(Debug)]
 pub struct Text {
     pub instructions: Vec<String>,
-    pub functions_names: Vec<String>,
+    pub function_names: Vec<String>,
+    pub external_function_names: Vec<String>,
 }
 
 /// represent asm
@@ -38,7 +39,8 @@ impl Code {
         Code {
             text: Text {
                 instructions: Vec::new(),
-                functions_names: Vec::new(),
+                function_names: Vec::new(),
+                external_function_names: Vec::new(),
             },
             bss: Bss {
                 instructions: Vec::new(),
@@ -79,6 +81,7 @@ impl Code {
                     body,
                     vars_declared,
                 } => self.cgen_function(name, args, body, vars_declared.unwrap()),
+                AstNode::Extern { name, .. } => self.text.external_function_names.push(name),
                 _ => unreachable!(),
             }
         }
@@ -124,7 +127,7 @@ impl Code {
         /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
         self.cur_func = name.clone(); //doing the args
-        self.text.functions_names.push(format!("MaNgLe_{}", &name)); // declaring it global
+        self.text.function_names.push(format!("MaNgLe_{}", &name)); // declaring it global
         self.text.instructions.push(format!("MaNgLe_{}:", &name));
         ////
         ////////// SETUP STACK //////////////////////
@@ -199,7 +202,7 @@ impl Code {
         self.initalized_local_vars.clear(); // clear initalized vars
     }
     /// code generation for a function call
-    fn cgen_funcall_expr(&mut self, func_name: &str, args: &Vec<Expr>) {
+    fn cgen_funcall_expr(&mut self, func_name: &str, mangle: bool, args: &Vec<Expr>) {
         for (i, arg) in args.iter().enumerate() {
             if i > 6 {
                 unimplemented!()
@@ -209,9 +212,15 @@ impl Code {
                 .instructions
                 .push(format!("mov {}, r8", FUNCTION_PARAMS[i]));
         }
-        self.text
-            .instructions
-            .push(format!("call MaNgLe_{}\nmov r8, rax", func_name));
+        if !mangle {
+            self.text
+                .instructions
+                .push(format!("call MaNgLe_{}\nmov r8, rax", func_name));
+        } else {
+            self.text
+                .instructions
+                .push(format!("call {}\nmov r8, rax", func_name));
+        }
     }
     /// code generation for an expr. moves the result to r8
     fn cgen_expr(&mut self, expr: Expr) {
@@ -227,7 +236,11 @@ impl Code {
                 self.text.instructions.push(format!("mov r8, {}", tmpexpr));
             }
 
-            Expr::FuncCall { func_name, args } => self.cgen_funcall_expr(&func_name, &args),
+            Expr::FuncCall {
+                func_name,
+                args,
+                external,
+            } => self.cgen_funcall_expr(&func_name, external.unwrap(), &args),
         }
     }
     /// code gen for if stmt. uses stack based allocation
@@ -292,6 +305,7 @@ impl Code {
                     .text
                     .instructions
                     .push(format!("jmp .END_LOOP_{}", loop_num.unwrap())),
+                _ => unreachable!(),
             }
         }
         ///////////////////////// DEALLOCATION FOR THE VARS DECLARED INSIDE THE STMT ////////////////////////////
@@ -341,6 +355,7 @@ impl Code {
                     .instructions
                     .push(format!("jmp .END_LOOP_{}", our_number_for_mangling)),
                 AstNode::SetOrChange { change: false, .. } => unreachable!(),
+                _ => unreachable!(),
             }
         }
         self.text.instructions.push(format!(
@@ -446,8 +461,12 @@ impl Code {
                 None => format!("{}", qword_deref_helper(a.to_owned())),
                 Some(num) => format!("qword [rsp + {} * 8]", (self.stack_p_offset - num - 1)),
             },
-            Expr::FuncCall { func_name, args } => {
-                self.cgen_funcall_expr(&func_name, args);
+            Expr::FuncCall {
+                func_name,
+                args,
+                external,
+            } => {
+                self.cgen_funcall_expr(&func_name, external.unwrap(), args);
                 format!("r8")
             }
             _ => unreachable!(),
@@ -525,10 +544,13 @@ impl Code {
         let mut f = String::new();
         use std::fmt::Write;
         if self.text.instructions.clone().len() > 0 {
+            for i in &self.text.external_function_names {
+                writeln!(f, "extern {}", i).unwrap();
+            }
             if !lib {
                 writeln!(f, "global _start").unwrap();
             }
-            for i in &self.text.functions_names {
+            for i in &self.text.function_names {
                 writeln!(f, "global {}", i).unwrap();
             }
             writeln!(f, "section .text").unwrap();

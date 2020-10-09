@@ -52,6 +52,8 @@ struct Analyser {
     initialized_local_vars: HashMap<String, u32>,
     /// the initialized_function_names
     initialized_functions: HashMap<String, u32>,
+    /// the initialized_external_functions
+    initialized_external_functions: HashMap<String, u32>,
     /// the initialized_function_vars
     initialized_function_vars: HashMap<String, u32>,
     /// scope that the analizer is in rn
@@ -63,6 +65,7 @@ impl Analyser {
     pub fn new() -> Self {
         Self {
             initialized_static_vars: HashSet::new(),
+            initialized_external_functions: HashMap::new(),
             initialized_local_vars: HashMap::new(),
             initialized_functions: HashMap::new(),
             initialized_function_vars: HashMap::new(),
@@ -242,6 +245,16 @@ impl Analyser {
                         return Err(AnalysisError::BreakWithoutLoop);
                     }
                 }
+                ast::AstNode::Extern { name, args } => {
+                    if let Some(_) = self
+                        .initialized_functions
+                        .insert(name.clone(), args.len() as u32)
+                    {
+                        return Err(AnalysisError::FuncAlreadyExists(name.clone()));
+                    }
+                    self.initialized_external_functions
+                        .insert(name.clone(), args.len() as u32);
+                }
                 ast::AstNode::Return { val } => {
                     if self.scope.in_func {
                         self.check_expr(val)?;
@@ -277,7 +290,7 @@ impl Analyser {
         Ok(())
     }
     /// analyze an expression
-    fn check_expr(&self, expr: &Expr) -> Result<(), AnalysisError> {
+    fn check_expr(&self, expr: &mut Expr) -> Result<(), AnalysisError> {
         match expr {
             Expr::Number(n) => check_num(n)?,
             Expr::Iden(s) => self.make_sure_var_exists(&s)?,
@@ -285,12 +298,21 @@ impl Analyser {
                 self.check_expr(lhs)?;
                 self.check_expr(rhs)?;
             }
-            Expr::FuncCall { func_name, args } => self.check_funcall(func_name, args)?,
+            Expr::FuncCall {
+                func_name,
+                args,
+                external,
+            } => self.check_funcall(func_name, args, external)?,
         }
         Ok(())
     }
     /// check a function called
-    fn check_funcall(&self, func_name: &str, args: &Vec<Expr>) -> Result<(), AnalysisError> {
+    fn check_funcall(
+        &self,
+        func_name: &str,
+        args: &mut Vec<Expr>,
+        external: &mut Option<bool>,
+    ) -> Result<(), AnalysisError> {
         let args_len = args.len();
         if let Some(len) = self.initialized_functions.get(func_name) {
             if *len != args_len as u32 {
@@ -303,7 +325,12 @@ impl Analyser {
         } else {
             return Err(AnalysisError::FuncCalledButNoExist(func_name.to_string()));
         }
-        for arg in args {
+        if let Some(_) = self.initialized_external_functions.get(func_name) {
+            *external = Some(true);
+        } else {
+            *external = Some(false);
+        }
+        for arg in args.iter_mut() {
             self.check_expr(arg)?;
         }
         Ok(())

@@ -17,7 +17,11 @@ pub enum Expr {
         rhs: Box<Expr>,
     },
     /// a function call
-    FuncCall { func_name: String, args: Vec<Expr> },
+    FuncCall {
+        func_name: String,
+        args: Vec<Expr>,
+        external: Option<bool>,
+    },
 }
 
 pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {
@@ -83,6 +87,11 @@ pub enum AstNode {
         val: Expr,
     },
     Break,
+    Extern {
+        name: String,
+        /// the arguments used in the function
+        args: Vec<String>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -75,7 +75,6 @@ impl Parser {
             Token::BoGe => 5,
             Token::BoE => 5,
             Token::BoNe => 5,
-            // TODO should it be higher
             Token::BoOr => 5,
             Token::BoAnd => 5,
             _ => -1,
@@ -112,10 +111,6 @@ impl Parser {
     }
     /// The function that does the parsing
     fn parse(self: &mut Self, toplevel: bool) -> Result<Vec<AstNode>, ParserError> {
-        // let mut tree = AstRoot{
-        //     static_vars: None,
-        //     tree: Vec::new()
-        // };
         let mut tree = Vec::new();
         while self.cur_tok() != Token::Eof {
             match self.cur_tok() {
@@ -125,6 +120,7 @@ impl Parser {
                 Token::Kif => self.parse_if_stmt(&mut tree)?,
                 Token::ExclaimMark if !toplevel => break,
                 Token::Kfunc if toplevel => self.parse_func(&mut tree)?,
+                Token::Kextern if toplevel => self.parse_extern(&mut tree)?,
                 Token::Kreturn if !toplevel => {
                     self.expect_eat_token(Token::Kreturn)?;
                     let val = self.parse_expr()?;
@@ -166,7 +162,7 @@ impl Parser {
         }
     }
     /// Number <- String
-    fn parse_expr_number(self: &mut Self) -> Result<Expr, ParserError> {
+    fn parse_expr_number(&mut self) -> Result<Expr, ParserError> {
         match self.cur_tok() {
             Token::IntLit(s) => {
                 self.pos_input += 1;
@@ -176,7 +172,7 @@ impl Parser {
         }
     }
     /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr
-    fn parse_expr(self: &mut Self) -> Result<Expr, ParserError> {
+    fn parse_expr(&mut self) -> Result<Expr, ParserError> {
         let lhs = self.parse_expr_primary()?;
         self.parse_bin_op_rhs(0, &lhs)
     }
@@ -224,6 +220,18 @@ impl Parser {
         self.next();
         Ok(parsed_expr)
     }
+    /// Extern <- Kextern Fnproto.
+    fn parse_extern(&mut self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
+        self.expect_eat_token(Token::Kextern)?;
+        self.expect_eat_token(Token::Kfunc)?;
+        let (func_name, items_in_func) = self.parse_func_proto()?;
+        tree.push(AstNode::Extern {
+            name: func_name,
+            args: items_in_func,
+        });
+        self.expect_eat_token(Token::EndOfLine)?;
+        Ok(())
+    }
     /// FnProto <- Iden Lparen (Iden ,)* Rparen
     fn parse_func_proto(&mut self) -> Result<(String, Vec<String>), ParserError> {
         let func_name = self.parse_iden()?;
@@ -245,7 +253,6 @@ impl Parser {
                 t => return Err(self.expected_token_err(Token::Rparen, t)),
             }
         }
-        // self.expect_eat_token(Token::Rparen)?;
         Ok((func_name, items_in_func))
     }
     /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr (parsing an expression but not top level)
@@ -265,7 +272,11 @@ impl Parser {
         let mut args = Vec::new();
         if self.cur_tok() == Token::Rparen {
             self.expect_eat_token(Token::Rparen)?;
-            return Ok(Expr::FuncCall { func_name, args });
+            return Ok(Expr::FuncCall {
+                func_name,
+                args,
+                external: None,
+            });
         }
         while let Token::Iden(_) | Token::IntLit(_) = self.cur_tok() {
             args.push(self.parse_expr()?);
@@ -278,7 +289,11 @@ impl Parser {
                 t => return Err(self.expected_token_err(Token::Rparen, t)),
             }
         }
-        Ok(Expr::FuncCall { func_name, args })
+        Ok(Expr::FuncCall {
+            func_name,
+            args,
+            external: None,
+        })
     }
     //
     // Parsing stmts
@@ -414,7 +429,8 @@ mod tests {
                     change: false,
                     setor: Expr::FuncCall {
                         func_name: String::from("fib"),
-                        args: vec![Expr::Iden(String::from("a")), Expr::Iden(String::from("b"))]
+                        args: vec![Expr::Iden(String::from("a")), Expr::Iden(String::from("b"))],
+                        external: None,
                     }
                 },
                 AstNode::SetOrChange {
@@ -422,7 +438,8 @@ mod tests {
                     change: false,
                     setor: Expr::FuncCall {
                         func_name: String::from("lib"),
-                        args: vec![]
+                        args: vec![],
+                        external: None,
                     }
                 },
             ],

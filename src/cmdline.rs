@@ -42,7 +42,7 @@ pub fn driver() {
         );
     }
     // link it
-    if !opts.library {
+    if !opts.library && !opts.no_link {
         command_run_error_printing("ld", Command::new("ld").arg("out.o").arg("-o").arg("a.out"));
     }
     // remove temp files if not in debug mode
@@ -51,7 +51,7 @@ pub fn driver() {
             eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
         }
     }
-    if !opts.library {
+    if !opts.library && !opts.no_link {
         if let Err(e) = fs::remove_file("out.o") {
             eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
         }
@@ -70,6 +70,7 @@ fn parse_input_to_code(input: String, lib: bool) -> String {
     match output {
         Ok(mut res) => match analyze::analize(&mut res) {
             Ok(_) => {
+                dbg!(&res);
                 let mut code = codegen::Code::new();
                 code.cgen(res);
                 code_text = format!("{}", code.fmt(lib));
@@ -89,6 +90,7 @@ fn parse_input_to_code(input: String, lib: bool) -> String {
 
 struct CmdArgInfo {
     debug: bool,
+    no_link: bool,
     input: String,
     library: bool,
     help: bool,
@@ -114,7 +116,8 @@ Usage: ezc [file] [options] ...
 Options:
 
 -g              Include Debug Info
--c              Just compile the functions into a library/object (.o) file
+-lib            Just compile the functions into a library/object (.o) file
+-nolink         Just compile it into a .o file. Do not link. But this will contain _start.
 -h | --help     Show This Help Message and Exit
 
 To Report Bugs Go To: github.com/g-w1/ezc/issues/",
@@ -136,6 +139,7 @@ To Report Bugs Go To: github.com/g-w1/ezc/issues/",
         debug: false,
         help: true,
         library: false,
+        no_link: false,
         input,
     };
     for i in cmd_line_args {
@@ -161,7 +165,8 @@ To Report Bugs Go To: github.com/g-w1/ezc/issues/",
                 );
                 exit(0);
             }
-            "-c" => arg_info.library = true,
+            "-lib" => arg_info.library = true,
+            "-nolink" => arg_info.no_link = true,
             e => arg_not_found(e),
         }
     }

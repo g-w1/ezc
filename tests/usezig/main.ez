@@ -1,0 +1,11 @@
+external function PutNum(n).
+external function PutChar(n).
+Function Fib(n),
+  if n <= 1,
+      return n.
+  !
+  return Fib(n - 1) + Fib( n- 2).
+!
+
+set z to Fib(7).
+set res to PutChar(z).

@@ -1,3 +1,4 @@
+external function printf(n).
 Function fib(n),
   if n <= 1,
       return n.
@@ -5,4 +6,5 @@ Function fib(n),
   return fib(n - 1) + fib( n- 2).
 !
 
-set z to fib(50).
+set z to fib(30).
+[ set res to printf(z). ]

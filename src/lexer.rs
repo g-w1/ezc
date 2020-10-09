@@ -20,6 +20,8 @@ pub enum Token {
     Kfunc,
     /// Return
     Kreturn,
+    /// External
+    Kextern,
     // Iden tokens
     /// Identifier token
     Iden(String),
@@ -81,6 +83,7 @@ pub enum LexError {
 fn get_kword(input: &str) -> Token {
     match input {
         "Set" | "set" => Token::Kset,
+        "external" | "External" => Token::Kextern,
         "Change" | "change" => Token::Kchange,
         "to" => Token::Kto,
         "If" | "if" => Token::Kif,
