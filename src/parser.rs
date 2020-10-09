@@ -120,6 +120,7 @@ impl Parser {
                 Token::Kif => self.parse_if_stmt(&mut tree)?,
                 Token::ExclaimMark if !toplevel => break,
                 Token::Kfunc if toplevel => self.parse_func(&mut tree)?,
+                Token::Kexport if toplevel => self.parse_exported_func(&mut tree)?,
                 Token::Kextern if toplevel => self.parse_extern(&mut tree)?,
                 Token::Kreturn if !toplevel => {
                     self.expect_eat_token(Token::Kreturn)?;
@@ -309,6 +310,24 @@ impl Parser {
             name,
             args,
             body,
+            export: false,
+            vars_declared: None,
+        });
+        Ok(())
+    }
+    /// ExportedFunc <- Kexport Function
+    fn parse_exported_func(&mut self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
+        self.expect_eat_token(Token::Kexport)?;
+        self.expect_eat_token(Token::Kfunc)?;
+        let (name, args) = self.parse_func_proto()?;
+        self.expect_eat_token(Token::Comma)?;
+        let body = self.parse(false)?;
+        self.expect_eat_token(Token::ExclaimMark)?;
+        tree.push(AstNode::Func {
+            name,
+            args,
+            body,
+            export: true,
             vars_declared: None,
         });
         Ok(())

@@ -8,6 +8,8 @@ pub enum Token {
     Kset,
     /// kword for Change
     Kchange,
+    /// export
+    Kexport,
     /// to
     Kto,
     /// If
@@ -93,6 +95,7 @@ fn get_kword(input: &str) -> Token {
         "or" | "Or" => Token::BoOr,
         "function" | "Function" => Token::Kfunc,
         "return" | "Return" => Token::Kreturn,
+        "export" | "Export" => Token::Kexport,
         _ => Token::Iden(input.to_string()),
     }
 }

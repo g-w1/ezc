@@ -82,6 +82,8 @@ pub enum AstNode {
         body: Vec<AstNode>,
         /// for the variables declared inside the function at top level
         vars_declared: Option<HashMap<String, u32>>,
+        /// export it?
+        export: bool,
     },
     Return {
         val: Expr,

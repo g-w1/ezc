@@ -80,7 +80,8 @@ impl Code {
                     args,
                     body,
                     vars_declared,
-                } => self.cgen_function(name, args, body, vars_declared.unwrap()),
+                    export,
+                } => self.cgen_function(name, args, body, vars_declared.unwrap(), export),
                 AstNode::Extern { name, .. } => self.text.external_function_names.push(name),
                 _ => unreachable!(),
             }
@@ -123,12 +124,18 @@ impl Code {
         args: Vec<String>,
         body: Vec<AstNode>,
         vars_declared: HashMap<String, u32>,
+        export: bool,
     ) {
         /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
         self.cur_func = name.clone(); //doing the args
-        self.text.function_names.push(format!("MaNgLe_{}", &name)); // declaring it global
-        self.text.instructions.push(format!("MaNgLe_{}:", &name));
+        if !export {
+            self.text.function_names.push(format!("MaNgLe_{}", &name)); // declaring it global
+            self.text.instructions.push(format!("MaNgLe_{}:", &name));
+        } else {
+            self.text.function_names.push(format!("{}", &name)); // declaring it global
+            self.text.instructions.push(format!("{}:", &name));
+        }
         ////
         ////////// SETUP STACK //////////////////////
         ////

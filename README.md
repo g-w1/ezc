@@ -60,7 +60,7 @@ To test: `cargo test`
 
 - [x] functions
 
-- [ ] modules (should be easy since using c abi calling convention)
+- [.5] modules (work but need to add tests)
 
 - [ ] standard library
 

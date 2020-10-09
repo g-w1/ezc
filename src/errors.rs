@@ -92,6 +92,7 @@ impl fmt::Display for Token {
             EndOfLine => write!(f, "'.'"),
             Kset => write!(f, "\"set\""),
             Kextern => write!(f, "\"external\""),
+            Kexport => write!(f, "\"export\""),
             Kchange => write!(f, "\"change\""),
             Comma => write!(f, "','"),
             Kif => write!(f, "\"if\""),

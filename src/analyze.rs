@@ -204,6 +204,7 @@ impl Analyser {
                     args,
                     body,
                     vars_declared,
+                    export,
                 } => {
                     // TODO get rid of .clone
                     /////////////// Making sure function name doesn't exist
@@ -213,13 +214,16 @@ impl Analyser {
                     {
                         return Err(AnalysisError::FuncAlreadyExists(name.clone()));
                     }
+                    if *export {
+                        // TODO turn this into a hashset
+                        self.initialized_external_functions.insert(name.clone(), 0);
+                    }
                     ////////////////////// Making sure there no duplicate args
                     let mut args_map = HashSet::new();
                     for n in args.clone() {
                         if !args_map.insert(n.clone()) {
                             return Err(AnalysisError::SameArgForFunction(n.to_owned()));
                         }
-                        // TODO it is 0 because its not really allocated its just weird. idk
                         self.initialized_function_vars.insert(n.clone(), 0);
                     }
                     /////////////////// The body
