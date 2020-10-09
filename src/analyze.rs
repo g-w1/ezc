@@ -611,6 +611,33 @@ set z to y + test(4, 6 + y - 6, y).
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyze::analize(&mut ast).unwrap();
     }
+    #[test]
+    fn analize_export_funcall() {
+        use crate::analyze;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        // number is too big
+        let input = "
+export function test(y,z,b),
+
+    loop,
+      if y != 10,
+        break.
+        loop,
+        !
+      !
+    !
+    return y.
+!
+set y to 4.
+
+set z to y + test(4, 6 + y - 6, y).
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+    }
     #[should_panic]
     #[test]
     fn analize_bad_funcall_0() {

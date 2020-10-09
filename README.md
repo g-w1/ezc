@@ -60,7 +60,9 @@ To test: `cargo test`
 
 - [x] functions
 
-- [.5] modules (work but need to add tests)
+- [x] modules
+
+- [ ] char literals ('p')
 
 - [ ] standard library
 

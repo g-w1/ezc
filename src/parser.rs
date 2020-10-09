@@ -537,6 +537,39 @@ mod tests {
         assert_eq!(
             vec![AstNode::Func {
                 args: vec![String::from("y"), String::from("z"), String::from("b")],
+                export: false,
+                body: vec![
+                    AstNode::SetOrChange {
+                        sete: String::from("y"),
+                        setor: Expr::Number(String::from("4")),
+                        change: false,
+                    },
+                    AstNode::Return {
+                        val: Expr::Iden(String::from("y"))
+                    }
+                ],
+                name: String::from("test"),
+                vars_declared: None,
+            },],
+            ast
+        );
+    }
+    #[test]
+    fn parser_function_export() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(&String::from(
+            "export function test(y,z,b),
+                set y to 4.
+                return y.
+            !
+",
+        ));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![AstNode::Func {
+                args: vec![String::from("y"), String::from("z"), String::from("b")],
+                export: true,
                 body: vec![
                     AstNode::SetOrChange {
                         sete: String::from("y"),

@@ -855,6 +855,60 @@ MaNgLe_res_of_bop resq 1
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
+    fn codegen_funcall_export() {
+        use crate::analyze;
+        use crate::codegen;
+        use crate::lexer;
+        use crate::parser;
+
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = " export function AddOne(a),
+    return a + 1.
+!
+set tmp to AddOne(1).
+";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyze::analize(&mut ast).unwrap();
+        let mut code = codegen::Code::new();
+        code.cgen(ast);
+        let correct_code = "global _start
+global AddOne
+section .text
+AddOne:
+push rbp
+mov rbp, rsp
+push rdi
+sub rsp, 0 * 8
+push qword [rsp + 0 * 8]
+push 1
+pop r8
+pop r9
+add r9, r8
+push r9
+pop r8
+mov rax, r8
+jmp .RETURN_AddOne
+mov rax, 0
+.RETURN_AddOne
+mov rsp, rbp
+pop rbp
+ret
+_start:
+mov r8, 1
+mov rdi, r8
+call AddOne
+mov r8, rax
+mov qword [MaNgLe_tmp], r8
+mov rax, 60
+xor rdi, rdi
+syscall
+section .bss
+MaNgLe_tmp resq 1
+";
+        assert_eq!(format!("{}", code.fmt(false)), correct_code);
+    }
+    #[test]
     fn codegen_funcall() {
         use crate::analyze;
         use crate::codegen;
