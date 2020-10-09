@@ -1,3 +1,5 @@
+external function PutNum(n).
+external function PutChar(n).
 set inner to 0.
 set outer to 0.
 set count to 0.
@@ -17,3 +19,6 @@ loop,
   change outer to outer + 1.
   change inner to 0.
 !
+
+set tmp to PutNum(outer).
+change tmp to PutChar(10).

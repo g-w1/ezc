@@ -56,7 +56,7 @@ pub fn driver() {
             command_run_error_printing(
                 "ld",
                 Command::new("ld")
-                    .arg("out.o")
+                    .arg(opts.filename.clone() + ".o")
                     .arg(p.as_str())
                     .arg("-o")
                     .arg("a.out"),
@@ -66,7 +66,10 @@ pub fn driver() {
         if !opts.library && !opts.no_link {
             command_run_error_printing(
                 "ld",
-                Command::new("ld").arg("out.o").arg("-o").arg("a.out"),
+                Command::new("ld")
+                    .arg(opts.filename.clone() + ".o")
+                    .arg("-o")
+                    .arg("a.out"),
             );
         }
     }
@@ -77,7 +80,7 @@ pub fn driver() {
         }
     }
     if !opts.library && !opts.no_link {
-        if let Err(e) = fs::remove_file("out.o") {
+        if let Err(e) = fs::remove_file(opts.filename.clone() + ".o") {
             eprintln!("{}Cannot remove temporary file: {}", ERROR, e);
         }
     }
