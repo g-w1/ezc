@@ -278,7 +278,6 @@ impl Parser {
                 t => return Err(self.expected_token_err(Token::Rparen, t)),
             }
         }
-        dbg!(&args);
         Ok(Expr::FuncCall { func_name, args })
     }
     //
