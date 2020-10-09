@@ -43,6 +43,8 @@ pub enum Token {
     BoPlus,
     /// '-'
     BoMinus,
+    /// '*'
+    BoMul,
     /// '>'
     BoG,
     /// '<'
@@ -158,6 +160,7 @@ impl Tokenizer {
                         '(' => self.end_token(&mut output, &mut output_poss, Token::Lparen),
                         ')' => self.end_token(&mut output, &mut output_poss, Token::Rparen),
                         '+' => self.end_token(&mut output, &mut output_poss, Token::BoPlus),
+                        '*' => self.end_token(&mut output, &mut output_poss, Token::BoMul),
                         '-' => self.end_token(&mut output, &mut output_poss, Token::BoMinus),
                         '!' => self.state = LexerState::SawBang,
                         '>' => self.state = LexerState::SawGreaterThan,

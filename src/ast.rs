@@ -24,6 +24,7 @@ pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {
     match tok {
         Token::BoPlus => BinOp::Add,
         Token::BoMinus => BinOp::Sub,
+        Token::BoMul => BinOp::Mul,
         Token::BoG => BinOp::Gt,
         Token::BoL => BinOp::Lt,
         Token::BoLe => BinOp::Lte,
@@ -40,6 +41,7 @@ pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {
 pub enum BinOp {
     Add,
     Sub,
+    Mul,
     Gt,
     Lt,
     Equ,

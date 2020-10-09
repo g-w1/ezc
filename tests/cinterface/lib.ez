@@ -4,3 +4,10 @@ Function Fib_rec(n),
   !
   return Fib_rec(n - 1) + Fib_rec( n- 2).
 !
+
+Function Factorial(n),
+    if n >= 1,
+        return n * Factorial(n - 1).
+    !
+    return 1.
+!

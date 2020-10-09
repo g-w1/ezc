@@ -458,6 +458,7 @@ impl Code {
         match b_op {
             &BinOp::Add => self.special_bop("add"),
             &BinOp::Sub => self.special_bop("sub"),
+            &BinOp::Mul => self.special_bop("imul"),
             &BinOp::Or => self.special_bop("or"),
             &BinOp::And => self.special_bop("and"),
             &BinOp::Gt => crate::eq_op!("jg", self),

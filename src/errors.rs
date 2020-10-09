@@ -107,6 +107,7 @@ impl fmt::Display for Token {
             Eof => write!(f, "EOF"),
             BoPlus => write!(f, "'+'"),
             BoMinus => write!(f, "'-'"),
+            BoMul => write!(f, "'*'"),
             BoL => write!(f, "'<'"),
             BoG => write!(f, "'>'"),
             BoLe => write!(f, "'<='"),

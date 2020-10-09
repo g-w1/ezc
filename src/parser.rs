@@ -68,6 +68,7 @@ impl Parser {
         match self.cur_tok() {
             Token::BoPlus => 10,
             Token::BoMinus => 10,
+            Token::BoMul => 10,
             Token::BoG => 5,
             Token::BoL => 5,
             Token::BoLe => 5,
