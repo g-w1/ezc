@@ -110,6 +110,8 @@ enum LexerState {
     SawGreaterThan,
     SawBang,
     InComment,
+    InCharLit,
+    InCharLitFowardSlash,
 }
 
 #[derive(Debug, PartialEq)]
@@ -119,8 +121,6 @@ pub struct Tokenizer {
     state: LexerState,
     /// used for storing temporary strings
     intermidiate_string: String,
-    // /// the output of the tokenizer
-    // pub output: Vec<Token>,
     /// the position that the tokenizer is at
     pos: u32,
 }
@@ -174,6 +174,7 @@ impl Tokenizer {
                         '=' => self.state = LexerState::SawEquals,
                         '[' => self.state = LexerState::InComment,
                         ']' => self.state = LexerState::Start,
+                        '\'' => self.state = LexerState::InCharLit,
                         ' ' | '\n' => {}
                         _ => {
                             return (Err(LexError::UnexpectedChar(c, self.pos)), output_poss);
@@ -208,6 +209,44 @@ impl Tokenizer {
                         self.pos -= 1;
                     }
                 },
+                LexerState::InCharLit => match c {
+                    '\\' => self.state = LexerState::InCharLitFowardSlash,
+                    c => {
+                        self.end_token(
+                            &mut output,
+                            &mut output_poss,
+                            Token::IntLit((c as u8).to_string()),
+                        );
+                        match input[self.pos as usize + 1] {
+                            '\'' => {
+                                self.pos += 1;
+                            }
+                            c => return (Err(LexError::UnexpectedChar(c, self.pos)), output_poss),
+                        }
+                    }
+                },
+                LexerState::InCharLitFowardSlash => {
+                    match c {
+                        'n' => self.end_token(
+                            &mut output,
+                            &mut output_poss,
+                            Token::IntLit(String::from("10")),
+                        ),
+                        't' => self.end_token(
+                            &mut output,
+                            &mut output_poss,
+                            Token::IntLit(String::from("9")),
+                        ),
+
+                        c => return (Err(LexError::UnexpectedChar(c, self.pos)), output_poss),
+                    }
+                    match input[self.pos as usize + 1] {
+                        '\'' => {
+                            self.pos += 1;
+                        }
+                        c => return (Err(LexError::UnexpectedChar(c, self.pos)), output_poss),
+                    }
+                }
                 LexerState::SawGreaterThan => match c {
                     '=' => self.end_token(&mut output, &mut output_poss, Token::BoGe),
                     _ => {
@@ -233,7 +272,6 @@ impl Tokenizer {
                 },
                 LexerState::SawEquals => {
                     self.end_token(&mut output, &mut output_poss, Token::BoE);
-                    // TODO ????????? maybe because i wasted cycle. investigate
                     self.pos -= 1;
                 }
             }
@@ -265,6 +303,7 @@ impl Tokenizer {
             LexerState::SawGreaterThan => self.end_token(&mut output, &mut output_poss, Token::BoG),
             LexerState::SawLessThan => self.end_token(&mut output, &mut output_poss, Token::BoL),
             LexerState::InComment => {}
+            LexerState::InCharLit | LexerState::InCharLitFowardSlash => {}
         }
         self.end_token(&mut output, &mut output_poss, Token::Eof);
         (Ok(output), output_poss)
@@ -308,6 +347,30 @@ mod tests {
                 Token::Kto,
                 Token::IntLit(String::from("5")),
                 Token::EndOfLine,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
+    }
+    #[test]
+    fn lexer_char_lit() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(&String::from("'t' '\\n'"));
+        assert!(res.0.is_ok());
+        assert_eq!(
+            tokenizer,
+            Tokenizer {
+                state: LexerState::Start,
+                intermidiate_string: String::from(""),
+                pos: 8,
+            }
+        );
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::IntLit(String::from("116")),
+                Token::IntLit(String::from("10")),
                 Token::Eof,
             ]
         );

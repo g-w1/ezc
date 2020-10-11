@@ -62,8 +62,10 @@ To test: `cargo test`
 
 - [x] modules
 
-- [ ] char literals ('p')
+- [x] char literals
 
-- [ ] standard library
+- [x] standard library (right now it doesn't have a lot because no arrays and string lits yet)
 
 - [x] io
+
+- [ ] arrays and string lits
