@@ -412,7 +412,7 @@ mod tests {
         let input = "Set x to (10+4). set y to (5+x) . change  x to 445235+y .";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -424,7 +424,7 @@ mod tests {
         let input = "Set x to 10. set x to 5 . change  x to 445235 .";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -440,7 +440,7 @@ mod tests {
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -452,7 +452,7 @@ mod tests {
         let input = "Set x to 10. set y to 5 . change  z to 445235 .";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     fn analyze_if_scope() {
@@ -463,7 +463,7 @@ mod tests {
         let input = "Set x to 10. if x > 10, set z to 4. change  z to 445235 .! set z to 4.";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -478,7 +478,7 @@ mod tests {
             change z to 4.";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -491,7 +491,7 @@ mod tests {
             break.";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     fn analyze_breaking() {
@@ -502,7 +502,7 @@ mod tests {
         let input = "loop, break.!";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -515,7 +515,7 @@ mod tests {
         let input = "Set x to 10. set y to 5 . change  x to 11111111111144523111111111115 .";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     fn analyze_functions() {
@@ -548,7 +548,7 @@ function lol(),
         use std::collections::HashMap;
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         match ast.tree[0].clone() {
             crate::ast::AstNode::Func { vars_declared, .. } => assert_eq!(
                 {
@@ -587,7 +587,7 @@ function lol(y),
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     #[should_panic]
@@ -616,7 +616,7 @@ function lol(y),
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     fn analize_funcall() {
@@ -643,7 +643,7 @@ set z to y + test(4, 6 + y - 6, y).
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[test]
     fn analize_export_funcall() {
@@ -670,7 +670,7 @@ set z to y + test(4, 6 + y - 6, y).
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[should_panic]
     #[test]
@@ -698,7 +698,7 @@ set z to y + test( 6 + y - 6, y).
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
     #[should_panic]
     #[test]
@@ -726,6 +726,6 @@ set z to y + test_( 4,6 + y - 6, y).
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
     }
 }
