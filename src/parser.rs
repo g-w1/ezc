@@ -233,8 +233,26 @@ impl Parser {
         self.expect_eat_token(Token::EndOfLine)?;
         Ok(())
     }
+    /// Type <- OpenBrak CloseBlock Iden | Iden
+    fn parse_type(&mut self) -> Result<Type, ParserError> {
+        if self.peek() == Token::OpenBrak {
+            self.expect_eat_token(Token::OpenBrak)?;
+            let num_of_items_in_arr: String;
+            if let Token::IntLit(x) = self.next() {
+                num_of_items_in_arr = x;
+            } else {
+                return Err(
+                    self.expected_token_err(Token::IntLit(String::from("0")), self.cur_tok())
+                );
+            }
+            self.expect_eat_token(Token::CloseBrak)?;
+            Ok(Type::ArrNum(self.parse_iden()?, num_of_items_in_arr))
+        } else {
+            Ok(Type::Num(self.parse_iden()?))
+        }
+    }
     /// FnProto <- Iden Lparen (Iden ,)* Rparen
-    fn parse_func_proto(&mut self) -> Result<(String, Vec<String>), ParserError> {
+    fn parse_func_proto(&mut self) -> Result<(String, Vec<Type>), ParserError> {
         let func_name = self.parse_iden()?;
         let mut items_in_func = Vec::new();
         self.expect_eat_token(Token::Lparen)?;
@@ -243,7 +261,7 @@ impl Parser {
             return Ok((func_name, items_in_func));
         }
         while let Token::Iden(_) = self.cur_tok() {
-            items_in_func.push(self.parse_iden()?);
+            items_in_func.push(self.parse_type()?);
             // OpenBlock is just ','. maybe rename
             match self.cur_tok() {
                 Token::Comma => self.expect_eat_token(Token::Comma)?,
@@ -536,7 +554,11 @@ mod tests {
         let ast = parser.parse(true).unwrap();
         assert_eq!(
             vec![AstNode::Func {
-                args: vec![String::from("y"), String::from("z"), String::from("b")],
+                args: vec![
+                    Type::Num(String::from("y")),
+                    Type::Num(String::from("z")),
+                    Type::Num(String::from("b"))
+                ],
                 export: false,
                 body: vec![
                     AstNode::SetOrChange {
@@ -568,7 +590,11 @@ mod tests {
         let ast = parser.parse(true).unwrap();
         assert_eq!(
             vec![AstNode::Func {
-                args: vec![String::from("y"), String::from("z"), String::from("b")],
+                args: vec![
+                    Type::Num(String::from("y")),
+                    Type::Num(String::from("z")),
+                    Type::Num(String::from("b"))
+                ],
                 export: true,
                 body: vec![
                     AstNode::SetOrChange {

@@ -65,6 +65,10 @@ pub enum Token {
     BoAnd,
     /// or
     BoOr,
+    /// [
+    OpenBrak,
+    /// ]
+    CloseBrak,
 }
 
 /// The Error type of a lex
@@ -168,12 +172,13 @@ impl Tokenizer {
                         '+' => self.end_token(&mut output, &mut output_poss, Token::BoPlus),
                         '*' => self.end_token(&mut output, &mut output_poss, Token::BoMul),
                         '-' => self.end_token(&mut output, &mut output_poss, Token::BoMinus),
+                        '[' => self.end_token(&mut output, &mut output_poss, Token::OpenBrak),
+                        ']' => self.end_token(&mut output, &mut output_poss, Token::CloseBrak),
                         '!' => self.state = LexerState::SawBang,
                         '>' => self.state = LexerState::SawGreaterThan,
                         '<' => self.state = LexerState::SawLessThan,
                         '=' => self.state = LexerState::SawEquals,
-                        '[' => self.state = LexerState::InComment,
-                        ']' => self.state = LexerState::Start,
+                        '{' => self.state = LexerState::InComment,
                         '\'' => self.state = LexerState::InCharLit,
                         ' ' | '\n' => {}
                         _ => {
@@ -182,7 +187,7 @@ impl Tokenizer {
                     }
                 }
                 LexerState::InComment => match c {
-                    ']' => self.state = LexerState::Start,
+                    '}' => self.state = LexerState::Start,
                     _ => {}
                 },
                 LexerState::InWord => match c {
@@ -376,6 +381,40 @@ mod tests {
         );
         assert_eq!(ts.len(), res.1.len())
     }
+    fn lexer_array_lit() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(&String::from("n[] = [1,2,3,4]"));
+        assert!(res.0.is_ok());
+        assert_eq!(
+            tokenizer,
+            Tokenizer {
+                state: LexerState::Start,
+                intermidiate_string: String::from(""),
+                pos: 8,
+            }
+        );
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Iden(String::from("n")),
+                Token::OpenBrak,
+                Token::CloseBrak,
+                Token::BoE,
+                Token::OpenBrak,
+                Token::IntLit(String::from("1")),
+                Token::Comma,
+                Token::IntLit(String::from("2")),
+                Token::Comma,
+                Token::IntLit(String::from("3")),
+                Token::Comma,
+                Token::IntLit(String::from("4")),
+                Token::CloseBrak,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
+    }
     #[test]
     fn lexer_bad_ast() {
         let mut tokenizer = Tokenizer::new();
@@ -447,7 +486,8 @@ mod tests {
     fn lexer_comments() {
         let mut tokenizer = Tokenizer::new();
         let res = tokenizer.lex(&String::from(
-            "[initalize vars] set x to 5. change x to (5 + x).",
+            "
+            {initalize vars} set x to 5. change x to (5 + x).",
         ));
         assert!(res.0.is_ok());
         let ts = res.0.unwrap();

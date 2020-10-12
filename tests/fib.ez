@@ -1,21 +1,21 @@
 External function PutNum(n).
 external function PutChar(n).
 
-[initalize variables]
+{initalize variables}
 set n to 10.
 set counter to 0.
 set a to 0.
 set b to 1.
 
-[start the loop]
+{start the loop}
 loop,
-  [if the counter > than the number to calc break]
+  {if the counter > than the number to calc break}
   if counter > n,
     break.
   !
   change a to a + b.
   change b to a + b.
-  [update by 2 because we change 2 vars]
+  {update by 2 because we change 2 vars}
   change counter to counter + 2.
 !
 

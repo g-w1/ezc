@@ -78,7 +78,7 @@ pub enum AstNode {
     Func {
         name: String,
         /// the arguments used in the function
-        args: Vec<String>,
+        args: Vec<Type>,
         body: Vec<AstNode>,
         /// for the variables declared inside the function at top level
         vars_declared: Option<HashMap<String, u32>>,
@@ -92,8 +92,17 @@ pub enum AstNode {
     Extern {
         name: String,
         /// the arguments used in the function
-        args: Vec<String>,
+        args: Vec<Type>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// A type. Rn just []n or n
+pub enum Type {
+    /// n
+    Num(String),
+    /// []n
+    ArrNum(String, String),
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -22,7 +22,7 @@ pub enum AnalysisError {
     /// the function already exists
     FuncAlreadyExists(String),
     /// same arg for function
-    SameArgForFunction(String),
+    SameArgForFunction(ast::Type),
     /// function called with wrong number of args
     FuncCalledWithWrongNumOfArgs(String, u32, u32),
     /// funccalledbutnoexist
@@ -44,6 +44,15 @@ pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
     ast.static_vars = Some(get_all_var_decls(&ast.tree));
     Ok(())
 }
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+enum Type {
+    /// a number
+    Number,
+    /// an array type like [5]n
+    Arr(i64),
+}
+
 #[derive(Debug)]
 struct Analyser {
     /// the initialized_static_vars
@@ -55,7 +64,7 @@ struct Analyser {
     /// the initialized_external_functions
     initialized_external_functions: HashMap<String, u32>,
     /// the initialized_function_vars
-    initialized_function_vars: HashMap<String, u32>,
+    initialized_function_vars: HashMap<String, Type>,
     /// scope that the analizer is in rn
     scope: Scope,
 }
@@ -136,8 +145,12 @@ impl Analyser {
                             }
                             if !self.initialized_function_vars.contains_key(sete) {
                                 num_vars_declared += 1;
-                                self.initialized_function_vars
-                                    .insert(sete.clone(), num_vars_declared);
+                                match setor {
+                                    _ => {
+                                        self.initialized_function_vars
+                                            .insert(sete.clone(), Type::Number);
+                                    } // TODO once u add arrays as an expression or something that could be sete change this
+                                }
                                 new_locals.insert(sete.to_owned(), num_vars_declared);
                             } else {
                                 return Err(AnalysisError::DoubleSet(sete.clone()));
@@ -206,7 +219,6 @@ impl Analyser {
                     vars_declared,
                     export,
                 } => {
-                    // TODO get rid of .clone
                     /////////////// Making sure function name doesn't exist
                     if let Some(_) = self
                         .initialized_functions
@@ -224,7 +236,15 @@ impl Analyser {
                         if !args_map.insert(n.clone()) {
                             return Err(AnalysisError::SameArgForFunction(n.to_owned()));
                         }
-                        self.initialized_function_vars.insert(n.clone(), 0);
+                        match n {
+                            ast::Type::Num(name) => {
+                                self.initialized_function_vars.insert(name, Type::Number);
+                            }
+                            ast::Type::ArrNum(name, num) => {
+                                self.initialized_function_vars
+                                    .insert(name, Type::Arr(check_num(&num)?));
+                            }
+                        }
                     }
                     /////////////////// The body
                     let tmp_scope = self.scope;
@@ -236,7 +256,19 @@ impl Analyser {
                     /////////////////// Clean up:
                     //we now remove all of the arguments from the variables declared to help out in codegen
                     let mut tmp_res = self.analyze(body)?;
-                    tmp_res.retain(|x, _| !args.contains(x));
+                    tmp_res.retain(|x, _| {
+                        !args.contains(&ast::Type::Num(x.clone())) && {
+                            for i in args.clone() {
+                                // TODO this work?
+                                if let ast::Type::ArrNum(_x, _) = i {
+                                    if x.to_owned() == _x {
+                                        return false;
+                                    }
+                                }
+                            }
+                            true
+                        }
+                    });
                     *vars_declared = Some(tmp_res);
                     self.scope = tmp_scope;
                     // clear the function vars since we may wanna do another function
@@ -296,7 +328,9 @@ impl Analyser {
     /// analyze an expression
     fn check_expr(&self, expr: &mut Expr) -> Result<(), AnalysisError> {
         match expr {
-            Expr::Number(n) => check_num(n)?,
+            Expr::Number(n) => {
+                check_num(n)?;
+            }
             Expr::Iden(s) => self.make_sure_var_exists(&s)?,
             Expr::BinOp { lhs, rhs, .. } => {
                 self.check_expr(lhs)?;
@@ -342,9 +376,9 @@ impl Analyser {
 }
 
 /// check if a num literal is > 64 bit
-fn check_num(num: &String) -> Result<(), AnalysisError> {
-    match num.parse::<u32>() {
-        Ok(_) => Ok(()),
+fn check_num(num: &String) -> Result<i64, AnalysisError> {
+    match num.parse::<i64>() {
+        Ok(x) => Ok(x),
         Err(_) => Err(AnalysisError::NumberTooBig(num.to_owned())),
     }
 }
@@ -371,7 +405,7 @@ fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<String> {
 mod tests {
     #[test]
     fn analyze_good_analyze() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -383,7 +417,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn analyze_double_set() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -395,7 +429,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn analyze_use_itself_in_set() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -411,7 +445,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn analyze_change_w_o_set() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -422,7 +456,7 @@ mod tests {
     }
     #[test]
     fn analyze_if_scope() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -434,7 +468,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn analyze_bad_if_scope() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -449,7 +483,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn analyze_breaking_bad() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -461,7 +495,7 @@ mod tests {
     }
     #[test]
     fn analyze_breaking() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -473,7 +507,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn analyze_number_too_big() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -485,7 +519,7 @@ mod tests {
     }
     #[test]
     fn analyze_functions() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -530,7 +564,7 @@ function lol(),
     #[test]
     #[should_panic]
     fn analyze_bad_functions_0() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -558,7 +592,7 @@ function lol(y),
     #[test]
     #[should_panic]
     fn analyze_bad_functions_1() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -586,7 +620,7 @@ function lol(y),
     }
     #[test]
     fn analize_funcall() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -613,7 +647,7 @@ set z to y + test(4, 6 + y - 6, y).
     }
     #[test]
     fn analize_export_funcall() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -641,7 +675,7 @@ set z to y + test(4, 6 + y - 6, y).
     #[should_panic]
     #[test]
     fn analize_bad_funcall_0() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
@@ -669,7 +703,7 @@ set z to y + test( 6 + y - 6, y).
     #[should_panic]
     #[test]
     fn analize_bad_funcall_1() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();

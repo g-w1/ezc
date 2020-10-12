@@ -1,4 +1,4 @@
-use crate::analyze::AnalysisError;
+use crate::analyse::AnalysisError;
 use crate::lexer::{LexError, Token, Token::*};
 use crate::parser::ParserError;
 use std::fmt;
@@ -70,8 +70,11 @@ fn up_caret(num: &usize) -> String {
 impl fmt::Display for AnalysisError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AnalysisError::FuncAlreadyExists(s) =>write!(f, "Analysis Error: function is declared twice: {}", s),
-            AnalysisError::SameArgForFunction(s) => write!(f, "Analysis Error: the same arg was used in a function definition: {}", s),
+            AnalysisError::FuncAlreadyExists(s) => write!(f, "Analysis Error: function is declared twice: {}", s),
+            AnalysisError::SameArgForFunction(s) => match s {
+                    crate::ast::Type::Num(name) => write!(f, "Analysis Error: the same arg was used in a function definition: {}", name) ,
+                    crate::ast::Type::ArrNum(name, num) => write!(f, "Analysis Error: the same arg was used in a function definition: [{}]{}", num,name),
+                }
             AnalysisError::BreakWithoutLoop => write!(f, "Analysis Error: there was a break statement outside of a loop."),
             // TODO add info about which var it was
             AnalysisError::DoubleSet(v) => write!(f, "Analysis Error: the same variable `{}` was set twice. \nHint: use `change` to change the value of the variable once it is set: Ex `set x to 0. change x to 4.`", v),
@@ -118,6 +121,8 @@ impl fmt::Display for Token {
             BoNe => write!(f, "'!='"),
             BoAnd => write!(f, "'and'"),
             BoOr => write!(f, "'or'"),
+            OpenBrak => write!(f, "'['"),
+            CloseBrak => write!(f, "']'"),
         }
     }
 }

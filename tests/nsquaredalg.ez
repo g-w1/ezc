@@ -1,8 +1,9 @@
-external function PutNum(n).
+external function PutNumBin(n).
 external function PutChar(n).
 set inner to 0.
 set outer to 0.
 set count to 0.
+set tmp to 0.
 
 loop,
   if outer >= 100000,
@@ -15,10 +16,9 @@ loop,
     change count to count + 1.
     change inner to inner + 1.
   !
+  change tmp to PutNumBin(count).
+  change tmp to PutChar('\n').
   change count to count + 1.
   change outer to outer + 1.
   change inner to 0.
 !
-
-set tmp to PutNum(outer).
-change tmp to PutChar(10).

@@ -3,7 +3,7 @@ use std::fs;
 use std::process::exit;
 use std::process::Command;
 
-use crate::analyze;
+use crate::analyse;
 use crate::codegen;
 use crate::lexer;
 use crate::parser;
@@ -96,7 +96,7 @@ fn parse_input_to_code(input: String, lib: bool) -> String {
     let code_text;
     let output = parser::parse(output.0.unwrap(), output.1);
     match output {
-        Ok(mut res) => match analyze::analize(&mut res) {
+        Ok(mut res) => match analyse::analize(&mut res) {
             Ok(_) => {
                 let mut code = codegen::Code::new();
                 code.cgen(res);

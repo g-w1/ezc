@@ -11,3 +11,21 @@ export fn PutNum(n: i64) i64 {
     stdout.print("{}", .{n}) catch return -1;
     return 0;
 }
+
+export fn PutNumHex(n: i64) i64 {
+    const stdout = std.io.getStdOut().outStream();
+    stdout.print("{X}", .{n}) catch return -1;
+    return 0;
+}
+
+export fn PutNumOct(n: i64) i64 {
+    const stdout = std.io.getStdOut().outStream();
+    stdout.print("{X}", .{n}) catch return -1;
+    return 0;
+}
+
+export fn PutNumBin(n: i64) i64 {
+    const stdout = std.io.getStdOut().outStream();
+    stdout.print("{b}", .{n}) catch return -1;
+    return 0;
+}

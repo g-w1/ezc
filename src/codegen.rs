@@ -82,6 +82,7 @@ impl Code {
                     vars_declared,
                     export,
                 } => self.cgen_function(name, args, body, vars_declared.unwrap(), export),
+                // } => unimplemented!(),
                 AstNode::Extern { name, .. } => self.text.external_function_names.push(name),
                 _ => unreachable!(),
             }
@@ -121,11 +122,12 @@ impl Code {
     fn cgen_function(
         &mut self,
         name: String,
-        args: Vec<String>,
+        args: Vec<crate::ast::Type>,
         body: Vec<AstNode>,
         vars_declared: HashMap<String, u32>,
         export: bool,
     ) {
+        unimplemented!();
         /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
         self.cur_func = name.clone(); //doing the args
@@ -157,7 +159,8 @@ impl Code {
         for (i, arg) in args.iter().enumerate() {
             tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
             // TODO does this work
-            self.initalized_local_vars.insert(arg.clone(), tmp);
+            unimplemented!();
+            // TODO self.initalized_local_vars.insert(arg.clone(), tmp);
         }
         self.text
             .instructions
@@ -600,7 +603,7 @@ syscall"
 mod tests {
     #[test]
     fn codegen_set_stmt() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -609,7 +612,7 @@ mod tests {
         let input = "Set x to 10. set y to 5 . set   test to 445235 .";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -633,7 +636,7 @@ MaNgLe_test resq 1
     }
     #[test]
     fn codegen_if_stmt1() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -642,7 +645,7 @@ MaNgLe_test resq 1
         let input = "Set x to 10. set y to 5 . if y != x, change x to y.!";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -686,7 +689,7 @@ MaNgLe_y resq 1
     }
     #[test]
     fn codegen_if_stmt2() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -706,7 +709,7 @@ if 5 >= 5,
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -774,7 +777,7 @@ MaNgLe_c resq 1
     }
     #[test]
     fn codegen_expr() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -784,7 +787,7 @@ MaNgLe_c resq 1
             "Set y to 5. Set x to (y+5 - 10)+y-15. set z to x + 4. set res_of_bop to x - z < 10.";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -856,7 +859,7 @@ MaNgLe_res_of_bop resq 1
     }
     #[test]
     fn codegen_funcall_export() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -869,7 +872,7 @@ set tmp to AddOne(1).
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -910,7 +913,7 @@ MaNgLe_tmp resq 1
     }
     #[test]
     fn codegen_funcall() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -927,7 +930,7 @@ set z to fib(50).
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -1012,7 +1015,7 @@ MaNgLe_z resq 1
     }
     #[test]
     fn codegen_change_stmt() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -1021,7 +1024,7 @@ MaNgLe_z resq 1
         let input = "Set x to 10. set y to 5 . change   x to 445235 .";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -1044,7 +1047,7 @@ MaNgLe_y resq 1
     }
     #[test]
     fn codegen_and_bop() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -1053,7 +1056,7 @@ MaNgLe_y resq 1
         let input = "Set x to 1. set y to 0 . if y and x, change x to 10.!";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global _start
@@ -1090,7 +1093,7 @@ MaNgLe_y resq 1
     }
     #[test]
     fn codegen_lib_func() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -1117,7 +1120,7 @@ MaNgLe_y resq 1
 ";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
         let correct_code = "global MaNgLe_fib
@@ -1226,7 +1229,7 @@ ret
     }
     #[test]
     fn codegen_loop() {
-        use crate::analyze;
+        use crate::analyse;
         use crate::codegen;
         use crate::lexer;
         use crate::parser;
@@ -1235,10 +1238,9 @@ ret
         let input = "set x to 0. loop, change x to x + 1. if x > 10, break.!!";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
-        // TODO spelling. one is spelled with y and other with i
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
-        analyze::analize(&mut ast).unwrap();
+        analyse::analize(&mut ast).unwrap();
         code.cgen(ast);
         let correct_code = "global _start
 section .text
