@@ -1,6 +1,6 @@
 //! analisis on the ast
 
-use crate::{ast, ast::AstNode, ast::Expr};
+use crate::{ast, ast::AstNode, ast::Expr, ast::ImVal};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -24,7 +24,7 @@ pub enum AnalysisError {
     /// same arg for function
     SameArgForFunction(ast::Type),
     /// function called with wrong number of args
-    FuncCalledWithWrongNumOfArgs(String, u32, u32),
+    FuncCalledWithWrongArgsType(String, Vec<Type>, Vec<Type>),
     /// funccalledbutnoexist
     FuncCalledButNoExist(String),
 }
@@ -46,7 +46,7 @@ pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-enum Type {
+pub enum Type {
     /// a number
     Number,
     /// an array type like [5]n
@@ -60,7 +60,7 @@ struct Analyser {
     /// the initialized_local_vars
     initialized_local_vars: HashMap<String, u32>,
     /// the initialized_function_names
-    initialized_functions: HashMap<String, u32>,
+    initialized_functions: HashMap<String, Vec<Type>>,
     /// the initialized_external_functions
     initialized_external_functions: HashMap<String, u32>,
     /// the initialized_function_vars
@@ -108,7 +108,7 @@ impl Analyser {
                             if !self.initialized_static_vars.contains(sete)
                                 && !self.initialized_local_vars.contains_key(sete)
                             {
-                                self.check_expr(setor)?;
+                                self.check_im_val(setor)?;
                                 match self.scope {
                                     // Scope::InNone => {
                                     Scope {
@@ -158,7 +158,7 @@ impl Analyser {
                         }
                     } else {
                         self.make_sure_var_exists(sete)?;
-                        self.check_expr(setor)?;
+                        self.check_im_val(setor)?;
                     }
                 }
                 ast::AstNode::If {
@@ -212,6 +212,18 @@ impl Analyser {
                     self.analyze(body)?;
                     self.scope = tmp_scope;
                 }
+                ast::AstNode::Extern { name, args } => {
+                    if let Some(_) = self.initialized_functions.insert(
+                        name.clone(),
+                        args.iter()
+                            .map(|x| convert_ast_type_to_analyse_type(x))
+                            .collect(),
+                    ) {
+                        return Err(AnalysisError::FuncAlreadyExists(name.clone()));
+                    }
+                    self.initialized_external_functions
+                        .insert(name.clone(), args.len() as u32);
+                }
                 ast::AstNode::Func {
                     name,
                     args,
@@ -220,10 +232,12 @@ impl Analyser {
                     export,
                 } => {
                     /////////////// Making sure function name doesn't exist
-                    if let Some(_) = self
-                        .initialized_functions
-                        .insert(name.clone(), args.len() as u32)
-                    {
+                    if let Some(_) = self.initialized_functions.insert(
+                        name.clone(),
+                        args.iter()
+                            .map(|x| convert_ast_type_to_analyse_type(x))
+                            .collect(),
+                    ) {
                         return Err(AnalysisError::FuncAlreadyExists(name.clone()));
                     }
                     if *export {
@@ -281,16 +295,6 @@ impl Analyser {
                         return Err(AnalysisError::BreakWithoutLoop);
                     }
                 }
-                ast::AstNode::Extern { name, args } => {
-                    if let Some(_) = self
-                        .initialized_functions
-                        .insert(name.clone(), args.len() as u32)
-                    {
-                        return Err(AnalysisError::FuncAlreadyExists(name.clone()));
-                    }
-                    self.initialized_external_functions
-                        .insert(name.clone(), args.len() as u32);
-                }
                 ast::AstNode::Return { val } => {
                     if self.scope.in_func {
                         self.check_expr(val)?;
@@ -344,20 +348,35 @@ impl Analyser {
         }
         Ok(())
     }
+    /// analyse an immediate val
+    fn check_im_val(&self, val: &mut ImVal) -> Result<(), AnalysisError> {
+        match val {
+            ImVal::Expr(a) => self.check_expr(a)?,
+            ImVal::Array(items) => {
+                for item in items {
+                    self.check_expr(item)?;
+                }
+            }
+        }
+        Ok(())
+    }
     /// check a function called
     fn check_funcall(
         &self,
         func_name: &str,
-        args: &mut Vec<Expr>,
+        args: &mut Vec<ast::ImVal>,
         external: &mut Option<bool>,
     ) -> Result<(), AnalysisError> {
-        let args_len = args.len();
-        if let Some(len) = self.initialized_functions.get(func_name) {
-            if *len != args_len as u32 {
-                return Err(AnalysisError::FuncCalledWithWrongNumOfArgs(
+        let converted_args = args
+            .iter()
+            .map(|x| convert_ast_im_val_to_analyse_type(x))
+            .collect();
+        if let Some(should_args) = self.initialized_functions.get(func_name) {
+            if &converted_args != should_args {
+                return Err(AnalysisError::FuncCalledWithWrongArgsType(
                     func_name.to_string(),
-                    *len as u32,
-                    args_len as u32,
+                    should_args.clone(),
+                    converted_args,
                 ));
             }
         } else {
@@ -369,7 +388,7 @@ impl Analyser {
             *external = Some(false);
         }
         for arg in args.iter_mut() {
-            self.check_expr(arg)?;
+            self.check_im_val(arg)?;
         }
         Ok(())
     }
@@ -384,21 +403,31 @@ fn check_num(num: &String) -> Result<i64, AnalysisError> {
 }
 
 /// get all the variable declarations in a block.
-fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<String> {
+fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<(String, Type)> {
     let mut vars = Vec::new();
     for node in tree {
-        match node {
-            AstNode::SetOrChange {
-                sete,
-                change: false,
-                ..
-            } => {
-                vars.push(sete.to_owned());
-            }
-            _ => {}
+        if let AstNode::SetOrChange {
+            sete,
+            change: false,
+            setor,
+        } = node
+        {
+            vars.push((sete.to_owned(), convert_ast_im_val_to_analyse_type(setor)));
         }
     }
     vars
+}
+fn convert_ast_type_to_analyse_type(x: &ast::Type) -> Type {
+    match x {
+        ast::Type::Num(_) => Type::Number,
+        ast::Type::ArrNum(_, n) => Type::Arr(check_num(&n).unwrap()), // TODO get rid of this unwrap but this cant return Result
+    }
+}
+fn convert_ast_im_val_to_analyse_type(x: &ast::ImVal) -> Type {
+    match x {
+        ast::ImVal::Expr(_) => Type::Number,
+        ast::ImVal::Array(a) => Type::Arr(a.len() as i64), // TODO get rid of this unwrap but this cant return Result
+    }
 }
 
 #[cfg(test)]
