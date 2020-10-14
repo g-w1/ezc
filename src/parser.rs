@@ -298,7 +298,7 @@ impl Parser {
             });
         }
         while let Token::Iden(_) | Token::IntLit(_) = self.cur_tok() {
-            args.push(self.parse_expr()?);
+            args.push(self.parse_im_val()?);
             match self.cur_tok() {
                 Token::Comma => self.expect_eat_token(Token::Comma)?,
                 Token::Rparen => {
@@ -313,6 +313,26 @@ impl Parser {
             args,
             external: None,
         })
+    }
+    /// Setor <- Expr | ArrLit
+    fn parse_im_val(&mut self) -> Result<ImVal, ParserError> {
+        Ok(match self.next() {
+            Token::OpenBrak => ImVal::Array(self.parse_arr_lit()?),
+            _ => ImVal::Expr(self.parse_expr()?),
+        })
+    }
+    /// ArrLit <- OpenBrak (Expr Comma)* CloseBrak
+    fn parse_arr_lit(&mut self) -> Result<Vec<Expr>, ParserError> {
+        self.expect_eat_token(Token::OpenBrak)?;
+        let items = Vec::new();
+        while self.cur_tok() != Token::CloseBrak {
+            items.push(self.parse_expr()?);
+            if Token::Comma == self.cur_tok() {
+                break;
+            }
+        }
+        self.expect_eat_token(Token::CloseBrak)?;
+        Ok(items)
     }
     //
     // Parsing stmts
@@ -386,7 +406,7 @@ impl Parser {
         let sete = self.parse_iden()?;
         self.expect_eat_token(Token::Kto)?;
         // Expr
-        let setor = self.parse_expr()?;
+        let setor = self.parse_im_val()?;
         let node = AstNode::SetOrChange {
             sete,
             change: false,
@@ -406,7 +426,7 @@ impl Parser {
         // Kto
         self.expect_eat_token(Token::Kto)?;
         // Expr
-        let setor = self.parse_expr()?;
+        let setor = self.parse_im_val()?;
         let node = AstNode::SetOrChange {
             sete,
             change: true,

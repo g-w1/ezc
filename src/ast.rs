@@ -19,7 +19,7 @@ pub enum Expr {
     /// a function call
     FuncCall {
         func_name: String,
-        args: Vec<Expr>,
+        args: Vec<ImVal>,
         external: Option<bool>,
     },
 }
@@ -62,7 +62,7 @@ pub enum AstNode {
     /// set an expression value to an identifier
     SetOrChange {
         sete: String,
-        setor: Expr,
+        setor: ImVal,
         change: bool,
     },
     /// an if statement
@@ -105,8 +105,15 @@ pub enum Type {
     ArrNum(String, String),
 }
 
+/// a setor either 1 (number) or [1,2,3] ([array]number)
+#[derive(Debug, PartialEq, Clone)]
+pub enum ImVal {
+    Expr(Expr),
+    Array(Vec<Expr>),
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct AstRoot {
-    pub static_vars: Option<Vec<String>>,
+    pub static_vars: Option<Vec<(String, crate::analyse::Type)>>,
     pub tree: Vec<AstNode>,
 }

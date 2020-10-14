@@ -1,6 +1,6 @@
 //! code generation for the compiler
 
-use crate::ast::{AstNode, AstRoot, BinOp, Expr};
+use crate::ast::{AstNode, AstRoot, BinOp, Expr, ImVal};
 use std::collections::HashMap;
 use std::collections::HashSet;
 const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
@@ -82,7 +82,6 @@ impl Code {
                     vars_declared,
                     export,
                 } => self.cgen_function(name, args, body, vars_declared.unwrap(), export),
-                // } => unimplemented!(),
                 AstNode::Extern { name, .. } => self.text.external_function_names.push(name),
                 _ => unreachable!(),
             }
@@ -127,7 +126,6 @@ impl Code {
         vars_declared: HashMap<String, u32>,
         export: bool,
     ) {
-        unimplemented!();
         /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
         self.cur_func = name.clone(); //doing the args
@@ -158,9 +156,11 @@ impl Code {
         let mut tmp;
         for (i, arg) in args.iter().enumerate() {
             tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
-            // TODO does this work
-            unimplemented!();
-            // TODO self.initalized_local_vars.insert(arg.clone(), tmp);
+            let name = match arg {
+                crate::ast::Type::Num(s) => s,
+                crate::ast::Type::ArrNum(s, _) => s,
+            }; // arrays are passed by reference so we only need to incriment stack pointer by 1 still
+            self.initalized_local_vars.insert(name.clone(), tmp);
         }
         self.text
             .instructions
@@ -212,12 +212,12 @@ impl Code {
         self.initalized_local_vars.clear(); // clear initalized vars
     }
     /// code generation for a function call
-    fn cgen_funcall_expr(&mut self, func_name: &str, mangle: bool, args: &Vec<Expr>) {
+    fn cgen_funcall_expr(&mut self, func_name: &str, mangle: bool, args: &Vec<ImVal>) {
         for (i, arg) in args.iter().enumerate() {
             if i > 6 {
                 unimplemented!()
             }
-            self.cgen_expr(arg.clone());
+            self.cgen_imval(arg.clone());
             self.text
                 .instructions
                 .push(format!("mov {}, r8", FUNCTION_PARAMS[i]));
@@ -374,8 +374,8 @@ impl Code {
         ))
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
-    fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Expr) {
-        self.cgen_expr(setor);
+    fn cgen_set_or_change_stmt(&mut self, sete: String, setor: ImVal) {
+        self.cgen_imval(setor);
         let tmpsete = self.get_display_asm(&Expr::Iden(sete));
         self.text.instructions.push(format!("mov {}, r8", tmpsete,));
     }
