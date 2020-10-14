@@ -217,7 +217,7 @@ impl Code {
             if i > 6 {
                 unimplemented!()
             }
-            self.cgen_expr(arg.clone());
+            self.cgen_imval(arg.clone());
             self.text
                 .instructions
                 .push(format!("mov {}, r8", FUNCTION_PARAMS[i]));
