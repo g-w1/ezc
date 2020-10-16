@@ -1,6 +1,6 @@
 //! code generation for the compiler
 
-use crate::ast::{AstNode, AstRoot, BinOp, Expr, ImVal};
+use crate::ast::{AstNode, AstRoot, BinOp, Expr, Val};
 use std::collections::HashMap;
 use std::collections::HashSet;
 const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
@@ -54,7 +54,14 @@ impl Code {
     /// generate the code. dont deal with any of the sections
     pub fn cgen(&mut self, tree: AstRoot) {
         for var in tree.static_vars.unwrap() {
-            self.bss.instructions.push(format!("MaNgLe_{} resq 1", var));
+            self.bss.instructions.push(format!(
+                "MaNgLe_{} resq {}",
+                var.0,
+                match var.1 {
+                    crate::analyse::Type::Arr(n) => n + 1, // + 1 because 1st elem in array is len
+                    crate::analyse::Type::Number => 1, // if its a number we just allocate 1 byte
+                }
+            ));
         }
         let mut started_tl = false;
         for node in tree.tree {
@@ -90,8 +97,8 @@ impl Code {
             self.text.instructions.push(String::from("_start:"))
         }
     }
-    fn cgen_return_stmt(&mut self, val: Expr) {
-        self.cgen_expr(val.to_owned());
+    fn cgen_return_stmt(&mut self, val: Val) {
+        self.cgen_imval(val.to_owned());
         self.text
             .instructions
             .push(format!("mov rax, r8\njmp .RETURN_{}", self.cur_func));
@@ -212,7 +219,7 @@ impl Code {
         self.initalized_local_vars.clear(); // clear initalized vars
     }
     /// code generation for a function call
-    fn cgen_funcall_expr(&mut self, func_name: &str, mangle: bool, args: &Vec<ImVal>) {
+    fn cgen_funcall_expr(&mut self, func_name: &str, mangle: bool, args: &Vec<Val>) {
         for (i, arg) in args.iter().enumerate() {
             if i > 6 {
                 unimplemented!()
@@ -230,6 +237,32 @@ impl Code {
             self.text
                 .instructions
                 .push(format!("call {}\nmov r8, rax", func_name));
+        }
+    }
+    /// code generation for a val. []n or n
+    fn cgen_imval(&mut self, val: Val) {
+        match val {
+            Val::Expr(e) => self.cgen_expr(e),
+            Val::Array(ve) => {
+                // TODO may need to reverse array. need to know how its layed out in memory
+                // check COMPILER EXPLORER
+                // we do one more than the array because the first elem in the array is the len of it.
+                // TODO need to use bss for this not stack if static
+                // not sure if this is a bad decision
+                let off = ve.len() as u32 + 1;
+                self.stack_p_offset += off;
+                self.text.instructions.push(format!("sub rsp, {}", off));
+                // move the length to the first element in the array
+                self.text
+                    .instructions
+                    .push(format!("mov [rsp - {}], r8", off));
+                for (i, e) in ve.iter().enumerate() {
+                    self.cgen_expr(e.clone()); // TODO get rid of this clone
+                    self.text
+                        .instructions
+                        .push(format!("mov [rsp - {}], r8", i));
+                }
+            }
         }
     }
     /// code generation for an expr. moves the result to r8
@@ -374,7 +407,7 @@ impl Code {
         ))
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
-    fn cgen_set_or_change_stmt(&mut self, sete: String, setor: ImVal) {
+    fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Val) {
         self.cgen_imval(setor);
         let tmpsete = self.get_display_asm(&Expr::Iden(sete));
         self.text.instructions.push(format!("mov {}, r8", tmpsete,));

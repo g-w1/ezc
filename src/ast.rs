@@ -19,7 +19,7 @@ pub enum Expr {
     /// a function call
     FuncCall {
         func_name: String,
-        args: Vec<ImVal>,
+        args: Vec<Val>,
         external: Option<bool>,
     },
 }
@@ -62,7 +62,7 @@ pub enum AstNode {
     /// set an expression value to an identifier
     SetOrChange {
         sete: String,
-        setor: ImVal,
+        setor: Val,
         change: bool,
     },
     /// an if statement
@@ -86,7 +86,7 @@ pub enum AstNode {
         export: bool,
     },
     Return {
-        val: Expr,
+        val: Val,
     },
     Break,
     Extern {
@@ -107,7 +107,7 @@ pub enum Type {
 
 /// a setor either 1 (number) or [1,2,3] ([array]number)
 #[derive(Debug, PartialEq, Clone)]
-pub enum ImVal {
+pub enum Val {
     Expr(Expr),
     Array(Vec<Expr>),
 }

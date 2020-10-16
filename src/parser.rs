@@ -124,7 +124,7 @@ impl Parser {
                 Token::Kextern if toplevel => self.parse_extern(&mut tree)?,
                 Token::Kreturn if !toplevel => {
                     self.expect_eat_token(Token::Kreturn)?;
-                    let val = self.parse_expr()?;
+                    let val = self.parse_val()?;
                     self.expect_eat_token(Token::EndOfLine)?;
                     tree.push(AstNode::Return { val });
                 }
@@ -216,7 +216,9 @@ impl Parser {
         // eat Rparen
         match self.cur_tok() {
             Token::Rparen => {}
-            t => return Err(self.expected_token_err(Token::Rparen, t)),
+            t => {
+                return Err(self.expected_token_err(Token::Rparen, t));
+            }
         }
         self.next();
         Ok(parsed_expr)
@@ -262,7 +264,6 @@ impl Parser {
         }
         while let Token::Iden(_) = self.cur_tok() {
             items_in_func.push(self.parse_type()?);
-            // OpenBlock is just ','. maybe rename
             match self.cur_tok() {
                 Token::Comma => self.expect_eat_token(Token::Comma)?,
                 Token::Rparen => {
@@ -281,7 +282,9 @@ impl Parser {
             Token::Iden(_) if self.peek() == Token::Lparen => self.parse_expr_funcall(),
             Token::Iden(_) => self.parse_expr_iden(),
             Token::Lparen => self.parse_expr_paren(),
-            t => return Err(self.expected_token_err(Token::Lparen, t)),
+            t => {
+                return Err(self.expected_token_err(Token::Lparen, t));
+            }
         }
     }
     /// Expr <- Iden Lparen ParenExpr,* Rparen
@@ -298,7 +301,7 @@ impl Parser {
             });
         }
         while let Token::Iden(_) | Token::IntLit(_) = self.cur_tok() {
-            args.push(self.parse_im_val()?);
+            args.push(self.parse_val()?);
             match self.cur_tok() {
                 Token::Comma => self.expect_eat_token(Token::Comma)?,
                 Token::Rparen => {
@@ -315,21 +318,23 @@ impl Parser {
         })
     }
     /// Setor <- Expr | ArrLit
-    fn parse_im_val(&mut self) -> Result<ImVal, ParserError> {
-        Ok(match self.next() {
-            Token::OpenBrak => ImVal::Array(self.parse_arr_lit()?),
-            _ => ImVal::Expr(self.parse_expr()?),
+    fn parse_val(&mut self) -> Result<Val, ParserError> {
+        Ok(match self.cur_tok() {
+            Token::OpenBrak => Val::Array(self.parse_arr_lit()?),
+            _ => Val::Expr(self.parse_expr()?),
         })
     }
     /// ArrLit <- OpenBrak (Expr Comma)* CloseBrak
     fn parse_arr_lit(&mut self) -> Result<Vec<Expr>, ParserError> {
         self.expect_eat_token(Token::OpenBrak)?;
-        let items = Vec::new();
+        let mut items = Vec::new();
         while self.cur_tok() != Token::CloseBrak {
             items.push(self.parse_expr()?);
-            if Token::Comma == self.cur_tok() {
-                break;
+            if Token::CloseBrak == self.cur_tok() {
+                self.expect_eat_token(Token::CloseBrak)?;
+                return Ok(items);
             }
+            self.next();
         }
         self.expect_eat_token(Token::CloseBrak)?;
         Ok(items)
@@ -406,7 +411,7 @@ impl Parser {
         let sete = self.parse_iden()?;
         self.expect_eat_token(Token::Kto)?;
         // Expr
-        let setor = self.parse_im_val()?;
+        let setor = self.parse_val()?;
         let node = AstNode::SetOrChange {
             sete,
             change: false,
@@ -426,7 +431,7 @@ impl Parser {
         // Kto
         self.expect_eat_token(Token::Kto)?;
         // Expr
-        let setor = self.parse_im_val()?;
+        let setor = self.parse_val()?;
         let node = AstNode::SetOrChange {
             sete,
             change: true,

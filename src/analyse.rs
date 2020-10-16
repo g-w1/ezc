@@ -1,6 +1,6 @@
 //! analisis on the ast
 
-use crate::{ast, ast::AstNode, ast::Expr, ast::ImVal};
+use crate::{ast, ast::AstNode, ast::Expr, ast::Val};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -46,6 +46,7 @@ pub fn analize(ast: &mut ast::AstRoot) -> Result<(), AnalysisError> {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+/// A type that is used for determining the right types. it doesn't have a name because it doesn't need to
 pub enum Type {
     /// a number
     Number,
@@ -108,7 +109,7 @@ impl Analyser {
                             if !self.initialized_static_vars.contains(sete)
                                 && !self.initialized_local_vars.contains_key(sete)
                             {
-                                self.check_im_val(setor)?;
+                                self.check_val(setor)?;
                                 match self.scope {
                                     // Scope::InNone => {
                                     Scope {
@@ -158,7 +159,7 @@ impl Analyser {
                         }
                     } else {
                         self.make_sure_var_exists(sete)?;
-                        self.check_im_val(setor)?;
+                        self.check_val(setor)?;
                     }
                 }
                 ast::AstNode::If {
@@ -256,7 +257,8 @@ impl Analyser {
                             }
                             ast::Type::ArrNum(name, num) => {
                                 self.initialized_function_vars
-                                    .insert(name, Type::Arr(check_num(&num)?));
+                                    .insert(name, Type::Arr(check_num(&num).unwrap()));
+                                // TODO remove unwrap
                             }
                         }
                     }
@@ -297,7 +299,7 @@ impl Analyser {
                 }
                 ast::AstNode::Return { val } => {
                     if self.scope.in_func {
-                        self.check_expr(val)?;
+                        self.check_val(val)?;
                     } else {
                         return Err(AnalysisError::ReturnOutSideOfFunc);
                     }
@@ -349,10 +351,10 @@ impl Analyser {
         Ok(())
     }
     /// analyse an immediate val
-    fn check_im_val(&self, val: &mut ImVal) -> Result<(), AnalysisError> {
+    fn check_val(&self, val: &mut Val) -> Result<(), AnalysisError> {
         match val {
-            ImVal::Expr(a) => self.check_expr(a)?,
-            ImVal::Array(items) => {
+            Val::Expr(a) => self.check_expr(a)?,
+            Val::Array(items) => {
                 for item in items {
                     self.check_expr(item)?;
                 }
@@ -364,12 +366,12 @@ impl Analyser {
     fn check_funcall(
         &self,
         func_name: &str,
-        args: &mut Vec<ast::ImVal>,
+        args: &mut Vec<ast::Val>,
         external: &mut Option<bool>,
     ) -> Result<(), AnalysisError> {
         let converted_args = args
             .iter()
-            .map(|x| convert_ast_im_val_to_analyse_type(x))
+            .map(|x| convert_ast_val_to_analyse_type(x))
             .collect();
         if let Some(should_args) = self.initialized_functions.get(func_name) {
             if &converted_args != should_args {
@@ -388,7 +390,7 @@ impl Analyser {
             *external = Some(false);
         }
         for arg in args.iter_mut() {
-            self.check_im_val(arg)?;
+            self.check_val(arg)?;
         }
         Ok(())
     }
@@ -412,7 +414,7 @@ fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<(String, Type)> {
             setor,
         } = node
         {
-            vars.push((sete.to_owned(), convert_ast_im_val_to_analyse_type(setor)));
+            vars.push((sete.to_owned(), convert_ast_val_to_analyse_type(setor)));
         }
     }
     vars
@@ -420,13 +422,13 @@ fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<(String, Type)> {
 fn convert_ast_type_to_analyse_type(x: &ast::Type) -> Type {
     match x {
         ast::Type::Num(_) => Type::Number,
-        ast::Type::ArrNum(_, n) => Type::Arr(check_num(&n).unwrap()), // TODO get rid of this unwrap but this cant return Result
+        ast::Type::ArrNum(_, len) => Type::Arr(check_num(len).unwrap()), // TODO get rid of this unwrap but this cant return Result
     }
 }
-fn convert_ast_im_val_to_analyse_type(x: &ast::ImVal) -> Type {
+fn convert_ast_val_to_analyse_type(x: &ast::Val) -> Type {
     match x {
-        ast::ImVal::Expr(_) => Type::Number,
-        ast::ImVal::Array(a) => Type::Arr(a.len() as i64), // TODO get rid of this unwrap but this cant return Result
+        ast::Val::Expr(_) => Type::Number,
+        ast::Val::Array(a) => Type::Arr(a.len() as i64), // need a check num but whos gonna do 2^32 nums in array? lol TODO
     }
 }
 
