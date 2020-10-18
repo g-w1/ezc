@@ -86,7 +86,7 @@ pub enum AstNode {
         export: bool,
     },
     Return {
-        val: Val,
+        val: Expr,
     },
     Break,
     Extern {

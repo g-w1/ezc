@@ -23,15 +23,10 @@ pub struct Text {
 pub struct Code {
     bss: Bss,
     text: Text,
-    initalized_local_vars: HashMap<String, u32>,
+    initalized_local_vars: HashMap<String, (u32, bool)>, // the bool is wether it is an array or not
     number_for_mangling: u32,
     stack_p_offset: u32,
     cur_func: String,
-}
-
-/// a helper function to provide `qword [_varname]` from `varname`
-fn qword_deref_helper(input: String) -> String {
-    format!("qword [MaNgLe_{}]", input)
 }
 
 impl Code {
@@ -97,8 +92,8 @@ impl Code {
             self.text.instructions.push(String::from("_start:"))
         }
     }
-    fn cgen_return_stmt(&mut self, val: Val) {
-        self.cgen_imval(val.to_owned());
+    fn cgen_return_stmt(&mut self, val: Expr) {
+        self.cgen_expr(val);
         self.text
             .instructions
             .push(format!("mov rax, r8\njmp .RETURN_{}", self.cur_func));
@@ -163,11 +158,16 @@ impl Code {
         let mut tmp;
         for (i, arg) in args.iter().enumerate() {
             tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
+            let isarray: bool = false;
             let name = match arg {
                 crate::ast::Type::Num(s) => s,
-                crate::ast::Type::ArrNum(s, _) => s,
+                crate::ast::Type::ArrNum(s, _) => {
+                    isarray = true;
+                    s
+                }
             }; // arrays are passed by reference so we only need to incriment stack pointer by 1 still
-            self.initalized_local_vars.insert(name.clone(), tmp);
+            self.initalized_local_vars
+                .insert(name.clone(), (tmp, isarray));
         }
         self.text
             .instructions
@@ -224,7 +224,10 @@ impl Code {
             if i > 6 {
                 unimplemented!()
             }
-            self.cgen_imval(arg.clone());
+            match arg {
+                Val::Expr(e) => self.cgen_expr(e.clone()),
+                Val::Array(ve) => self.text.instructions.push(format!("mov r8, {}", { "a" })),
+            }
             self.text
                 .instructions
                 .push(format!("mov {}, r8", FUNCTION_PARAMS[i]));
@@ -240,28 +243,37 @@ impl Code {
         }
     }
     /// code generation for a val. []n or n
-    fn cgen_imval(&mut self, val: Val) {
-        match val {
-            Val::Expr(e) => self.cgen_expr(e),
-            Val::Array(ve) => {
-                // TODO may need to reverse array. need to know how its layed out in memory
-                // check COMPILER EXPLORER
-                // we do one more than the array because the first elem in the array is the len of it.
-                // TODO need to use bss for this not stack if static
-                // not sure if this is a bad decision
-                let off = ve.len() as u32 + 1;
-                self.stack_p_offset += off;
-                self.text.instructions.push(format!("sub rsp, {}", off));
-                // move the length to the first element in the array
+    fn cgen_array_set_or_change(&mut self, ve: Vec<Expr>, sete: &str) {
+        // TODO may need to reverse array. need to know how its layed out in memory
+        // check COMPILER EXPLORER
+        // we do one more than the array because the first elem in the array is the len of it.
+        // TODO need to use bss for this not stack if static
+        // not sure if this is a bad decision
+        let len_of_arr = ve.len() as u32 + 1;
+        if let Some(off) = self.initalized_local_vars.get(sete) {
+            // we know it is a stack allocated var
+            // move the length to the first element in the array
+            self.text
+                .instructions
+                .push(format!("mov [rsp + {} * 8], r8", len_of_arr));
+            for (i, e) in ve.iter().enumerate() {
+                self.cgen_expr(e.clone()); // TODO get rid of this clone
                 self.text
                     .instructions
-                    .push(format!("mov [rsp - {}], r8", off));
-                for (i, e) in ve.iter().enumerate() {
-                    self.cgen_expr(e.clone()); // TODO get rid of this clone
-                    self.text
-                        .instructions
-                        .push(format!("mov [rsp - {}], r8", i));
-                }
+                    .push(format!("mov [rsp + {} * 8 + 1], r8", i));
+            }
+        } else {
+            // move the length to the first element in the array
+            self.text
+                .instructions
+                .push(format!("mov MaNgLe_{}[0], r8", len_of_arr));
+            // we know it is a static var
+            for (i, e) in ve.iter().enumerate() {
+                self.cgen_expr(e.clone()); // TODO get rid of this clone
+                self.text
+                    .instructions
+                    .push(format!("mov qword ptr MaNgLe_{}[{} * 8 + 1], r8", sete, i));
+                // TODO we need ptr here?
             }
         }
     }
@@ -408,9 +420,15 @@ impl Code {
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Val) {
-        self.cgen_imval(setor);
-        let tmpsete = self.get_display_asm(&Expr::Iden(sete));
-        self.text.instructions.push(format!("mov {}, r8", tmpsete,));
+        match setor {
+            Val::Expr(e) => {
+                let tmpsete = self.get_display_asm(&Expr::Iden(sete));
+                self.text.instructions.push(format!("mov {}, r8", tmpsete,));
+            }
+            Val::Array(ae) => {
+                self.cgen_array_set_or_change(ae, &sete);
+            }
+        }
     }
 
     /// A function to recursively generate code for expressions.
@@ -501,7 +519,7 @@ impl Code {
         match expr {
             Expr::Number(n) => n.to_owned(),
             Expr::Iden(a) => match self.initalized_local_vars.get(a) {
-                None => format!("{}", qword_deref_helper(a.to_owned())),
+                None => format!("qword [MaNgLe_{}]", a),
                 Some(num) => format!("qword [rsp + {} * 8]", (self.stack_p_offset - num - 1)),
             },
             Expr::FuncCall {

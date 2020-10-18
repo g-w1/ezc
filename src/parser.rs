@@ -124,9 +124,9 @@ impl Parser {
                 Token::Kextern if toplevel => self.parse_extern(&mut tree)?,
                 Token::Kreturn if !toplevel => {
                     self.expect_eat_token(Token::Kreturn)?;
-                    let val = self.parse_val()?;
+                    let e = self.parse_expr()?;
                     self.expect_eat_token(Token::EndOfLine)?;
-                    tree.push(AstNode::Return { val });
+                    tree.push(AstNode::Return { val: e });
                 }
                 Token::Kbreak => {
                     self.expect_eat_token(Token::Kbreak)?;

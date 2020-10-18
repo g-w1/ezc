@@ -181,7 +181,6 @@ impl Analyser {
                                 in_func: false,
                                 in_if: true,
                             };
-                            // *vars_declared = Some(self.analyze(body, Scope::InLoopAndIf)?);
                             *vars_declared = Some(self.analyze(body)?);
                             // return scope to what it was after changing it
                             self.scope = tmp_scope;
@@ -196,7 +195,6 @@ impl Analyser {
                                 in_func: true,
                                 in_if: true,
                             };
-                            // *vars_declared = Some(self.analyze(body, Scope::InIf)?);
                             *vars_declared = Some(self.analyze(body)?);
                             self.scope = tmp_scope;
                         }
@@ -270,7 +268,7 @@ impl Analyser {
                         in_loop: false,
                     };
                     /////////////////// Clean up:
-                    //we now remove all of the arguments from the variables declared to help out in codegen
+                    // we now remove all of the arguments from the variables declared to help out in codegen
                     let mut tmp_res = self.analyze(body)?;
                     tmp_res.retain(|x, _| {
                         !args.contains(&ast::Type::Num(x.clone())) && {
@@ -291,7 +289,6 @@ impl Analyser {
                     self.initialized_function_vars.clear();
                 }
                 ast::AstNode::Break => {
-                    // if let Scope::InLoop | Scope::InLoopAndIf = scope {
                     if let Scope { in_loop: true, .. } = self.scope {
                     } else {
                         return Err(AnalysisError::BreakWithoutLoop);
@@ -299,7 +296,7 @@ impl Analyser {
                 }
                 ast::AstNode::Return { val } => {
                     if self.scope.in_func {
-                        self.check_val(val)?;
+                        self.check_expr(val)?;
                     } else {
                         return Err(AnalysisError::ReturnOutSideOfFunc);
                     }
