@@ -263,9 +263,9 @@ impl Code {
             for (i, e) in ve.iter().enumerate() {
                 self.cgen_expr(e.clone()); // TODO get rid of this clone
                 self.text.instructions.push(format!(
-                    "mov [rsp + {} * 8 + 8 + {}], r8",
+                    "mov [rsp + {} * 8 + 8 + {} * 8], r8",
                     i,
-                    self.stack_p_offset - newoff.0 - 1
+                    self.stack_p_offset + newoff.0 - 1
                 ));
             }
         } else {
@@ -349,7 +349,7 @@ impl Code {
                 double_keys.insert(varname.clone());
             }
             self.initalized_local_vars
-                .insert(varname, (self.stack_p_offset as u32 - place.0, place.1));
+                .insert(varname, (self.stack_p_offset as u32 + place.0, place.1));
         }
         for node in body {
             match node {
