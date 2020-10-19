@@ -252,7 +252,7 @@ impl Code {
         // we do one more than the array because the first elem in the array is the len of it.
         // TODO need to use bss for this not stack if static
         // not sure if this is a bad decision
-        let len_of_arr = ve.len() as u32 + 1;
+        let len_of_arr = ve.len() as u32;
         if let Some(off) = self.initalized_local_vars.get(sete) {
             // we know it is a stack allocated var
             // move the length to the first element in the array
@@ -263,7 +263,7 @@ impl Code {
             for (i, e) in ve.iter().enumerate() {
                 self.cgen_expr(e.clone()); // TODO get rid of this clone
                 self.text.instructions.push(format!(
-                    "mov [rsp + {} * 8 + 1 + {}], r8",
+                    "mov [rsp + {} * 8 + 8 + {}], r8",
                     i,
                     self.stack_p_offset - newoff.0 - 1
                 ));
@@ -272,13 +272,15 @@ impl Code {
             // move the length to the first element in the array
             self.text
                 .instructions
-                .push(format!("mov MaNgLe_{}[0], r8", len_of_arr));
+                .push(format!("mov qword MaNgLe_{}[0], {}", sete, len_of_arr));
             // we know it is a static var
             for (i, e) in ve.iter().enumerate() {
                 self.cgen_expr(e.clone()); // TODO get rid of this clone
-                self.text
-                    .instructions
-                    .push(format!("mov qword ptr MaNgLe_{}[{} * 8 + 1], r8", sete, i));
+                self.text.instructions.push(format!(
+                    "mov qword MaNgLe_{}[{} * 8], r8",
+                    sete,
+                    i + 1
+                ));
                 // TODO we need ptr here?
             }
         }
