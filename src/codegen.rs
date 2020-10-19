@@ -531,7 +531,7 @@ impl Code {
                 None => format!("qword [MaNgLe_{}]", a),
                 Some(num) => {
                     if !num.1 {
-                        format!("qword [rsp + {} * 8]", (self.stack_p_offset + num.0 - 1))
+                        format!("qword [rsp + {} * 8]", (self.stack_p_offset + num.0 + 1))
                     } else {
                         format!("rsp + {} * 8", self.stack_p_offset + num.0 + 1)
                     }
