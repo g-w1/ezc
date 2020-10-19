@@ -125,7 +125,7 @@ impl Code {
         name: String,
         args: Vec<crate::ast::Type>,
         body: Vec<AstNode>,
-        vars_declared: HashMap<String, u32>,
+        vars_declared: HashMap<String, (u32, bool)>,
         export: bool,
     ) {
         /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
@@ -158,7 +158,7 @@ impl Code {
         let mut tmp;
         for (i, arg) in args.iter().enumerate() {
             tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
-            let isarray: bool = false;
+            let mut isarray: bool = false;
             let name = match arg {
                 crate::ast::Type::Num(s) => s,
                 crate::ast::Type::ArrNum(s, _) => {
@@ -177,8 +177,10 @@ impl Code {
             if self.initalized_local_vars.contains_key(varname) {
                 double_keys.insert(varname.clone());
             }
-            self.initalized_local_vars
-                .insert(varname.to_owned(), self.stack_p_offset as u32 - place);
+            self.initalized_local_vars.insert(
+                varname.to_owned(),
+                (self.stack_p_offset as u32 - place.0, place.1),
+            );
         }
         ////
         //////////////////// BODY /////////////////////
@@ -226,7 +228,8 @@ impl Code {
             }
             match arg {
                 Val::Expr(e) => self.cgen_expr(e.clone()),
-                Val::Array(ve) => self.text.instructions.push(format!("mov r8, {}", { "a" })),
+                // TODO do this. lol
+                Val::Array(_ve) => self.text.instructions.push(format!("mov r8, {}", { "a" })),
             }
             self.text
                 .instructions
@@ -256,11 +259,14 @@ impl Code {
             self.text
                 .instructions
                 .push(format!("mov [rsp + {} * 8], r8", len_of_arr));
+            let newoff = off.clone(); // we do this to avoid weird ownership stuff. not my proudest code
             for (i, e) in ve.iter().enumerate() {
                 self.cgen_expr(e.clone()); // TODO get rid of this clone
-                self.text
-                    .instructions
-                    .push(format!("mov [rsp + {} * 8 + 1], r8", i));
+                self.text.instructions.push(format!(
+                    "mov [rsp + {} * 8 + 1 + {}], r8",
+                    i,
+                    self.stack_p_offset - newoff.0 - 1
+                ));
             }
         } else {
             // move the length to the first element in the array
@@ -302,7 +308,7 @@ impl Code {
     fn cgen_if_stmt(
         &mut self,
         guard: Expr,
-        vars: HashMap<String, u32>,
+        vars: HashMap<String, (u32, bool)>,
         body: Vec<AstNode>,
         loop_num: Option<u32>,
     ) {
@@ -341,7 +347,7 @@ impl Code {
                 double_keys.insert(varname.clone());
             }
             self.initalized_local_vars
-                .insert(varname, self.stack_p_offset as u32 - place);
+                .insert(varname, (self.stack_p_offset as u32 - place.0, place.1));
         }
         for node in body {
             match node {
@@ -421,7 +427,7 @@ impl Code {
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Val) {
         match setor {
-            Val::Expr(e) => {
+            Val::Expr(_e) => {
                 let tmpsete = self.get_display_asm(&Expr::Iden(sete));
                 self.text.instructions.push(format!("mov {}, r8", tmpsete,));
             }
@@ -520,7 +526,13 @@ impl Code {
             Expr::Number(n) => n.to_owned(),
             Expr::Iden(a) => match self.initalized_local_vars.get(a) {
                 None => format!("qword [MaNgLe_{}]", a),
-                Some(num) => format!("qword [rsp + {} * 8]", (self.stack_p_offset - num - 1)),
+                Some(num) => {
+                    if !num.1 {
+                        format!("qword [rsp + {} * 8]", (self.stack_p_offset - num.0 - 1))
+                    } else {
+                        format!("rsp + {} * 8", self.stack_p_offset - num.0 - 1)
+                    }
+                }
             },
             Expr::FuncCall {
                 func_name,

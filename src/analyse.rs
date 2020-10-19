@@ -59,7 +59,7 @@ struct Analyser {
     /// the initialized_static_vars
     initialized_static_vars: HashSet<String>,
     /// the initialized_local_vars
-    initialized_local_vars: HashMap<String, u32>,
+    initialized_local_vars: HashMap<String, (u32, bool)>,
     /// the initialized_function_names
     initialized_functions: HashMap<String, Vec<Type>>,
     /// the initialized_external_functions
@@ -91,8 +91,8 @@ impl Analyser {
     pub fn analyze(
         self: &mut Self,
         tree: &mut Vec<ast::AstNode>,
-    ) -> Result<HashMap<String, u32>, AnalysisError> {
-        let mut new_locals: HashMap<String, u32> = HashMap::new();
+    ) -> Result<HashMap<String, (u32, bool)>, AnalysisError> {
+        let mut new_locals: HashMap<String, (u32, bool)> = HashMap::new();
         let mut num_vars_declared: u32 = 0;
         for node in tree.iter_mut() {
             match node {
@@ -109,9 +109,8 @@ impl Analyser {
                             if !self.initialized_static_vars.contains(sete)
                                 && !self.initialized_local_vars.contains_key(sete)
                             {
-                                self.check_val(setor)?;
+                                let is_array = self.check_val(setor)?;
                                 match self.scope {
-                                    // Scope::InNone => {
                                     Scope {
                                         in_loop: false,
                                         in_func: false,
@@ -119,18 +118,29 @@ impl Analyser {
                                     } => {
                                         self.initialized_static_vars.insert(sete.to_owned());
                                     }
-                                    // Scope::InLoopAndIf | Scope::InIf => {
                                     Scope {
                                         in_if: true,
                                         in_func: false,
                                         ..
                                     } => {
-                                        num_vars_declared += 1;
-                                        self.initialized_local_vars
-                                            .insert(sete.to_owned(), num_vars_declared);
-                                        new_locals.insert(sete.to_owned(), num_vars_declared);
+                                        if let Some(n) = is_array {
+                                            num_vars_declared += n + 1; // plus one because arrays are actually slices: first element is their length
+                                        } else {
+                                            num_vars_declared += 1;
+                                        }
+                                        let is_array_bool = match is_array {
+                                            Some(_) => true,
+                                            None => false,
+                                        };
+                                        self.initialized_local_vars.insert(
+                                            sete.to_owned(),
+                                            (num_vars_declared, is_array_bool),
+                                        );
+                                        new_locals.insert(
+                                            sete.to_owned(),
+                                            (num_vars_declared, is_array_bool),
+                                        );
                                     }
-                                    // Scope::InLoop => unreachable!(),
                                     Scope { in_loop: true, .. } => {
                                         return Err(AnalysisError::SetInLoop)
                                     }
@@ -145,14 +155,21 @@ impl Analyser {
                                 return Err(AnalysisError::SetInLoop);
                             }
                             if !self.initialized_function_vars.contains_key(sete) {
+                                let is_array: bool;
                                 num_vars_declared += 1;
                                 match setor {
-                                    _ => {
+                                    Val::Expr(_) => {
+                                        is_array = false;
                                         self.initialized_function_vars
                                             .insert(sete.clone(), Type::Number);
-                                    } // TODO once u add arrays as an expression or something that could be sete change this
+                                    }
+                                    Val::Array(_) => {
+                                        is_array = true;
+                                        self.initialized_function_vars
+                                            .insert(sete.clone(), Type::Number);
+                                    }
                                 }
-                                new_locals.insert(sete.to_owned(), num_vars_declared);
+                                new_locals.insert(sete.to_owned(), (num_vars_declared, is_array));
                             } else {
                                 return Err(AnalysisError::DoubleSet(sete.clone()));
                             }
@@ -168,7 +185,6 @@ impl Analyser {
                     vars_declared,
                 } => {
                     self.check_expr(guard)?;
-                    // if let Scope::InLoop | Scope::InLoopAndIf = scope {
                     let tmp_scope = self.scope;
                     match self.scope {
                         Scope {
@@ -240,7 +256,6 @@ impl Analyser {
                         return Err(AnalysisError::FuncAlreadyExists(name.clone()));
                     }
                     if *export {
-                        // TODO turn this into a hashset
                         self.initialized_external_functions.insert(name.clone(), 0);
                     }
                     ////////////////////// Making sure there no duplicate args
@@ -256,7 +271,6 @@ impl Analyser {
                             ast::Type::ArrNum(name, num) => {
                                 self.initialized_function_vars
                                     .insert(name, Type::Arr(check_num(&num).unwrap()));
-                                // TODO remove unwrap
                             }
                         }
                     }
@@ -347,17 +361,20 @@ impl Analyser {
         }
         Ok(())
     }
-    /// analyse an immediate val
-    fn check_val(&self, val: &mut Val) -> Result<(), AnalysisError> {
-        match val {
-            Val::Expr(a) => self.check_expr(a)?,
+    /// analyse an immediate val. returns Ok(true) if it is an array Ok(false) if not
+    fn check_val(&self, val: &mut Val) -> Result<Option<u32>, AnalysisError> {
+        Ok(match val {
+            Val::Expr(a) => {
+                self.check_expr(a)?;
+                None
+            }
             Val::Array(items) => {
-                for item in items {
+                for item in items.iter_mut() {
                     self.check_expr(item)?;
                 }
+                Some(items.len() as u32)
             }
-        }
-        Ok(())
+        })
     }
     /// check a function called
     fn check_funcall(

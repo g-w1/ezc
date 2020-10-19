@@ -70,7 +70,7 @@ pub enum AstNode {
         guard: Expr,
         body: Vec<AstNode>,
         /// for the variables declared inside the if statement
-        vars_declared: Option<HashMap<String, u32>>,
+        vars_declared: Option<HashMap<String, (u32, bool)>>,
     },
     Loop {
         body: Vec<AstNode>,
@@ -81,7 +81,7 @@ pub enum AstNode {
         args: Vec<Type>,
         body: Vec<AstNode>,
         /// for the variables declared inside the function at top level
-        vars_declared: Option<HashMap<String, u32>>,
+        vars_declared: Option<HashMap<String, (u32, bool)>>,
         /// export it?
         export: bool,
     },
