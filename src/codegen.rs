@@ -429,7 +429,8 @@ impl Code {
     /// code generation for a set or change stmt. it is interpreted as change if change is true
     fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Val) {
         match setor {
-            Val::Expr(_e) => {
+            Val::Expr(e) => {
+                self.cgen_expr(e);
                 let tmpsete = self.get_display_asm(&Expr::Iden(sete));
                 self.text.instructions.push(format!("mov {}, r8", tmpsete,));
             }
@@ -530,9 +531,9 @@ impl Code {
                 None => format!("qword [MaNgLe_{}]", a),
                 Some(num) => {
                     if !num.1 {
-                        format!("qword [rsp + {} * 8]", (self.stack_p_offset - num.0 - 1))
+                        format!("qword [rsp + {} * 8]", (self.stack_p_offset + num.0 - 1))
                     } else {
-                        format!("rsp + {} * 8", self.stack_p_offset - num.0 - 1)
+                        format!("rsp + {} * 8", self.stack_p_offset + num.0 + 1)
                     }
                 }
             },

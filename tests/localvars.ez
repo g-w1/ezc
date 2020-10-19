@@ -1,8 +1,9 @@
-external function PutNumBin(n).
+external function PutNum(n).
+
 if 1,
   set b to 5.
   set c to 4.
   set a to b + c + 10+20+30.
   change c to a + b + c.
-  change c to PutNumBin(c).
+  change c to PutNum(c).
 !
