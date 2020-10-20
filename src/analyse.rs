@@ -198,6 +198,7 @@ impl Analyser {
                                 in_if: true,
                             };
                             *vars_declared = Some(self.analyze(body)?);
+                            dbg!(&vars_declared);
                             // return scope to what it was after changing it
                             self.scope = tmp_scope;
                         }

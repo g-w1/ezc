@@ -24,6 +24,7 @@ pub struct Code {
     bss: Bss,
     text: Text,
     initalized_local_vars: HashMap<String, (u32, bool)>, // the bool is wether it is an array or not
+    initalized_static_vars: HashMap<String, bool>,
     number_for_mangling: u32,
     stack_p_offset: u32,
     cur_func: String,
@@ -43,6 +44,7 @@ impl Code {
             number_for_mangling: 0,
             stack_p_offset: 0,
             initalized_local_vars: HashMap::new(),
+            initalized_static_vars: HashMap::new(),
             cur_func: String::new(),
         }
     }
@@ -51,10 +53,16 @@ impl Code {
         for var in tree.static_vars.unwrap() {
             self.bss.instructions.push(format!(
                 "MaNgLe_{} resq {}",
-                var.0,
+                &var.0,
                 match var.1 {
-                    crate::analyse::Type::Arr(n) => n + 1, // + 1 because 1st elem in array is len
-                    crate::analyse::Type::Number => 1, // if its a number we just allocate 1 byte
+                    crate::analyse::Type::Arr(n) => {
+                        self.initalized_static_vars.insert(var.0.clone(), true);
+                        n + 1 // + 1 because 1st elem in array is len
+                    }
+                    crate::analyse::Type::Number => {
+                        self.initalized_static_vars.insert(var.0.clone(), false);
+                        1
+                    } // if its a number we just allocate 1 byte
                 }
             ));
         }
@@ -145,7 +153,15 @@ impl Code {
             .instructions
             .push(String::from("push rbp\nmov rbp, rsp"));
         self.stack_p_offset += 1;
-        let mem_len = vars_declared.len();
+        let mem_len = {
+            let mut max = 0;
+            for (_, (n, _)) in &vars_declared {
+                if max < *n {
+                    max = *n;
+                }
+            }
+            max
+        };
         let mut double_keys: HashSet<String> = HashSet::new();
         // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
         // set z to 5. if z = 5,
@@ -253,20 +269,26 @@ impl Code {
         // TODO need to use bss for this not stack if static
         // not sure if this is a bad decision
         let len_of_arr = ve.len() as u32;
+        dbg!(&self.initalized_local_vars);
         if let Some(off) = self.initalized_local_vars.get(sete) {
+            dbg!(&off);
             // we know it is a stack allocated var
             // move the length to the first element in the array
             self.text
                 .instructions
-                .push(format!("mov [rsp + {} * 8], r8", len_of_arr));
+                .push(format!("mov r8, {}", len_of_arr));
+            self.text.instructions.push(format!(
+                "mov [rsp + {} * 8], r8",
+                (self.stack_p_offset + off.0 - 1),
+            ));
             let newoff = off.clone(); // we do this to avoid weird ownership stuff. not my proudest code
             for (i, e) in ve.iter().enumerate() {
-                self.cgen_expr(e.clone()); // TODO get rid of this clone
-                self.text.instructions.push(format!(
-                    "mov [rsp + {} * 8 + 8 + {} * 8], r8",
-                    i,
-                    self.stack_p_offset + newoff.0 - 1
-                ));
+                self.cgen_expr(e.clone());
+                let tmpval = self.stack_p_offset - &newoff.0 - i as u32 - 2;
+                dbg!(&tmpval);
+                self.text
+                    .instructions
+                    .push(format!("mov [rsp + {} * 8 ], r8", tmpval));
             }
         } else {
             // move the length to the first element in the array
@@ -294,9 +316,13 @@ impl Code {
                 self.stack_p_offset -= 1;
             }
             Expr::Number(n) => self.text.instructions.push(format!("mov r8, {}", n)), // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
-            Expr::Iden(_) => {
-                let tmpexpr = self.get_display_asm(&expr);
-                self.text.instructions.push(format!("mov r8, {}", tmpexpr));
+            Expr::Iden(i) => {
+                let tmpexpr = self.get_display_asm(&Expr::Iden(i.clone()));
+                if self.initalized_local_vars.get(&i).is_some() {
+                    self.text.instructions.push(format!("lea r8, {}", tmpexpr));
+                } else {
+                    self.text.instructions.push(format!("mov r8, {}", tmpexpr));
+                }
             }
 
             Expr::FuncCall {
@@ -338,18 +364,29 @@ impl Code {
         //     !
         //     set test to 5.
         // !
-
-        let mem_len = vars.len();
+        let mem_len = {
+            let mut max = 0;
+            for (_, (n, _)) in &vars {
+                if max < *n {
+                    max = *n;
+                }
+            }
+            max
+        };
+        dbg!(&mem_len);
+        dbg!(self.stack_p_offset);
         self.stack_p_offset += mem_len as u32;
         self.text
             .instructions
             .push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
+
         for (varname, place) in vars.to_owned() {
             if self.initalized_local_vars.contains_key(&varname) {
                 double_keys.insert(varname.clone());
             }
+            dbg!(place);
             self.initalized_local_vars
-                .insert(varname, (self.stack_p_offset as u32 + place.0, place.1));
+                .insert(varname, (self.stack_p_offset as u32 - place.0, place.1));
         }
         for node in body {
             match node {
@@ -528,14 +565,14 @@ impl Code {
         match expr {
             Expr::Number(n) => n.to_owned(),
             Expr::Iden(a) => match self.initalized_local_vars.get(a) {
-                None => format!("qword [MaNgLe_{}]", a),
-                Some(num) => {
-                    if !num.1 {
-                        format!("qword [rsp + {} * 8]", (self.stack_p_offset + num.0 + 1))
+                None => {
+                    if !self.initalized_static_vars.get(a).unwrap() {
+                        format!("qword [MaNgLe_{}]", a)
                     } else {
-                        format!("rsp + {} * 8", self.stack_p_offset + num.0 + 1)
+                        format!("MaNgLe_{}", a)
                     }
                 }
+                Some(num) => format!("qword [rsp + {} * 8]", (self.stack_p_offset + num.0 - 1)),
             },
             Expr::FuncCall {
                 func_name,
