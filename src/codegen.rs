@@ -279,12 +279,12 @@ impl Code {
                 .push(format!("mov r8, {}", len_of_arr));
             self.text.instructions.push(format!(
                 "mov [rsp + {} * 8], r8",
-                (self.stack_p_offset + off.0 - 1),
+                (self.stack_p_offset + off.0 - 1 - len_of_arr),
             ));
             let newoff = off.clone(); // we do this to avoid weird ownership stuff. not my proudest code
             for (i, e) in ve.iter().enumerate() {
                 self.cgen_expr(e.clone());
-                let tmpval = self.stack_p_offset - &newoff.0 - i as u32 - 2;
+                let tmpval = self.stack_p_offset - &newoff.0 - i as u32 - 1;
                 dbg!(&tmpval);
                 self.text
                     .instructions
@@ -572,7 +572,10 @@ impl Code {
                         format!("MaNgLe_{}", a)
                     }
                 }
-                Some(num) => format!("qword [rsp + {} * 8]", (self.stack_p_offset + num.0 - 1)),
+                Some(num) => format!(
+                    "qword [rsp + {} * 8]",
+                    (self.stack_p_offset + num.0 - 1 - LENGTH_OF_ARRAY)
+                ), // TODO need to get. the best way to do is to just encode it into the initalized_local_vars. that needs a revamp. ahhhhhhhhhhhhhhhhhhhhhhhh
             },
             Expr::FuncCall {
                 func_name,
