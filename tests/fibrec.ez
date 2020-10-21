@@ -1,0 +1,15 @@
+external function PutNum(n).
+external function PutChar(c).
+
+Function Fib(n),
+  if n <= 1,
+      return n.
+  !
+  return Fib(n - 1) + Fib( n- 2).
+!
+
+[print the 10th fibonacci number]
+set tmp to PutNum(Fib(10)).
+
+[we print 10 because 10 is the ascii code for newline]
+change tmp to PutChar(10).
