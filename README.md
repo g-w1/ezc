@@ -34,7 +34,7 @@ To test: `cargo test`
 - https://craftinginterpreters.com/ - book about interpreters. could be useful
 - https://wiki.osdev.org/System_V_ABI talks about this systemv abi: used for calling conventions. this also does https://wiki.osdev.org/Calling_Conventions
 
-## Features (I may not impliment all of them)
+## Features
 
 - [x] lexer
 
