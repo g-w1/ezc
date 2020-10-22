@@ -138,7 +138,6 @@ impl Code {
     ) {
         /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
         self.initalized_local_vars.clear();
-        self.cur_func = name.clone(); //doing the args
         if !export {
             self.text.function_names.push(format!("MaNgLe_{}", &name)); // declaring it global
             self.text.instructions.push(format!("MaNgLe_{}:", &name));
@@ -146,58 +145,15 @@ impl Code {
             self.text.function_names.push(format!("{}", &name)); // declaring it global
             self.text.instructions.push(format!("{}:", &name));
         }
-        ////
-        ////////// SETUP STACK //////////////////////
-        ////
+        self.cur_func = name; //doing the args
+                              ////
+                              ////////// SETUP STACK //////////////////////
+                              ////
         self.text
             .instructions
             .push(String::from("push rbp\nmov rbp, rsp"));
         self.stack_p_offset += 1;
-        let mem_len = {
-            let mut max = 0;
-            for (_, (n, _)) in &vars_declared {
-                if max < *n {
-                    max = *n;
-                }
-            }
-            max
-        };
-        let mut double_keys: HashSet<String> = HashSet::new();
-        // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
-        // set z to 5. if z = 5,
-        //     set a to 5.
-        //     if a > 4,
-        //         set test to a.
-        //     !
-        //     set test to 5.
-        // !
-        let mut tmp;
-        for (i, arg) in args.iter().enumerate() {
-            tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
-            let mut isarray: bool = false;
-            let name = match arg {
-                crate::ast::Type::Num(s) => s,
-                crate::ast::Type::ArrNum(s, _) => {
-                    isarray = true;
-                    s
-                }
-            }; // arrays are passed by reference so we only need to incriment stack pointer by 1 still
-            self.initalized_local_vars
-                .insert(name.clone(), (tmp, isarray));
-        }
-        self.text
-            .instructions
-            .push(format!("sub rsp, {} * 8", mem_len));
-        self.stack_p_offset += mem_len as u32;
-        for (varname, place) in &vars_declared {
-            if self.initalized_local_vars.contains_key(varname) {
-                double_keys.insert(varname.clone());
-            }
-            self.initalized_local_vars.insert(
-                varname.to_owned(),
-                (self.stack_p_offset as u32 - place.0, place.1),
-            );
-        }
+        let (double_keys, mem_len) = self.cgen_setup_stack(&vars_declared, Some(&args));
         ////
         //////////////////// BODY /////////////////////
         ////
@@ -332,6 +288,61 @@ impl Code {
             } => self.cgen_funcall_expr(&func_name, external.unwrap(), &args),
         }
     }
+    fn cgen_setup_stack(
+        &mut self,
+        vars_declared: &HashMap<String, (u32, bool)>,
+        args: Option<&Vec<crate::ast::Type>>,
+    ) -> (HashSet<String>, u32) {
+        let mut double_keys: HashSet<String> = HashSet::new();
+        // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
+        // set z to 5. if z = 5,
+        //     set a to 5.
+        //     if a > 4,
+        //         set test to a.
+        //     !
+        //     set test to 5.
+        // !
+        let mem_len = {
+            let mut max = 0;
+            for (_, (n, _)) in vars_declared {
+                if max < *n {
+                    max = *n;
+                }
+            }
+            max
+        };
+        dbg!(&mem_len);
+        dbg!(self.stack_p_offset);
+        self.stack_p_offset += mem_len as u32;
+        self.text
+            .instructions
+            .push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
+        if let Some(x) = args {
+            let mut tmp;
+            for (i, arg) in x.iter().enumerate() {
+                tmp = self.stack_p_offset - self.reg_to_farness_stack(i) as u32 + i as u32;
+                let mut isarray: bool = false;
+                let name = match arg {
+                    crate::ast::Type::Num(s) => s,
+                    crate::ast::Type::ArrNum(s, _) => {
+                        isarray = true;
+                        s
+                    }
+                }; // arrays are passed by reference so we only need to incriment stack pointer by 1 still
+                self.initalized_local_vars
+                    .insert(name.clone(), (tmp, isarray));
+            }
+        }
+        for (varname, place) in vars_declared.to_owned() {
+            if self.initalized_local_vars.contains_key(&varname) {
+                double_keys.insert(varname.clone());
+            }
+            dbg!(place);
+            self.initalized_local_vars
+                .insert(varname, (self.stack_p_offset as u32 - place.0, place.1));
+        }
+        (double_keys, mem_len)
+    }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(
         &mut self,
@@ -355,39 +366,7 @@ impl Code {
             .instructions
             .push(format!(".IF_BODY_{}", our_number_for_mangling));
         ///////////// ALLOCATION FOR THE IF STMT //////////////////////////////
-        let mut double_keys: HashSet<String> = HashSet::new();
-        // the use of double_keys is something like this. when something is declared inside a block and also needs to be out of the block. cant drop it. but do drop the memory. just not drop it from the initial hashmap:
-        // set z to 5. if z = 5,
-        //     set a to 5.
-        //     if a > 4,
-        //         set test to a.
-        //     !
-        //     set test to 5.
-        // !
-        let mem_len = {
-            let mut max = 0;
-            for (_, (n, _)) in &vars {
-                if max < *n {
-                    max = *n;
-                }
-            }
-            max
-        };
-        dbg!(&mem_len);
-        dbg!(self.stack_p_offset);
-        self.stack_p_offset += mem_len as u32;
-        self.text
-            .instructions
-            .push(format!("sub rsp, {} * 8", mem_len)); // allocate locals
-
-        for (varname, place) in vars.to_owned() {
-            if self.initalized_local_vars.contains_key(&varname) {
-                double_keys.insert(varname.clone());
-            }
-            dbg!(place);
-            self.initalized_local_vars
-                .insert(varname, (self.stack_p_offset as u32 - place.0, place.1));
-        }
+        let (double_keys, mem_len) = self.cgen_setup_stack(&vars, None);
         for node in body {
             match node {
                 AstNode::Func { .. } => unreachable!(),
@@ -574,7 +553,8 @@ impl Code {
                 }
                 Some(num) => format!(
                     "qword [rsp + {} * 8]",
-                    (self.stack_p_offset + num.0 - 1 - LENGTH_OF_ARRAY)
+                    // (self.stack_p_offset + num.0 - 1 - LENGTH_OF_ARRAY),
+                    (self.stack_p_offset + num.0)
                 ), // TODO need to get. the best way to do is to just encode it into the initalized_local_vars. that needs a revamp. ahhhhhhhhhhhhhhhhhhhhhhhh
             },
             Expr::FuncCall {

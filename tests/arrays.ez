@@ -2,7 +2,6 @@ external function PutString(n).
 set tmp to 0.
 if 1,
 
-set z to 4.
 set p to [101,102,103].
 
 
