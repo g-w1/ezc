@@ -25,6 +25,7 @@ pub struct Code {
     text: Text,
     initalized_local_vars: HashMap<String, (u32, bool)>, // the bool is wether it is an array or not
     initalized_static_vars: HashMap<String, bool>,
+    initalized_array_lengths: HashMap<String, u32>,
     number_for_mangling: u32,
     stack_p_offset: u32,
     cur_func: String,
@@ -45,6 +46,7 @@ impl Code {
             stack_p_offset: 0,
             initalized_local_vars: HashMap::new(),
             initalized_static_vars: HashMap::new(),
+            initalized_array_lengths: HashMap::new(),
             cur_func: String::new(),
         }
     }
@@ -305,9 +307,7 @@ impl Code {
         let mem_len = {
             let mut max = 0;
             for (_, (n, _)) in vars_declared {
-                if max < *n {
-                    max = *n;
-                }
+                max += n;
             }
             max
         };
@@ -324,8 +324,10 @@ impl Code {
                 let mut isarray: bool = false;
                 let name = match arg {
                     crate::ast::Type::Num(s) => s,
-                    crate::ast::Type::ArrNum(s, _) => {
+                    crate::ast::Type::ArrNum(s, len_of_arr) => {
                         isarray = true;
+                        self.initalized_array_lengths
+                            .insert(s.clone(), len_of_arr.parse().unwrap());
                         s
                     }
                 }; // arrays are passed by reference so we only need to incriment stack pointer by 1 still
@@ -338,8 +340,14 @@ impl Code {
                 double_keys.insert(varname.clone());
             }
             dbg!(place);
-            self.initalized_local_vars
-                .insert(varname, (self.stack_p_offset as u32 - place.0, place.1));
+            dbg!(&self.initalized_local_vars);
+            self.initalized_local_vars.insert(
+                varname.clone(),
+                (self.stack_p_offset as u32 - place.0, place.1),
+            );
+            if place.1 {
+                self.initalized_array_lengths.insert(varname, place.0);
+            }
         }
         (double_keys, mem_len)
     }
@@ -551,11 +559,15 @@ impl Code {
                         format!("MaNgLe_{}", a)
                     }
                 }
-                Some(num) => format!(
-                    "qword [rsp + {} * 8]",
-                    // (self.stack_p_offset + num.0 - 1 - LENGTH_OF_ARRAY),
-                    (self.stack_p_offset + num.0)
-                ), // TODO need to get. the best way to do is to just encode it into the initalized_local_vars. that needs a revamp. ahhhhhhhhhhhhhhhhhhhhhhhh
+                Some(num) => {
+                    dbg!((&num.0, &self.stack_p_offset));
+                    let val = if let Some(z) = self.initalized_array_lengths.get(a) {
+                        self.stack_p_offset + num.0 - z
+                    } else {
+                        self.stack_p_offset - num.0 - 1
+                    };
+                    format!("qword [rsp + {} * 8]", val)
+                }
             },
             Expr::FuncCall {
                 func_name,

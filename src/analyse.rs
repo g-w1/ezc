@@ -93,7 +93,6 @@ impl Analyser {
         tree: &mut Vec<ast::AstNode>,
     ) -> Result<HashMap<String, (u32, bool)>, AnalysisError> {
         let mut new_locals: HashMap<String, (u32, bool)> = HashMap::new();
-        let mut num_vars_declared: u32 = 0;
         for node in tree.iter_mut() {
             match node {
                 ast::AstNode::SetOrChange {
@@ -123,10 +122,11 @@ impl Analyser {
                                         in_func: false,
                                         ..
                                     } => {
+                                        let var_mem_space: u32;
                                         if let Some(n) = is_array {
-                                            num_vars_declared += n + 1; // plus one because arrays are actually slices: first element is their length
+                                            var_mem_space = n + 1; // plus one because arrays are actually slices: first element is their length
                                         } else {
-                                            num_vars_declared += 1;
+                                            var_mem_space = 1;
                                         }
                                         let is_array_bool = match is_array {
                                             Some(_) => true,
@@ -134,12 +134,13 @@ impl Analyser {
                                         };
                                         self.initialized_local_vars.insert(
                                             sete.to_owned(),
-                                            (num_vars_declared, is_array_bool),
+                                            (var_mem_space, is_array_bool),
                                         );
                                         new_locals.insert(
                                             sete.to_owned(),
-                                            (num_vars_declared, is_array_bool),
+                                            (var_mem_space, is_array_bool),
                                         );
+                                        dbg!(&new_locals);
                                     }
                                     Scope { in_loop: true, .. } => {
                                         return Err(AnalysisError::SetInLoop)
@@ -156,20 +157,21 @@ impl Analyser {
                             }
                             if !self.initialized_function_vars.contains_key(sete) {
                                 let is_array: bool;
-                                num_vars_declared += 1;
+                                let mut mem_len = 1;
                                 match setor {
                                     Val::Expr(_) => {
                                         is_array = false;
                                         self.initialized_function_vars
                                             .insert(sete.clone(), Type::Number);
                                     }
-                                    Val::Array(_) => {
+                                    Val::Array(n) => {
+                                        mem_len = n.len() as u32 + 1;
                                         is_array = true;
                                         self.initialized_function_vars
                                             .insert(sete.clone(), Type::Number);
                                     }
                                 }
-                                new_locals.insert(sete.to_owned(), (num_vars_declared, is_array));
+                                new_locals.insert(sete.to_owned(), (mem_len, is_array));
                             } else {
                                 return Err(AnalysisError::DoubleSet(sete.clone()));
                             }
