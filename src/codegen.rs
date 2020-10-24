@@ -227,9 +227,7 @@ impl Code {
         // TODO need to use bss for this not stack if static
         // not sure if this is a bad decision
         let len_of_arr = ve.len() as u32;
-        dbg!(&self.initalized_local_vars);
         if let Some(off) = self.initalized_local_vars.get(sete) {
-            dbg!(&off);
             // we know it is a stack allocated var
             // move the length to the first element in the array
             self.text
@@ -240,10 +238,9 @@ impl Code {
                 (self.stack_p_offset + off.0 - 1 - len_of_arr),
             ));
             let newoff = off.clone(); // we do this to avoid weird ownership stuff. not my proudest code
-            for (i, e) in ve.iter().enumerate() {
+            for (i, e) in ve.iter().rev().enumerate() {
                 self.cgen_expr(e.clone());
                 let tmpval = self.stack_p_offset - &newoff.0 - i as u32 - 1;
-                dbg!(&tmpval);
                 self.text
                     .instructions
                     .push(format!("mov [rsp + {} * 8 ], r8", tmpval));
@@ -311,8 +308,6 @@ impl Code {
             }
             max
         };
-        dbg!(&mem_len);
-        dbg!(self.stack_p_offset);
         self.stack_p_offset += mem_len as u32;
         self.text
             .instructions
@@ -339,8 +334,6 @@ impl Code {
             if self.initalized_local_vars.contains_key(&varname) {
                 double_keys.insert(varname.clone());
             }
-            dbg!(place);
-            dbg!(&self.initalized_local_vars);
             self.initalized_local_vars.insert(
                 varname.clone(),
                 (self.stack_p_offset as u32 - place.0, place.1),
@@ -560,7 +553,6 @@ impl Code {
                     }
                 }
                 Some(num) => {
-                    dbg!((&num.0, &self.stack_p_offset));
                     let val = if let Some(z) = self.initalized_array_lengths.get(a) {
                         self.stack_p_offset + num.0 - z
                     } else {
