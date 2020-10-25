@@ -140,7 +140,6 @@ impl Analyser {
                                             sete.to_owned(),
                                             (var_mem_space, is_array_bool),
                                         );
-                                        dbg!(&new_locals);
                                     }
                                     Scope { in_loop: true, .. } => {
                                         return Err(AnalysisError::SetInLoop)
@@ -201,7 +200,6 @@ impl Analyser {
                                 in_if: true,
                             };
                             *vars_declared = Some(self.analyze(body)?);
-                            dbg!(&vars_declared);
                             // return scope to what it was after changing it
                             self.scope = tmp_scope;
                         }

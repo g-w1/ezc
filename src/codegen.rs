@@ -237,7 +237,6 @@ impl Code {
             self.text
                 .instructions
                 .push(format!("mov r8, {}", len_of_arr));
-            dbg!(&len_of_arr);
             self.text.instructions.push(format!(
                 "mov [rsp + {} * 8 ], r8",
                 (self.stack_p_offset + off.0 - 1 - len_of_arr),
@@ -304,12 +303,8 @@ impl Code {
         // !
         let mem_len = {
             let mut max = 0;
-            for (_, (n, b)) in vars_declared {
-                dbg!(&n);
+            for (_, (n, _)) in vars_declared {
                 max += n;
-                if *b {
-                    // max += 1; // 2 because its the info ascocated with arrays
-                }
             }
             max
         };
@@ -336,18 +331,21 @@ impl Code {
                     .insert(name.clone(), (tmp, isarray));
             }
         }
+        let mut offset = 0;
         for (varname, place) in vars_declared.to_owned() {
+            offset += place.0;
             if self.initalized_local_vars.contains_key(&varname) {
                 double_keys.insert(varname.clone());
             }
             self.initalized_local_vars.insert(
                 varname.clone(),
-                (self.stack_p_offset as u32 - place.0, place.1),
+                (self.stack_p_offset as u32 - offset, place.1),
             );
             if place.1 {
                 self.initalized_array_lengths.insert(varname, place.0);
             }
         }
+        dbg!(&self.initalized_local_vars);
         (double_keys, mem_len)
     }
     /// code gen for if stmt. uses stack based allocation

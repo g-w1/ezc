@@ -1,5 +1,5 @@
 build:
-	cargo run -q -- lib.ez -c
+	cargo run -q -- lib.ez -lib
 	gcc main.c out.o -O3 -o out
 clean:
 	rm *out*
