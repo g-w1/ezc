@@ -135,7 +135,7 @@ impl Code {
         name: String,
         args: Vec<crate::ast::Type>,
         body: Vec<AstNode>,
-        vars_declared: HashMap<String, (u32, bool)>,
+        vars_declared: HashMap<String, (u32, bool, u8)>,
         export: bool,
     ) {
         /////////////////////////// Some setup ///////////////////////// clear local vars bc a func starts with none
@@ -225,14 +225,14 @@ impl Code {
         let len_of_arr = ve.len() as u32;
         if let Some(off) = self.initalized_local_vars.get(sete) {
             // we know it is a stack allocated var
-            self.text.instructions.push(format!(
-                "lea r8, [rsp + {} * 8]",
-                self.stack_p_offset + off.0 - 2 - len_of_arr
-            ));
-            self.text.instructions.push(format!(
-                "mov [rsp + {} * 8 ], r8",
-                (self.stack_p_offset + off.0 - 2 - len_of_arr),
-            ));
+            let tmp_addr = self.stack_p_offset + off.0 - 2 - len_of_arr;
+            self.text
+                .instructions
+                .push(format!("lea r8, [rsp + {} * 8]", tmp_addr));
+            self.text
+                .instructions
+                .push(format!("mov [rsp + {} * 8 ], r8", tmp_addr));
+            dbg!(tmp_addr);
             // move the length to the first element in the array
             self.text
                 .instructions
@@ -244,7 +244,8 @@ impl Code {
             let newoff = off.clone(); // we do this to avoid weird ownership stuff. not my proudest code
             for (i, e) in ve.iter().rev().enumerate() {
                 self.cgen_expr(e.clone());
-                let tmpval = self.stack_p_offset - &newoff.0 - i as u32 - 1;
+                let tmpval = self.stack_p_offset + &newoff.0 - i as u32 - 1;
+                dbg!(&tmpval);
                 self.text
                     .instructions
                     .push(format!("mov [rsp + {} * 8 ], r8", tmpval));
@@ -283,7 +284,7 @@ impl Code {
             }
             Expr::Number(n) => self.text.instructions.push(format!("mov r8, {}", n)), // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
             Expr::Iden(i) => {
-                let tmpexpr = self.get_display_asm(&Expr::Iden(i.clone()));
+                let tmpexpr = self.cgen_get_display_asm(&Expr::Iden(i.clone()));
                 self.text.instructions.push(format!("mov r8, {}", tmpexpr));
             }
 
@@ -296,7 +297,7 @@ impl Code {
     }
     fn cgen_setup_stack(
         &mut self,
-        vars_declared: &HashMap<String, (u32, bool)>,
+        vars_declared: &HashMap<String, (u32, bool, u8)>,
         args: Option<&Vec<crate::ast::Type>>,
     ) -> (HashSet<String>, u32) {
         let mut double_keys: HashSet<String> = HashSet::new();
@@ -310,7 +311,7 @@ impl Code {
         // !
         let mem_len = {
             let mut max = 0;
-            for (_, (n, _)) in vars_declared {
+            for (_, (n, _, _)) in vars_declared {
                 max += n;
             }
             max
@@ -330,7 +331,7 @@ impl Code {
                     crate::ast::Type::ArrNum(s, len_of_arr) => {
                         isarray = true;
                         self.initalized_array_lengths
-                            .insert(s.clone(), len_of_arr.parse().unwrap());
+                            .insert(s.clone(), len_of_arr.parse::<u32>().unwrap());
                         s
                     }
                 }; // arrays are passed by reference so we only need to incriment stack pointer by 1 still
@@ -339,9 +340,12 @@ impl Code {
             }
         }
         let mut offset = 0;
-        for (varname, place) in vars_declared.to_owned() {
+        let mut vec_of_vars_decl: Vec<(&String, &(u32, bool, u8))> = vars_declared.iter().collect();
+        vec_of_vars_decl.sort_by(|(_, (_, _, place0)), (_, (_, _, place1))| place0.cmp(place1));
+        dbg!(&vec_of_vars_decl);
+        for (varname, place) in vec_of_vars_decl.to_owned() {
             offset += place.0;
-            if self.initalized_local_vars.contains_key(&varname) {
+            if self.initalized_local_vars.contains_key(varname) {
                 double_keys.insert(varname.clone());
             }
             self.initalized_local_vars.insert(
@@ -349,17 +353,17 @@ impl Code {
                 (self.stack_p_offset as u32 - offset, place.1),
             );
             if place.1 {
-                self.initalized_array_lengths.insert(varname, place.0);
+                self.initalized_array_lengths
+                    .insert(varname.clone(), place.0);
             }
         }
-        dbg!(&self.initalized_local_vars);
         (double_keys, mem_len)
     }
     /// code gen for if stmt. uses stack based allocation
     fn cgen_if_stmt(
         &mut self,
         guard: Expr,
-        vars: HashMap<String, (u32, bool)>,
+        vars: HashMap<String, (u32, bool, u8)>,
         body: Vec<AstNode>,
         loop_num: Option<u32>,
     ) {
@@ -377,6 +381,7 @@ impl Code {
         self.text
             .instructions
             .push(format!(".IF_BODY_{}", our_number_for_mangling));
+        self.number_for_mangling += 1;
         ///////////// ALLOCATION FOR THE IF STMT //////////////////////////////
         let (double_keys, mem_len) = self.cgen_setup_stack(&vars, None);
         for node in body {
@@ -459,7 +464,7 @@ impl Code {
         match setor {
             Val::Expr(e) => {
                 self.cgen_expr(e);
-                let tmpsete = self.get_display_asm(&Expr::Iden(sete));
+                let tmpsete = self.cgen_get_display_asm(&Expr::Iden(sete));
                 self.text.instructions.push(format!("mov {}, r8", tmpsete,));
             }
             Val::Array(ae) => {
@@ -507,7 +512,7 @@ impl Code {
                 _,
             ) => {
                 self.cgen_binop_expr(*reclhs, recop, *recrhs);
-                let tmprhs = self.get_display_asm(&cloned_rhs);
+                let tmprhs = self.cgen_get_display_asm(&cloned_rhs);
                 self.text.instructions.push(format!("push {}", tmprhs));
                 self.stack_p_offset += 1;
                 let slice = &self.cgen_for_stack(&op);
@@ -527,7 +532,7 @@ impl Code {
                     rhs: recrhs,
                 },
             ) => {
-                let tmplhs = self.get_display_asm(&cloned_lhs);
+                let tmplhs = self.cgen_get_display_asm(&cloned_lhs);
                 self.text.instructions.push(format!("push {}", tmplhs));
                 self.stack_p_offset += 1;
                 self.cgen_binop_expr(*reclhs, recop, *recrhs);
@@ -540,10 +545,10 @@ impl Code {
             //     /    \
             //  num     num
             (_, _) => {
-                let tmplhs = self.get_display_asm(&cloned_lhs);
+                let tmplhs = self.cgen_get_display_asm(&cloned_lhs);
                 self.text.instructions.push(format!("push {}", tmplhs));
                 self.stack_p_offset += 1;
-                let tmprhs = self.get_display_asm(&cloned_rhs);
+                let tmprhs = self.cgen_get_display_asm(&cloned_rhs);
                 self.text.instructions.push(format!("push {}", tmprhs));
                 self.stack_p_offset += 1;
                 let slice = &self.cgen_for_stack(&op);
@@ -552,7 +557,7 @@ impl Code {
         }
     }
     /// if its a num or iden give how to display it deferenecd
-    fn get_display_asm(&mut self, expr: &Expr) -> String {
+    fn cgen_get_display_asm(&mut self, expr: &Expr) -> String {
         match expr {
             Expr::Number(n) => n.to_owned(),
             Expr::Iden(a) => match self.initalized_local_vars.get(a) {

@@ -91,8 +91,9 @@ impl Analyser {
     pub fn analyze(
         self: &mut Self,
         tree: &mut Vec<ast::AstNode>,
-    ) -> Result<HashMap<String, (u32, bool)>, AnalysisError> {
-        let mut new_locals: HashMap<String, (u32, bool)> = HashMap::new();
+    ) -> Result<HashMap<String, (u32, bool, u8)>, AnalysisError> {
+        let mut new_locals: HashMap<String, (u32, bool, u8)> = HashMap::new(); // the third thing is for the ordering of the variables in this map
+        let mut order: u8 = 0;
         for node in tree.iter_mut() {
             match node {
                 ast::AstNode::SetOrChange {
@@ -138,8 +139,9 @@ impl Analyser {
                                         );
                                         new_locals.insert(
                                             sete.to_owned(),
-                                            (var_mem_space, is_array_bool),
+                                            (var_mem_space, is_array_bool, order),
                                         );
+                                        order += 1;
                                     }
                                     Scope { in_loop: true, .. } => {
                                         return Err(AnalysisError::SetInLoop)
@@ -171,7 +173,8 @@ impl Analyser {
                                             .insert(sete.clone(), Type::Number);
                                     }
                                 }
-                                new_locals.insert(sete.to_owned(), (mem_len, is_array));
+                                new_locals.insert(sete.to_owned(), (mem_len, is_array, order));
+                                order += 1;
                             } else {
                                 return Err(AnalysisError::DoubleSet(sete.clone()));
                             }
