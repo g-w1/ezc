@@ -221,20 +221,25 @@ impl Code {
     }
     /// code generation for a val. []n or n
     fn cgen_array_set_or_change(&mut self, ve: Vec<Expr>, sete: &str) {
-        // TODO may need to reverse array. need to know how its layed out in memory
-        // check COMPILER EXPLORER
-        // we do one more than the array because the first elem in the array is the len of it.
-        // TODO need to use bss for this not stack if static
         // not sure if this is a bad decision
         let len_of_arr = ve.len() as u32;
         if let Some(off) = self.initalized_local_vars.get(sete) {
             // we know it is a stack allocated var
+            self.text.instructions.push(format!(
+                "lea r8, [rsp + {} * 8]",
+                self.stack_p_offset + off.0 - 2 - len_of_arr
+            ));
+            self.text.instructions.push(format!(
+                "mov [rsp + {} * 8 ], r8",
+                (self.stack_p_offset + off.0 - 2 - len_of_arr),
+            ));
             // move the length to the first element in the array
             self.text
                 .instructions
                 .push(format!("mov r8, {}", len_of_arr));
+            dbg!(&len_of_arr);
             self.text.instructions.push(format!(
-                "mov [rsp + {} * 8], r8",
+                "mov [rsp + {} * 8 ], r8",
                 (self.stack_p_offset + off.0 - 1 - len_of_arr),
             ));
             let newoff = off.clone(); // we do this to avoid weird ownership stuff. not my proudest code
@@ -273,11 +278,7 @@ impl Code {
             Expr::Number(n) => self.text.instructions.push(format!("mov r8, {}", n)), // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
             Expr::Iden(i) => {
                 let tmpexpr = self.get_display_asm(&Expr::Iden(i.clone()));
-                if self.initalized_local_vars.get(&i).is_some() {
-                    self.text.instructions.push(format!("lea r8, {}", tmpexpr));
-                } else {
-                    self.text.instructions.push(format!("mov r8, {}", tmpexpr));
-                }
+                self.text.instructions.push(format!("mov r8, {}", tmpexpr));
             }
 
             Expr::FuncCall {
@@ -303,11 +304,16 @@ impl Code {
         // !
         let mem_len = {
             let mut max = 0;
-            for (_, (n, _)) in vars_declared {
+            for (_, (n, b)) in vars_declared {
+                dbg!(&n);
                 max += n;
+                if *b {
+                    // max += 1; // 2 because its the info ascocated with arrays
+                }
             }
             max
         };
+        dbg!(&mem_len);
         self.stack_p_offset += mem_len as u32;
         self.text
             .instructions

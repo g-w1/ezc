@@ -2,9 +2,10 @@ const std = @import("std");
 
 export fn PutString(s: [*]i64) i64 {
     const stdout = std.io.getStdOut().outStream();
-    const len: i64 = s[0] + 1;
-    var were_on_rn: u32 = 1;
-    while (were_on_rn < len) : (were_on_rn += 1) {
+    const len: i64 = s[1];
+    var were_on_rn: u32 = 0;
+    while (were_on_rn < len + 2) : (were_on_rn += 1) { // we do len + 2 because the offset in the beg of array is 2
+        // std.debug.print("{}\n", .{s[were_on_rn]});
         stdout.print("{c}", .{@intCast(u8, s[were_on_rn])}) catch return -1;
     }
     return 0;

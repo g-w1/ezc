@@ -124,7 +124,7 @@ impl Analyser {
                                     } => {
                                         let var_mem_space: u32;
                                         if let Some(n) = is_array {
-                                            var_mem_space = n + 1; // plus one because arrays are actually slices: first element is their length
+                                            var_mem_space = n + 2; // plus two because arrays are actually slices: first element is their ptr, second is len. TODO is right
                                         } else {
                                             var_mem_space = 1;
                                         }
@@ -165,7 +165,8 @@ impl Analyser {
                                             .insert(sete.clone(), Type::Number);
                                     }
                                     Val::Array(n) => {
-                                        mem_len = n.len() as u32 + 1;
+                                        // TODO is this wrong
+                                        mem_len = n.len() as u32 + 2;
                                         is_array = true;
                                         self.initialized_function_vars
                                             .insert(sete.clone(), Type::Number);
