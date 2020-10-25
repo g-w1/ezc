@@ -1,7 +1,4 @@
 external function PutString(n).
 
-set tmp to 0.
-if 1,
-    set p to [ 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
-    change tmp to PutString(p).
-!
+set p to [ 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
+set tmp to PutString(p).
