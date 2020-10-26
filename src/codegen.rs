@@ -232,7 +232,6 @@ impl Code {
             self.text
                 .instructions
                 .push(format!("mov [rsp + {} * 8 ], r8", tmp_addr));
-            dbg!(tmp_addr);
             // move the length to the first element in the array
             self.text
                 .instructions
@@ -245,7 +244,6 @@ impl Code {
             for (i, e) in ve.iter().rev().enumerate() {
                 self.cgen_expr(e.clone());
                 let tmpval = self.stack_p_offset + &newoff.0 - i as u32 - 1;
-                dbg!(&tmpval);
                 self.text
                     .instructions
                     .push(format!("mov [rsp + {} * 8 ], r8", tmpval));
@@ -316,7 +314,6 @@ impl Code {
             }
             max
         };
-        dbg!(&mem_len);
         self.stack_p_offset += mem_len as u32;
         self.text
             .instructions
@@ -342,7 +339,6 @@ impl Code {
         let mut offset = 0;
         let mut vec_of_vars_decl: Vec<(&String, &(u32, bool, u8))> = vars_declared.iter().collect();
         vec_of_vars_decl.sort_by(|(_, (_, _, place0)), (_, (_, _, place1))| place0.cmp(place1));
-        dbg!(&vec_of_vars_decl);
         for (varname, place) in vec_of_vars_decl.to_owned() {
             offset += place.0;
             if self.initalized_local_vars.contains_key(varname) {

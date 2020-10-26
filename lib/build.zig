@@ -3,8 +3,9 @@ const Builder = std.build.Builder;
 const builtin = std.builtin;
 
 pub fn build(b: *Builder) void {
-    const mode = b.standardReleaseOptions();
-    const lib = b.addStaticLibrary("lib", "src/lib.zig");
+    // const mode = b.standardReleaseOptions();
+    const mode = builtin.Mode.ReleaseFast;
+    const lib = b.addStaticLibrary("std", "src/lib.zig");
     lib.setBuildMode(mode);
     lib.install();
 

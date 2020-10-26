@@ -1,13 +1,18 @@
+external function PutStringLine(n).
 external function PutString(n).
 external function PutNumBin(n).
 external function PutChar(n).
+external function PutNewLine().
 
 if 1,
-    set p to [ 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
-    set tmp to PutString(p).
+    set z to 4.
+    set tmp to PutNumBin(z).
+    change tmp to PutNewLine().
+    set  p to ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
+    change tmp to PutString(p).
     if 4 = 4,
-        set  w to ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', '\n'].
-        change tmp to PutString(w).
+        set  w to ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', ].
+        change tmp to PutStringLine(w).
         change tmp to PutString(p).
     !
 !
