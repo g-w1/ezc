@@ -19,6 +19,8 @@ jobs:
     - uses: goto-bus-stop/setup-zig@v1
       with:
         version: master
+    - name: Install Nasm
+      run: apt-get install nasm
     - name: Build
       run: cargo build --verbose
     - name: Run tests
