@@ -290,7 +290,9 @@ impl Code {
                 func_name,
                 args,
                 external,
-            } => self.cgen_funcall_expr(&func_name, external.unwrap(), &args),
+            } => {
+                self.cgen_funcall_expr(&func_name, external.unwrap(), &args);
+            }
         }
     }
     fn cgen_setup_stack(

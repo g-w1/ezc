@@ -8,20 +8,16 @@ use std::cmp::Ordering;
 pub fn parse(input: Vec<Token>, locs_input: Vec<u32>) -> Result<AstRoot, ParserError> {
     let mut tree = Parser::new(input, locs_input).parse(true)?;
     // sort it so that funcs are on top of vec so that codegen is MUCH easier
-    tree.sort_by(|a, b| {
-        if let AstNode::Func { .. } | AstNode::Extern { .. } = a {
-            if let AstNode::Func { .. } | AstNode::Extern { .. } = b {
-                Ordering::Equal
-            } else {
-                Ordering::Less
-            }
-        } else {
-            if let AstNode::Func { .. } | AstNode::Extern { .. } = a {
-                Ordering::Equal
-            } else {
-                Ordering::Greater
-            }
-        }
+    tree.sort_by(|a, b| match (a, b) {
+        (AstNode::Func { .. }, AstNode::Func { .. }) => Ordering::Equal,
+        (AstNode::Extern { .. }, AstNode::Extern { .. }) => Ordering::Equal,
+        (AstNode::Extern { .. }, AstNode::Func { .. }) => Ordering::Less,
+        (AstNode::Func { .. }, AstNode::Extern { .. }) => Ordering::Greater,
+        (AstNode::Func { .. }, _) => Ordering::Less,
+        (AstNode::Extern { .. }, _) => Ordering::Less,
+        (_, AstNode::Extern { .. }) => Ordering::Greater,
+        (_, AstNode::Func { .. }) => Ordering::Greater,
+        _ => Ordering::Equal,
     });
     Ok(AstRoot {
         static_vars: None,

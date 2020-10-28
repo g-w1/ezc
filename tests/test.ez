@@ -1,0 +1,9 @@
+external function PutChar(a).
+
+function Test(a),
+    set t to a + a.
+    set tmp to PutChar(t).
+    return t.
+!
+
+set tmp to Test(5).

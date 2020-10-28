@@ -251,6 +251,7 @@ impl Analyser {
                     vars_declared,
                     export,
                 } => {
+                    dbg!(&name);
                     /////////////// Making sure function name doesn't exist
                     if let Some(_) = self.initialized_functions.insert(
                         name.clone(),
@@ -366,7 +367,7 @@ impl Analyser {
         }
         Ok(())
     }
-    /// analyse an immediate val. returns Ok(true) if it is an array Ok(false) if not
+    /// analyse an immediate val. returns Some(n) if it is an array None if not
     fn check_val(&self, val: &mut Val) -> Result<Option<u32>, AnalysisError> {
         Ok(match val {
             Val::Expr(a) => {
@@ -388,6 +389,7 @@ impl Analyser {
         args: &mut Vec<ast::Val>,
         external: &mut Option<bool>,
     ) -> Result<(), AnalysisError> {
+        dbg!(func_name);
         let converted_args = args
             .iter()
             .map(|x| convert_ast_val_to_analyse_type(x))
@@ -408,6 +410,7 @@ impl Analyser {
         } else {
             *external = Some(false);
         }
+        dbg!(&external);
         for arg in args.iter_mut() {
             self.check_val(arg)?;
         }
@@ -603,7 +606,7 @@ function lol(),
             crate::ast::AstNode::Func { vars_declared, .. } => assert_eq!(
                 {
                     let mut m = HashMap::new();
-                    m.insert(String::from("p"), 1);
+                    m.insert(String::from("p"), (1, false, 1));
                     m
                 },
                 vars_declared.unwrap()
