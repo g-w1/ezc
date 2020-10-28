@@ -566,6 +566,30 @@ mod tests {
         );
     }
     #[test]
+    fn parser_arrays() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(&String::from("Set x to [1,2,3, PutRust(10)]. "));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![AstNode::SetOrChange {
+                sete: String::from("x"),
+                change: false,
+                setor: Val::Array(vec![
+                    Expr::Number(String::from("1")),
+                    Expr::Number(String::from("2")),
+                    Expr::Number(String::from("3")),
+                    Expr::FuncCall {
+                        func_name: String::from("PutRust"),
+                        args: vec![Val::Expr(Expr::Number(String::from("10")))],
+                        external: None
+                    }
+                ])
+            },],
+            ast
+        );
+    }
+    #[test]
     fn parser_function_stmt() {
         let mut tokenizer = lexer::Tokenizer::new();
         let output = tokenizer.lex(&String::from(

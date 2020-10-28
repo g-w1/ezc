@@ -456,12 +456,45 @@ fn convert_ast_val_to_analyse_type(x: &ast::Val) -> Type {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn analyze_good_analyze() {
+    fn analyze_good_set_and_change() {
         use crate::analyse;
         use crate::lexer;
         use crate::parser;
         let mut tokenizer = lexer::Tokenizer::new();
         let input = "Set x to (10+4). set y to (5+x) . change  x to 445235+y .";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyse::analize(&mut ast).unwrap();
+    }
+    #[test]
+    fn analyze_good_arrays() {
+        use crate::analyse;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "
+        external function PutStringLine(n).
+        set z to [1,2,3]. function p(x),
+        set tmp to PutStringLine(x).
+        !
+            set tmp to p(z).";
+        let output = tokenizer.lex(&String::from(input));
+        let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
+        analyse::analize(&mut ast).unwrap();
+    }
+    #[test]
+    #[should_panic]
+    fn analyze_bad_arrays0() {
+        use crate::analyse;
+        use crate::lexer;
+        use crate::parser;
+        let mut tokenizer = lexer::Tokenizer::new();
+        let input = "
+        external function PutStringLine(n).
+        set z to [1,2,3, [1,2]]. function p(x),
+            set tmp to PutStringLine(x).
+        !
+        set tmp to p(z).";
         let output = tokenizer.lex(&String::from(input));
         let mut ast = parser::parse(output.0.unwrap(), output.1).unwrap();
         analyse::analize(&mut ast).unwrap();
