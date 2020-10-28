@@ -20,7 +20,7 @@ jobs:
       with:
         version: master
     - name: Install Nasm
-      run: apt-get install nasm
+      run: sudo apt-get install nasm
     - name: Build
       run: cargo build --verbose
     - name: Run tests
