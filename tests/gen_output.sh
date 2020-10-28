@@ -6,3 +6,15 @@ for file in `ls *.ez`; do
   ./a.out > "intended/$file.output"
   echo "generated intended/$file.output"
 done
+
+cd module
+make
+./out > ../intended/module.output
+echo "generated intended/module.output"
+cd ..
+
+cd cinterface
+make
+./out > ../intended/cinterface.output
+echo "generated intended/cinterface.output"
+cd ..

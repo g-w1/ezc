@@ -22,4 +22,27 @@ for file in `ls *.ez`; do
     rm tmp.out
 done
 
+for dir in cinterface module; do
+  cd $dir
+  make
+  ./out > ../tmp.out
+  case $? in
+    0) echo "\"$dir\" PASSED RUNNING";;
+    *)
+      echo "\"$dir\" FAILED RUNNING"
+      exit 1
+      ;;
+  esac
+  cd ..
+  diff tmp.out "intended/$dir.output"
+  case $? in
+    0) echo "\"$dir\" PASSED COMPARING";;
+    *)
+      echo "\"$dir\" FAILED COMPARING"
+      exit 1
+      ;;
+    esac
+    rm tmp.out
+done
+
 echo "ALL TESTS PASSED"

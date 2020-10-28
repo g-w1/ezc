@@ -1,5 +1,0 @@
-set y to 10.
-
-loop,
-  if y = 10,
-    break.   !
