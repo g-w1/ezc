@@ -1,4 +1,4 @@
-name: Rust
+name: Build/Test
 
 on:
   push:
@@ -16,11 +16,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - uses: goto-bus-stop/setup-zig@v1
+      with:
+        version: master
     - name: Build
-      env:
-        HAS_NO_ZIG: TRUE
       run: cargo build --verbose
     - name: Run tests
-      env:
-        HAS_NO_ZIG: TRUE
       run: cargo test --verbose
