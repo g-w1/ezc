@@ -381,6 +381,7 @@ mod tests {
         );
         assert_eq!(ts.len(), res.1.len())
     }
+    #[test]
     fn lexer_array_lit() {
         let mut tokenizer = Tokenizer::new();
         let res = tokenizer.lex(&String::from("n[] = [1,2,3,4]"));
@@ -390,7 +391,7 @@ mod tests {
             Tokenizer {
                 state: LexerState::Start,
                 intermidiate_string: String::from(""),
-                pos: 8,
+                pos: 15,
             }
         );
         let ts = res.0.unwrap();

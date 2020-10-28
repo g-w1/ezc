@@ -73,7 +73,7 @@ impl Code {
             if let AstNode::Func { .. } | AstNode::Extern { .. } = node {
             } else {
                 if !started_tl {
-                    self.text.instructions.push(String::from("_start:")); // TODO change if going recursive
+                    self.text.instructions.push(String::from("_start:"));
                     started_tl = true;
                 }
             }
@@ -262,13 +262,12 @@ impl Code {
                 .push(format!("mov qword MaNgLe_{}[1 * 8], {}", sete, len_of_arr));
             // we know it is a static var
             for (i, e) in ve.iter().enumerate() {
-                self.cgen_expr(e.clone()); // TODO get rid of this clone
+                self.cgen_expr(e.clone());
                 self.text.instructions.push(format!(
                     "mov qword MaNgLe_{}[{} * 8], r8",
                     sete,
                     i + 2
                 ));
-                // TODO we need ptr here?
             }
         }
     }
@@ -280,7 +279,7 @@ impl Code {
                 self.text.instructions.push(String::from("pop r8"));
                 self.stack_p_offset -= 1;
             }
-            Expr::Number(n) => self.text.instructions.push(format!("mov r8, {}", n)), // TODO really easy optimisation by just parsing num at compile time. but right now this is easier. premature optimisation is the start of all evil
+            Expr::Number(n) => self.text.instructions.push(format!("mov r8, {}", n)),
             Expr::Iden(i) => {
                 let tmpexpr = self.cgen_get_display_asm(&Expr::Iden(i.clone()));
                 self.text.instructions.push(format!("mov r8, {}", tmpexpr));
@@ -291,7 +290,8 @@ impl Code {
                 args,
                 external,
             } => {
-                self.cgen_funcall_expr(&func_name, external.unwrap(), &args);
+                self.cgen_funcall_expr(&func_name, external.unwrap_or(true), &args);
+                // TODO REALLY NEED TO FIX THIS. LIKE 7/10 priority
             }
         }
     }
@@ -602,8 +602,6 @@ impl Code {
             &BinOp::Lte => crate::eq_op!("jle", self),
         }
     }
-    // inline cuz y not
-    // TODO test if this works
     #[inline]
     fn special_bop(&mut self, op: &str) -> [String; 4] {
         self.stack_p_offset -= 1;
@@ -816,67 +814,7 @@ if 5 >= 5,
         analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
-        let correct_code = "global _start
-section .text
-_start:
-mov r8, 0
-mov qword [MaNgLe_c], r8
-push 5
-push 5
-pop r8
-pop r9
-cmp r9, r8
-jge .IF_HEADER_2
-jl .IF_HEADER_FAILED_2
-.IF_HEADER_2
-push 1
-jmp .END_IF_HEADER_2
-.IF_HEADER_FAILED_2
-push 0
-.END_IF_HEADER_2
-pop r8
-cmp r8, 1
-je .IF_BODY_0
-jne .IF_END_0
-.IF_BODY_0
-sub rsp, 2 * 8
-mov r8, 5
-mov qword [rsp + 0 * 8], r8
-mov r8, 6
-mov qword [rsp + 1 * 8], r8
-mov r8, 7
-mov qword [rsp + 0 * 8], r8
-push qword [rsp + 0 * 8]
-push qword [rsp + 2 * 8]
-pop r8
-pop r9
-cmp r9, r8
-jg .IF_HEADER_4
-jle .IF_HEADER_FAILED_4
-.IF_HEADER_4
-push 1
-jmp .END_IF_HEADER_4
-.IF_HEADER_FAILED_4
-push 0
-.END_IF_HEADER_4
-pop r8
-cmp r8, 1
-je .IF_BODY_2
-jne .IF_END_2
-.IF_BODY_2
-sub rsp, 0 * 8
-mov r8, 5
-mov qword [MaNgLe_c], r8
-add rsp, 0 * 8
-.IF_END_2
-add rsp, 2 * 8
-.IF_END_0
-mov rax, 60
-xor rdi, rdi
-syscall
-section .bss
-MaNgLe_c resq 1
-";
+        let correct_code = "global _start\nsection .text\n_start:\nmov r8, 0\nmov qword [MaNgLe_c], r8\npush 5\npush 5\npop r8\npop r9\ncmp r9, r8\njge .IF_HEADER_2\njl .IF_HEADER_FAILED_2\n.IF_HEADER_2\npush 1\njmp .END_IF_HEADER_2\n.IF_HEADER_FAILED_2\npush 0\n.END_IF_HEADER_2\npop r8\ncmp r8, 1\nje .IF_BODY_0\njne .IF_END_0\n.IF_BODY_0\nsub rsp, 2 * 8\nmov r8, 5\nmov qword [rsp + 0 * 8], r8\nmov r8, 6\nmov qword [rsp + 1 * 8], r8\nmov r8, 7\nmov qword [rsp + 0 * 8], r8\npush qword [rsp + 0 * 8]\npush qword [rsp + 2 * 8]\npop r8\npop r9\ncmp r9, r8\njg .IF_HEADER_5\njle .IF_HEADER_FAILED_5\n.IF_HEADER_5\npush 1\njmp .END_IF_HEADER_5\n.IF_HEADER_FAILED_5\npush 0\n.END_IF_HEADER_5\npop r8\ncmp r8, 1\nje .IF_BODY_3\njne .IF_END_3\n.IF_BODY_3\nsub rsp, 0 * 8\nmov r8, 5\nmov qword [MaNgLe_c], r8\nadd rsp, 0 * 8\n.IF_END_3\nadd rsp, 2 * 8\n.IF_END_0\nmov rax, 60\nxor rdi, rdi\nsyscall\nsection .bss\nMaNgLe_c resq 1\n";
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
@@ -979,40 +917,7 @@ set tmp to AddOne(1).
         analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
-        let correct_code = "global _start
-global AddOne
-section .text
-AddOne:
-push rbp
-mov rbp, rsp
-push rdi
-sub rsp, 0 * 8
-push qword [rsp + 0 * 8]
-push 1
-pop r8
-pop r9
-add r9, r8
-push r9
-pop r8
-mov rax, r8
-jmp .RETURN_AddOne
-mov rax, 0
-.RETURN_AddOne
-mov rsp, rbp
-pop rbp
-ret
-_start:
-mov r8, 1
-mov rdi, r8
-call AddOne
-mov r8, rax
-mov qword [MaNgLe_tmp], r8
-mov rax, 60
-xor rdi, rdi
-syscall
-section .bss
-MaNgLe_tmp resq 1
-";
+        let correct_code = "global _start\nglobal AddOne\nsection .text\nAddOne:\npush rbp\nmov rbp, rsp\nsub rsp, 0 * 8\npush rdi\npush qword [rsp + 0 * 8]\npush 1\npop r8\npop r9\nadd r9, r8\npush r9\npop r8\nmov rax, r8\njmp .RETURN_AddOne\nmov rax, 0\n.RETURN_AddOne\nmov rsp, rbp\npop rbp\nret\n_start:\nmov r8, 1\nmov rdi, r8\ncall AddOne\nmov r8, rax\nmov qword [MaNgLe_tmp], r8\nmov rax, 60\nxor rdi, rdi\nsyscall\nsection .bss\nMaNgLe_tmp resq 1\n";
         assert_eq!(format!("{}", code.fmt(false)), correct_code);
     }
     #[test]
@@ -1043,8 +948,8 @@ section .text
 MaNgLe_fib:
 push rbp
 mov rbp, rsp
-push rdi
 sub rsp, 0 * 8
+push rdi
 push qword [rsp + 0 * 8]
 push 1
 pop r8
@@ -1207,7 +1112,7 @@ MaNgLe_y resq 1
   set counter to 1.
   set a to 1.
   set b to 0.
-  [start the loop]
+  {start the loop}
   loop,
     change a to a + b.
     change counter to counter + 1.
@@ -1227,108 +1132,7 @@ MaNgLe_y resq 1
         analyse::analize(&mut ast).unwrap();
         let mut code = codegen::Code::new();
         code.cgen(ast);
-        let correct_code = "global MaNgLe_fib
-section .text
-MaNgLe_fib:
-push rbp
-mov rbp, rsp
-push rdi
-sub rsp, 3 * 8
-mov r8, 1
-mov qword [rsp + 0 * 8], r8
-mov r8, 1
-mov qword [rsp + 1 * 8], r8
-mov r8, 0
-mov qword [rsp + 2 * 8], r8
-.START_LOOP_0
-push qword [rsp + 1 * 8]
-push qword [rsp + 3 * 8]
-pop r8
-pop r9
-add r9, r8
-push r9
-pop r8
-mov qword [rsp + 1 * 8], r8
-push qword [rsp + 0 * 8]
-push 1
-pop r8
-pop r9
-add r9, r8
-push r9
-pop r8
-mov qword [rsp + 0 * 8], r8
-push qword [rsp + 0 * 8]
-push qword [rsp + 4 * 8]
-pop r8
-pop r9
-cmp r9, r8
-jg .IF_HEADER_3
-jle .IF_HEADER_FAILED_3
-.IF_HEADER_3
-push 1
-jmp .END_IF_HEADER_3
-.IF_HEADER_FAILED_3
-push 0
-.END_IF_HEADER_3
-pop r8
-cmp r8, 1
-je .IF_BODY_1
-jne .IF_END_1
-.IF_BODY_1
-sub rsp, 0 * 8
-mov r8, qword [rsp + 1 * 8]
-mov rax, r8
-jmp .RETURN_fib
-add rsp, 0 * 8
-.IF_END_1
-push qword [rsp + 1 * 8]
-push qword [rsp + 3 * 8]
-pop r8
-pop r9
-add r9, r8
-push r9
-pop r8
-mov qword [rsp + 2 * 8], r8
-push qword [rsp + 0 * 8]
-push 1
-pop r8
-pop r9
-add r9, r8
-push r9
-pop r8
-mov qword [rsp + 0 * 8], r8
-push qword [rsp + 0 * 8]
-push qword [rsp + 4 * 8]
-pop r8
-pop r9
-cmp r9, r8
-jg .IF_HEADER_6
-jle .IF_HEADER_FAILED_6
-.IF_HEADER_6
-push 1
-jmp .END_IF_HEADER_6
-.IF_HEADER_FAILED_6
-push 0
-.END_IF_HEADER_6
-pop r8
-cmp r8, 1
-je .IF_BODY_4
-jne .IF_END_4
-.IF_BODY_4
-sub rsp, 0 * 8
-mov r8, qword [rsp + 2 * 8]
-mov rax, r8
-jmp .RETURN_fib
-add rsp, 0 * 8
-.IF_END_4
-jmp .START_LOOP_0
-.END_LOOP_0
-mov rax, 0
-.RETURN_fib
-mov rsp, rbp
-pop rbp
-ret
-";
+        let correct_code = "global MaNgLe_fib\nsection .text\nMaNgLe_fib:\npush rbp\nmov rbp, rsp\nsub rsp, 3 * 8\npush rdi\nmov r8, 1\nmov qword [rsp + 0 * 8], r8\nmov r8, 1\nmov qword [rsp + 1 * 8], r8\nmov r8, 0\nmov qword [rsp + 2 * 8], r8\n.START_LOOP_0\npush qword [rsp + 1 * 8]\npush qword [rsp + 3 * 8]\npop r8\npop r9\nadd r9, r8\npush r9\npop r8\nmov qword [rsp + 1 * 8], r8\npush qword [rsp + 0 * 8]\npush 1\npop r8\npop r9\nadd r9, r8\npush r9\npop r8\nmov qword [rsp + 0 * 8], r8\npush qword [rsp + 0 * 8]\npush qword [rsp + 1 * 8]\npop r8\npop r9\ncmp r9, r8\njg .IF_HEADER_3\njle .IF_HEADER_FAILED_3\n.IF_HEADER_3\npush 1\njmp .END_IF_HEADER_3\n.IF_HEADER_FAILED_3\npush 0\n.END_IF_HEADER_3\npop r8\ncmp r8, 1\nje .IF_BODY_1\njne .IF_END_1\n.IF_BODY_1\nsub rsp, 0 * 8\nmov r8, qword [rsp + 1 * 8]\nmov rax, r8\njmp .RETURN_fib\nadd rsp, 0 * 8\n.IF_END_1\npush qword [rsp + 1 * 8]\npush qword [rsp + 3 * 8]\npop r8\npop r9\nadd r9, r8\npush r9\npop r8\nmov qword [rsp + 2 * 8], r8\npush qword [rsp + 0 * 8]\npush 1\npop r8\npop r9\nadd r9, r8\npush r9\npop r8\nmov qword [rsp + 0 * 8], r8\npush qword [rsp + 0 * 8]\npush qword [rsp + 1 * 8]\npop r8\npop r9\ncmp r9, r8\njg .IF_HEADER_7\njle .IF_HEADER_FAILED_7\n.IF_HEADER_7\npush 1\njmp .END_IF_HEADER_7\n.IF_HEADER_FAILED_7\npush 0\n.END_IF_HEADER_7\npop r8\ncmp r8, 1\nje .IF_BODY_5\njne .IF_END_5\n.IF_BODY_5\nsub rsp, 0 * 8\nmov r8, qword [rsp + 2 * 8]\nmov rax, r8\njmp .RETURN_fib\nadd rsp, 0 * 8\n.IF_END_5\njmp .START_LOOP_0\n.END_LOOP_0\nmov rax, 0\n.RETURN_fib\nmov rsp, rbp\npop rbp\nret\n";
         assert_eq!(format!("{}", code.fmt(true)), correct_code);
     }
     #[test]

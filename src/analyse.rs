@@ -228,7 +228,6 @@ impl Analyser {
                         in_if: false,
                         ..self.scope
                     };
-                    // self.analyze(body, Scope::InLoop)?;
                     self.analyze(body)?;
                     self.scope = tmp_scope;
                 }
@@ -251,7 +250,6 @@ impl Analyser {
                     vars_declared,
                     export,
                 } => {
-                    dbg!(&name);
                     /////////////// Making sure function name doesn't exist
                     if let Some(_) = self.initialized_functions.insert(
                         name.clone(),
@@ -363,7 +361,10 @@ impl Analyser {
                 func_name,
                 args,
                 external,
-            } => self.check_funcall(func_name, args, external)?,
+            } => {
+                self.check_funcall(func_name, args, external)?;
+                assert!(external.is_some());
+            }
         }
         Ok(())
     }
@@ -389,7 +390,6 @@ impl Analyser {
         args: &mut Vec<ast::Val>,
         external: &mut Option<bool>,
     ) -> Result<(), AnalysisError> {
-        dbg!(func_name);
         let converted_args = args
             .iter()
             .map(|x| convert_ast_val_to_analyse_type(x))
@@ -410,7 +410,6 @@ impl Analyser {
         } else {
             *external = Some(false);
         }
-        dbg!(&external);
         for arg in args.iter_mut() {
             self.check_val(arg)?;
         }
@@ -606,7 +605,7 @@ function lol(),
             crate::ast::AstNode::Func { vars_declared, .. } => assert_eq!(
                 {
                     let mut m = HashMap::new();
-                    m.insert(String::from("p"), (1, false, 1));
+                    m.insert(String::from("p"), (1, false, 0));
                     m
                 },
                 vars_declared.unwrap()

@@ -5,17 +5,16 @@ external function PutChar(n).
 external function PutNewLine().
 
 function TakeArray(n),
-    set tmp to PutStringLine(n).
+    set tmp to PutString(n).
     return 0.
 !
 
 set you to 5.
 set me to you + 1.
 if you < me,
-    set z to 4.
-    set tmp to PutNumBin(z).
-    change tmp to PutNewLine().
-    set  p to ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
+    set z to PutChar(0).
+    set tmp to 0.
+    set  p to [PutChar('H'), 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
     change tmp to PutString(p).
     change tmp to TakeArray(p).
     if z = 4,

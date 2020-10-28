@@ -71,3 +71,5 @@ To test: `cargo test`
 - [x] io
 
 - [ ] arrays and string lits
+
+- [ ] remove all the `TODO`s

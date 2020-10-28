@@ -1,9 +1,18 @@
-external function PutChar(a).
-
-function Test(a),
-    set t to a + a.
-    set tmp to PutChar(t).
-    return t.
+Function fib(n),
+  set counter to 1.
+  set a to 1.
+  set b to 0.
+  {start the loop}
+  loop,
+    change a to a + b.
+    change counter to counter + 1.
+    if counter > n,
+      return a.
+    !
+    change b to a + b.
+    change counter to counter + 1.
+    if counter > n,
+      return b.
+    !
+  !
 !
-
-set tmp to Test(5).

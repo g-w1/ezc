@@ -231,23 +231,24 @@ impl Parser {
         self.expect_eat_token(Token::EndOfLine)?;
         Ok(())
     }
-    /// Type <- OpenBrak CloseBlock Iden | Iden
+    /// Type <- Iden
+    /// Types are overrated.
     fn parse_type(&mut self) -> Result<Type, ParserError> {
-        if self.peek() == Token::OpenBrak {
-            self.expect_eat_token(Token::OpenBrak)?;
-            let num_of_items_in_arr: String;
-            if let Token::IntLit(x) = self.next() {
-                num_of_items_in_arr = x;
-            } else {
-                return Err(
-                    self.expected_token_err(Token::IntLit(String::from("0")), self.cur_tok())
-                );
-            }
-            self.expect_eat_token(Token::CloseBrak)?;
-            Ok(Type::ArrNum(self.parse_iden()?, num_of_items_in_arr))
-        } else {
-            Ok(Type::Num(self.parse_iden()?))
-        }
+        // if self.peek() == Token::OpenBrak {
+        //     self.expect_eat_token(Token::OpenBrak)?;
+        //     let num_of_items_in_arr: String;
+        //     if let Token::IntLit(x) = self.next() {
+        //         num_of_items_in_arr = x;
+        //     } else {
+        //         return Err(
+        //             self.expected_token_err(Token::IntLit(String::from("0")), self.cur_tok())
+        //         );
+        //     }
+        //     self.expect_eat_token(Token::CloseBrak)?;
+        //     Ok(Type::ArrNum(self.parse_iden()?, num_of_items_in_arr))
+        // } else {
+        Ok(Type::Num(self.parse_iden()?))
+        // }
     }
     /// FnProto <- Iden Lparen (Iden ,)* Rparen
     fn parse_func_proto(&mut self) -> Result<(String, Vec<Type>), ParserError> {
@@ -443,7 +444,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{AstNode, Expr};
+    use crate::ast::{AstNode, Expr, Val};
     use crate::lexer;
     #[test]
     fn parser_set() {
@@ -458,17 +459,17 @@ mod tests {
                 AstNode::SetOrChange {
                     sete: String::from("x"),
                     change: false,
-                    setor: Expr::Number(String::from("10"))
+                    setor: Val::Expr(Expr::Number(String::from("10")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
                     change: false,
-                    setor: Expr::Number(String::from("5"))
+                    setor: Val::Expr(Expr::Number(String::from("5")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("xarst"),
                     change: false,
-                    setor: Expr::Number(String::from("555134234523452345"))
+                    setor: Val::Expr(Expr::Number(String::from("555134234523452345")))
                 }
             ],
             ast
@@ -485,20 +486,23 @@ mod tests {
                 AstNode::SetOrChange {
                     sete: String::from("p"),
                     change: false,
-                    setor: Expr::FuncCall {
+                    setor: Val::Expr(Expr::FuncCall {
                         func_name: String::from("fib"),
-                        args: vec![Expr::Iden(String::from("a")), Expr::Iden(String::from("b"))],
+                        args: vec![
+                            Val::Expr(Expr::Iden(String::from("a"))),
+                            Val::Expr(Expr::Iden(String::from("b")))
+                        ],
                         external: None,
-                    }
+                    })
                 },
                 AstNode::SetOrChange {
                     sete: String::from("z"),
                     change: false,
-                    setor: Expr::FuncCall {
+                    setor: Val::Expr(Expr::FuncCall {
                         func_name: String::from("lib"),
                         args: vec![],
                         external: None,
-                    }
+                    })
                 },
             ],
             ast
@@ -515,17 +519,17 @@ mod tests {
                 AstNode::SetOrChange {
                     sete: String::from("x"),
                     change: false,
-                    setor: Expr::Number(String::from("1"))
+                    setor: Val::Expr(Expr::Number(String::from("1")))
                 },
                 AstNode::Loop {
                     body: vec![AstNode::SetOrChange {
                         sete: String::from("x"),
                         change: true,
-                        setor: Expr::BinOp {
+                        setor: Val::Expr(Expr::BinOp {
                             lhs: Box::new(Expr::Iden(String::from("x"))),
                             rhs: Box::new(Expr::Number(String::from("1"))),
                             op: BinOp::Add
-                        }
+                        })
                     }]
                 }
             ],
@@ -545,17 +549,17 @@ mod tests {
                 AstNode::SetOrChange {
                     sete: String::from("x"),
                     change: false,
-                    setor: Expr::Number(String::from("10"))
+                    setor: Val::Expr(Expr::Number(String::from("10")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
                     change: false,
-                    setor: Expr::Number(String::from("5"))
+                    setor: Val::Expr(Expr::Number(String::from("5")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("x"),
                     change: true,
-                    setor: Expr::Iden(String::from("y"))
+                    setor: Val::Expr(Expr::Iden(String::from("y")))
                 }
             ],
             ast
@@ -584,7 +588,7 @@ mod tests {
                 body: vec![
                     AstNode::SetOrChange {
                         sete: String::from("y"),
-                        setor: Expr::Number(String::from("4")),
+                        setor: Val::Expr(Expr::Number(String::from("4")),),
                         change: false,
                     },
                     AstNode::Return {
@@ -620,7 +624,7 @@ mod tests {
                 body: vec![
                     AstNode::SetOrChange {
                         sete: String::from("y"),
-                        setor: Expr::Number(String::from("4")),
+                        setor: Val::Expr(Expr::Number(String::from("4")),),
                         change: false,
                     },
                     AstNode::Return {
@@ -646,16 +650,16 @@ mod tests {
                 AstNode::SetOrChange {
                     sete: String::from("x"),
                     change: false,
-                    setor: Expr::BinOp {
+                    setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::Number(String::from("5"))),
                         op: BinOp::Add,
                         rhs: Box::new(Expr::Number(String::from("10")))
-                    }
+                    })
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
                     change: false,
-                    setor: Expr::Number(String::from("32")),
+                    setor: Val::Expr(Expr::Number(String::from("32")),),
                 },
                 AstNode::If {
                     guard: Expr::BinOp {
@@ -672,7 +676,7 @@ mod tests {
                         body: vec![AstNode::SetOrChange {
                             sete: String::from("x"),
                             change: true,
-                            setor: Expr::Number(String::from("5"))
+                            setor: Val::Expr(Expr::Number(String::from("5")))
                         }],
                         vars_declared: None
                     }],
@@ -695,16 +699,16 @@ mod tests {
                 AstNode::SetOrChange {
                     sete: String::from("x"),
                     change: false,
-                    setor: Expr::BinOp {
+                    setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::Number(String::from("5"))),
                         op: BinOp::Add,
                         rhs: Box::new(Expr::Number(String::from("10")))
-                    }
+                    })
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
                     change: true,
-                    setor: Expr::BinOp {
+                    setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::BinOp {
                             lhs: Box::new(Expr::Number(String::from("1"))),
                             op: BinOp::Sub,
@@ -712,16 +716,16 @@ mod tests {
                         }),
                         op: BinOp::Add,
                         rhs: Box::new(Expr::Iden(String::from("x")))
-                    }
+                    })
                 },
                 AstNode::SetOrChange {
                     sete: String::from("xarst"),
                     change: false,
-                    setor: Expr::BinOp {
+                    setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::Iden(String::from("y"))),
                         op: BinOp::Add,
                         rhs: Box::new(Expr::Iden(String::from("x")))
-                    }
+                    })
                 }
             ],
             ast
