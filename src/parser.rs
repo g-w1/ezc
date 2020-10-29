@@ -272,11 +272,25 @@ impl Parser {
         }
         Ok((func_name, items_in_func))
     }
-    /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr (parsing an expression but not top level)
+    /// Expr <- Number | Iden | ParenExpr | Expr BinOp Expr (parsing an expression but not top level) | AtSign Iden | Iden OpenBrak Expr CloseBrak
     fn parse_expr_primary(&mut self) -> Result<Expr, ParserError> {
         match self.cur_tok() {
             Token::IntLit(_) => self.parse_expr_number(),
             Token::Iden(_) if self.peek() == Token::Lparen => self.parse_expr_funcall(),
+            Token::Iden(a) if self.peek() == Token::OpenBrak => {
+                // eat the iden
+                self.next();
+                // i am superstious
+                self.expect_eat_token(Token::OpenBrak)?;
+                let r = Expr::AccessArray(a, Box::new(self.parse_expr()?));
+                self.expect_eat_token(Token::CloseBrak)?;
+                Ok(r)
+            }
+            Token::AtSign => {
+                self.next();
+                let i = self.parse_iden()?;
+                Ok(Expr::DerefPtr(i))
+            }
             Token::Iden(_) => self.parse_expr_iden(),
             Token::Lparen => self.parse_expr_paren(),
             t => {
@@ -297,7 +311,7 @@ impl Parser {
                 external: None,
             });
         }
-        while let Token::Iden(_) | Token::IntLit(_) = self.cur_tok() {
+        while let Token::Iden(_) | Token::IntLit(_) | Token::AtSign = self.cur_tok() {
             args.push(self.parse_val()?);
             match self.cur_tok() {
                 Token::Comma => self.expect_eat_token(Token::Comma)?,
@@ -586,6 +600,63 @@ mod tests {
                     }
                 ])
             },],
+            ast
+        );
+    }
+    #[test]
+    fn parser_deref() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(&String::from("Set x to [1,2]. set z to People(@x)."));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: false,
+                    setor: Val::Array(vec![
+                        Expr::Number(String::from("1")),
+                        Expr::Number(String::from("2")),
+                    ])
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("z"),
+                    change: false,
+                    setor: Val::Expr(Expr::FuncCall {
+                        args: vec![Val::Expr(Expr::DerefPtr(String::from("x"))),],
+                        func_name: String::from("People"),
+                        external: None
+                    })
+                }
+            ],
+            ast
+        );
+    }
+    #[test]
+    fn parser_array_access() {
+        let mut tokenizer = lexer::Tokenizer::new();
+        let output = tokenizer.lex(&String::from("Set x to [1,2]. set z to x[1]."));
+        let mut parser = Parser::new(output.0.unwrap(), output.1);
+        let ast = parser.parse(true).unwrap();
+        assert_eq!(
+            vec![
+                AstNode::SetOrChange {
+                    sete: String::from("x"),
+                    change: false,
+                    setor: Val::Array(vec![
+                        Expr::Number(String::from("1")),
+                        Expr::Number(String::from("2")),
+                    ])
+                },
+                AstNode::SetOrChange {
+                    sete: String::from("z"),
+                    change: false,
+                    setor: Val::Expr(Expr::AccessArray(
+                        String::from("x"),
+                        Box::new(Expr::Number(String::from("1")))
+                    ))
+                }
+            ],
             ast
         );
     }

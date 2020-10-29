@@ -1,18 +1,17 @@
-Function fib(n),
-  set counter to 1.
-  set a to 1.
-  set b to 0.
-  {start the loop}
-  loop,
-    change a to a + b.
-    change counter to counter + 1.
-    if counter > n,
-      return a.
+external function PutChar(n).
+
+Function PutStrLn(n),
+    set index to 1.
+    set tmp to 0.
+    loop,
+        if index >= n[0],
+            break.
+        !
+        change tmp to PutChar(n[index]).
+        change index to index + 1.
     !
-    change b to a + b.
-    change counter to counter + 1.
-    if counter > n,
-      return b.
-    !
-  !
+    change tmp to PutChar('\n').
 !
+
+set p to ['y','o',' ', 'i',''', 'm',' ',  'a', 'w', 'e','s','o','m','e','!'].
+set tmp to PutStrLn(p).

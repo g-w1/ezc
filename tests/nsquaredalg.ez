@@ -1,16 +1,17 @@
 external function PutNumBin(n).
 external function PutChar(n).
+
+function bigalg(n),
 set inner to 0.
 set outer to 0.
 set count to 0.
 set tmp to 0.
-
 loop,
-  if outer >= 100000,
+  if outer >= n,
     break.
   !
   loop,
-    if inner >= 10000,
+    if inner >= n,
       break.
     !
     change count to count + 1.
@@ -22,3 +23,6 @@ loop,
   change outer to outer + 1.
   change inner to 0.
 !
+!
+set n to 1000.
+change n to bigalg(n).

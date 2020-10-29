@@ -119,6 +119,7 @@ impl fmt::Display for Token {
             BoGe => write!(f, "'>='"),
             BoE => write!(f, "'='"),
             BoNe => write!(f, "'!='"),
+            AtSign => write!(f, "'@'"),
             BoAnd => write!(f, "'and'"),
             BoOr => write!(f, "'or'"),
             OpenBrak => write!(f, "'['"),

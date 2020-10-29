@@ -22,6 +22,10 @@ pub enum Expr {
         args: Vec<Val>,
         external: Option<bool>,
     },
+    /// @iden
+    DerefPtr(String),
+    /// iden[n]
+    AccessArray(String, Box<Expr>),
 }
 
 pub fn convert_tok_to_ast_binop(tok: Token) -> BinOp {

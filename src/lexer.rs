@@ -69,6 +69,9 @@ pub enum Token {
     OpenBrak,
     /// ]
     CloseBrak,
+    // Special people
+    /// @
+    AtSign,
 }
 
 /// The Error type of a lex
@@ -173,6 +176,7 @@ impl Tokenizer {
                         '*' => self.end_token(&mut output, &mut output_poss, Token::BoMul),
                         '-' => self.end_token(&mut output, &mut output_poss, Token::BoMinus),
                         '[' => self.end_token(&mut output, &mut output_poss, Token::OpenBrak),
+                        '@' => self.end_token(&mut output, &mut output_poss, Token::AtSign),
                         ']' => self.end_token(&mut output, &mut output_poss, Token::CloseBrak),
                         '!' => self.state = LexerState::SawBang,
                         '>' => self.state = LexerState::SawGreaterThan,

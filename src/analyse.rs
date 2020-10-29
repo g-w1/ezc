@@ -365,6 +365,11 @@ impl Analyser {
                 self.check_funcall(func_name, args, external)?;
                 assert!(external.is_some());
             }
+            Expr::AccessArray(a, e) => {
+                self.make_sure_var_exists(a)?;
+                self.check_expr(e)?;
+            }
+            Expr::DerefPtr(p) => self.make_sure_var_exists(p)?,
         }
         Ok(())
     }
