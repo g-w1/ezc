@@ -1,6 +1,6 @@
 //! analisis on the ast
 
-use crate::{ast, ast::AstNode, ast::Expr, ast::Val};
+use crate::{ast, ast::AstNode, ast::Expr, ast::TypeOfSetOrChange, ast::Val};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -99,9 +99,9 @@ impl Analyser {
                 ast::AstNode::SetOrChange {
                     sete,
                     setor,
-                    change,
+                    type_of,
                 } => {
-                    if !*change {
+                    if *type_of == ast::TypeOfSetOrChange::SetIden {
                         if self.scope.in_loop {
                             return Err(AnalysisError::SetInLoop);
                         }
@@ -181,6 +181,9 @@ impl Analyser {
                         }
                     } else {
                         self.make_sure_var_exists(sete)?;
+                        if let TypeOfSetOrChange::ChangeArrIndex(e) = type_of {
+                            self.check_expr(e)?;
+                        }
                         self.check_val(setor)?;
                     }
                 }
@@ -436,7 +439,7 @@ fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<(String, Type)> {
     for node in tree {
         if let AstNode::SetOrChange {
             sete,
-            change: false,
+            type_of: TypeOfSetOrChange::SetIden,
             setor,
         } = node
         {

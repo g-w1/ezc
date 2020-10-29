@@ -14,7 +14,7 @@ for file in `ls *.ez`; do
   diff tmp.out "intended/$file.output"
   case $? in
     0) echo "\"$file\" PASSED COMPARING";;
-    *)
+    1)
       echo "\"$file\" FAILED COMPARING"
       exit 1
       ;;
@@ -37,7 +37,7 @@ for dir in cinterface module; do
   diff tmp.out "intended/$dir.output"
   case $? in
     0) echo "\"$dir\" PASSED COMPARING";;
-    *)
+    1)
       echo "\"$dir\" FAILED COMPARING"
       exit 1
       ;;

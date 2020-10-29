@@ -1,0 +1,6 @@
+external function PutStringLine(n).
+set z to ['a','b','c'].
+
+change z[3] to 'a'.
+
+set tmp to PutStringLine(z).

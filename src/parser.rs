@@ -425,7 +425,7 @@ impl Parser {
         let setor = self.parse_val()?;
         let node = AstNode::SetOrChange {
             sete,
-            change: false,
+            type_of: TypeOfSetOrChange::SetIden,
             setor,
         };
         // EndOfLine
@@ -433,25 +433,44 @@ impl Parser {
         tree.push(node);
         Ok(())
     }
-    /// ChangeNode <- Kchange KIden Kto Expr EndOfLine
+    /// ChangeNode <- Kchange SpecialSete Kto Expr EndOfLine
     fn parse_change_stmt(self: &mut Self, tree: &mut Vec<AstNode>) -> Result<(), ParserError> {
         // Kset
         self.expect_eat_token(Token::Kchange)?;
         // Iden
-        let sete = self.parse_iden()?;
+        let sete = self.parse_sete_special()?;
         // Kto
         self.expect_eat_token(Token::Kto)?;
         // Expr
         let setor = self.parse_val()?;
         let node = AstNode::SetOrChange {
-            sete,
-            change: true,
+            sete: sete.0,
+            type_of: sete.1,
             setor,
         };
         // EndOfLine
         self.expect_eat_token(Token::EndOfLine)?;
         tree.push(node);
         Ok(())
+    }
+    /// SpecialSete <- KIden | AtSign KIden | KIden OpenBrak [ Expr ] CloseBlock
+    fn parse_sete_special(self: &mut Self) -> Result<(String, TypeOfSetOrChange), ParserError> {
+        // using Option<bool> as a crude c element enum
+        if let Token::AtSign = self.cur_tok() {
+            self.next();
+            Ok((self.parse_iden()?, TypeOfSetOrChange::ChangePtrDeref))
+        } else {
+            let s = self.parse_iden()?;
+            if let Token::OpenBrak = self.cur_tok() {
+                self.next();
+                let e = self.parse_expr()?;
+                let r = Ok((s, TypeOfSetOrChange::ChangeArrIndex(e)));
+                self.expect_eat_token(Token::CloseBrak)?;
+                r
+            } else {
+                Ok((s, TypeOfSetOrChange::ChangeIden))
+            }
+        }
     }
 }
 
@@ -472,17 +491,17 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::Number(String::from("10")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::Number(String::from("5")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("xarst"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::Number(String::from("555134234523452345")))
                 }
             ],
@@ -499,7 +518,7 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("p"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::FuncCall {
                         func_name: String::from("fib"),
                         args: vec![
@@ -511,7 +530,7 @@ mod tests {
                 },
                 AstNode::SetOrChange {
                     sete: String::from("z"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::FuncCall {
                         func_name: String::from("lib"),
                         args: vec![],
@@ -532,13 +551,13 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::Number(String::from("1")))
                 },
                 AstNode::Loop {
                     body: vec![AstNode::SetOrChange {
                         sete: String::from("x"),
-                        change: true,
+                        type_of: crate::ast::TypeOfSetOrChange::ChangeIden,
                         setor: Val::Expr(Expr::BinOp {
                             lhs: Box::new(Expr::Iden(String::from("x"))),
                             rhs: Box::new(Expr::Number(String::from("1"))),
@@ -562,17 +581,17 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::Number(String::from("10")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::Number(String::from("5")))
                 },
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: true,
+                    type_of: crate::ast::TypeOfSetOrChange::ChangeIden,
                     setor: Val::Expr(Expr::Iden(String::from("y")))
                 }
             ],
@@ -588,7 +607,7 @@ mod tests {
         assert_eq!(
             vec![AstNode::SetOrChange {
                 sete: String::from("x"),
-                change: false,
+                type_of: crate::ast::TypeOfSetOrChange::SetIden,
                 setor: Val::Array(vec![
                     Expr::Number(String::from("1")),
                     Expr::Number(String::from("2")),
@@ -613,7 +632,7 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Array(vec![
                         Expr::Number(String::from("1")),
                         Expr::Number(String::from("2")),
@@ -621,7 +640,7 @@ mod tests {
                 },
                 AstNode::SetOrChange {
                     sete: String::from("z"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::FuncCall {
                         args: vec![Val::Expr(Expr::DerefPtr(String::from("x"))),],
                         func_name: String::from("People"),
@@ -642,7 +661,7 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Array(vec![
                         Expr::Number(String::from("1")),
                         Expr::Number(String::from("2")),
@@ -650,7 +669,7 @@ mod tests {
                 },
                 AstNode::SetOrChange {
                     sete: String::from("z"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::AccessArray(
                         String::from("x"),
                         Box::new(Expr::Number(String::from("1")))
@@ -684,7 +703,7 @@ mod tests {
                     AstNode::SetOrChange {
                         sete: String::from("y"),
                         setor: Val::Expr(Expr::Number(String::from("4")),),
-                        change: false,
+                        type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     },
                     AstNode::Return {
                         val: Expr::Iden(String::from("y"))
@@ -720,7 +739,7 @@ mod tests {
                     AstNode::SetOrChange {
                         sete: String::from("y"),
                         setor: Val::Expr(Expr::Number(String::from("4")),),
-                        change: false,
+                        type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     },
                     AstNode::Return {
                         val: Expr::Iden(String::from("y"))
@@ -744,7 +763,7 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::Number(String::from("5"))),
                         op: BinOp::Add,
@@ -753,7 +772,7 @@ mod tests {
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::Number(String::from("32")),),
                 },
                 AstNode::If {
@@ -770,7 +789,7 @@ mod tests {
                         },
                         body: vec![AstNode::SetOrChange {
                             sete: String::from("x"),
-                            change: true,
+                            type_of: crate::ast::TypeOfSetOrChange::ChangeIden,
                             setor: Val::Expr(Expr::Number(String::from("5")))
                         }],
                         vars_declared: None
@@ -793,7 +812,7 @@ mod tests {
             vec![
                 AstNode::SetOrChange {
                     sete: String::from("x"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::Number(String::from("5"))),
                         op: BinOp::Add,
@@ -802,7 +821,7 @@ mod tests {
                 },
                 AstNode::SetOrChange {
                     sete: String::from("y"),
-                    change: true,
+                    type_of: crate::ast::TypeOfSetOrChange::ChangeIden,
                     setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::BinOp {
                             lhs: Box::new(Expr::Number(String::from("1"))),
@@ -815,7 +834,7 @@ mod tests {
                 },
                 AstNode::SetOrChange {
                     sete: String::from("xarst"),
-                    change: false,
+                    type_of: crate::ast::TypeOfSetOrChange::SetIden,
                     setor: Val::Expr(Expr::BinOp {
                         lhs: Box::new(Expr::Iden(String::from("y"))),
                         op: BinOp::Add,

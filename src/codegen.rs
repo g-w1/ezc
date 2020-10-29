@@ -1,6 +1,6 @@
 //! code generation for the compiler
 
-use crate::ast::{AstNode, AstRoot, BinOp, Expr, Val};
+use crate::ast::{AstNode, AstRoot, BinOp, Expr, TypeOfSetOrChange, Val};
 use std::collections::HashMap;
 use std::collections::HashSet;
 const FUNCTION_PARAMS: [&str; 6] = ["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
@@ -78,9 +78,11 @@ impl Code {
                 }
             }
             match node {
-                AstNode::SetOrChange { sete, setor, .. } => {
-                    self.cgen_set_or_change_stmt(sete, setor)
-                }
+                AstNode::SetOrChange {
+                    sete,
+                    setor,
+                    type_of,
+                } => self.cgen_set_or_change_stmt(sete, setor, type_of),
                 AstNode::If {
                     guard,
                     body,
@@ -161,9 +163,11 @@ impl Code {
         ////
         for node in body {
             match node {
-                AstNode::SetOrChange { sete, setor, .. } => {
-                    self.cgen_set_or_change_stmt(sete, setor)
-                }
+                AstNode::SetOrChange {
+                    sete,
+                    setor,
+                    type_of,
+                } => self.cgen_set_or_change_stmt(sete, setor, type_of),
                 AstNode::If {
                     body,
                     guard,
@@ -300,11 +304,11 @@ impl Code {
                 self.text.instructions.push(format!("mov r8, [r8]",));
             }
             Expr::AccessArray(a, e) => {
-                self.cgen_access_array(&a, &*e);
+                self.cgen_access_array(&a, &*e, true);
             }
         }
     }
-    fn cgen_access_array(&mut self, a: &str, e: &Expr) {
+    fn cgen_access_array(&mut self, a: &str, e: &Expr, access: bool) {
         self.cgen_expr(e.clone());
         self.text.instructions.push(format!("add r8, 1"));
         self.text.instructions.push(format!("imul r8, 8"));
@@ -312,7 +316,9 @@ impl Code {
         let r = self.cgen_get_display_asm(&Expr::Iden(a.to_string()));
         self.text.instructions.push(format!("mov r8, {}", r));
         self.text.instructions.push(format!("add r8, r9",));
-        self.text.instructions.push(format!("mov r8, [r8]",));
+        if access {
+            self.text.instructions.push(format!("mov r8, [r8]",));
+        }
     }
     fn cgen_setup_stack(
         &mut self,
@@ -412,9 +418,11 @@ impl Code {
                     guard,
                     vars_declared,
                 } => self.cgen_if_stmt(guard, vars_declared.unwrap(), body, None),
-                AstNode::SetOrChange { sete, setor, .. } => {
-                    self.cgen_set_or_change_stmt(sete, setor)
-                }
+                AstNode::SetOrChange {
+                    sete,
+                    setor,
+                    type_of,
+                } => self.cgen_set_or_change_stmt(sete, setor, type_of),
                 AstNode::Loop { body } => self.cgen_loop_stmt(body),
                 AstNode::Break => self
                     .text
@@ -450,10 +458,14 @@ impl Code {
                 AstNode::Return { val } => self.cgen_return_stmt(val),
                 AstNode::Func { .. } => unreachable!(),
                 AstNode::SetOrChange {
+                    type_of: TypeOfSetOrChange::SetIden,
+                    ..
+                } => unreachable!(),
+                AstNode::SetOrChange {
                     sete,
-                    change: true,
+                    type_of,
                     setor,
-                } => self.cgen_set_or_change_stmt(sete, setor),
+                } => self.cgen_set_or_change_stmt(sete, setor, type_of),
                 AstNode::If {
                     guard,
                     body,
@@ -469,8 +481,7 @@ impl Code {
                     .text
                     .instructions
                     .push(format!("jmp .END_LOOP_{}", our_number_for_mangling)),
-                AstNode::SetOrChange { change: false, .. } => unreachable!(),
-                _ => unreachable!(),
+                AstNode::Extern { .. } => unreachable!(),
             }
         }
         self.text.instructions.push(format!(
@@ -479,15 +490,41 @@ impl Code {
         ))
     }
     /// code generation for a set or change stmt. it is interpreted as change if change is true
-    fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Val) {
-        match setor {
-            Val::Expr(e) => {
-                self.cgen_expr(e);
-                let tmpsete = self.cgen_get_display_asm(&Expr::Iden(sete));
-                self.text.instructions.push(format!("mov {}, r8", tmpsete,));
-            }
-            Val::Array(ae) => {
-                self.cgen_array_set_or_change(ae, &sete);
+    fn cgen_set_or_change_stmt(&mut self, sete: String, setor: Val, type_of: TypeOfSetOrChange) {
+        use TypeOfSetOrChange::*;
+        match type_of {
+            SetIden | ChangeIden => match setor {
+                Val::Expr(e) => {
+                    self.cgen_expr(e);
+                    let tmpsete = self.cgen_get_display_asm(&Expr::Iden(sete));
+                    self.text.instructions.push(format!("mov {}, r8", tmpsete,));
+                }
+                Val::Array(ae) => {
+                    self.cgen_array_set_or_change(ae, &sete);
+                }
+            },
+            ChangePtrDeref => match setor {
+                Val::Expr(e) => {
+                    self.cgen_expr(e);
+                    let tmpsete = self.cgen_get_display_asm(&Expr::Iden(sete));
+                    self.text.instructions.push(format!("mov r9, {}", tmpsete));
+                    self.text.instructions.push(format!("mov qword [r9], r8",));
+                }
+                Val::Array(_) => unreachable!(),
+            },
+            ChangeArrIndex(e) => {
+                match setor {
+                    Val::Expr(e) => {
+                        self.cgen_expr(e);
+                        // let tmpsete = self.cgen_get_display_asm(&Expr::Iden(sete));
+                        self.text.instructions.push(format!("mov r10, r8",));
+                    }
+                    Val::Array(_) => unreachable!(),
+                }
+                self.cgen_expr(e.clone());
+                self.text.instructions.push(format!("mov r9, r8"));
+                self.cgen_access_array(&sete, &e, false);
+                self.text.instructions.push(format!("mov qword [r8], r10"));
             }
         }
     }
@@ -605,7 +642,7 @@ impl Code {
                 format!("r8")
             }
             Expr::AccessArray(a, e) => {
-                self.cgen_access_array(a, &*e);
+                self.cgen_access_array(a, &*e, true);
                 format!("r8")
             }
             a => unreachable!("{:?}", a),

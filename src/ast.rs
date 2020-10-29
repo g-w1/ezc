@@ -60,6 +60,14 @@ pub enum BinOp {
     Or,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum TypeOfSetOrChange {
+    SetIden,
+    ChangeIden,
+    ChangePtrDeref,
+    ChangeArrIndex(Expr),
+}
+
 /// all the types of an ast node. it is like a tagged union. it also holds the values of the ast node type
 #[derive(Debug, PartialEq, Clone)]
 pub enum AstNode {
@@ -67,7 +75,7 @@ pub enum AstNode {
     SetOrChange {
         sete: String,
         setor: Val,
-        change: bool,
+        type_of: TypeOfSetOrChange,
     },
     /// an if statement
     If {
