@@ -42,6 +42,7 @@ for dir in cinterface module; do
       exit 1
       ;;
     esac
+    rm a.out
     rm tmp.out
 done
 
