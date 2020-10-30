@@ -177,7 +177,6 @@ To Report Bugs Go To: github.com/g-w1/ezc/issues/",
             "-g" => arg_info.debug = true,
             "-h" | "--help" => {
                 arg_info.help = true;
-                // TODO make refactor
                 println!(
                     "ezc
 

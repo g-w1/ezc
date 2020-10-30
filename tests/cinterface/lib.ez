@@ -1,11 +1,11 @@
-Function Fib_rec(n),
+export Function Fib_rec(n),
   if n <= 1,
       return n.
   !
   return Fib_rec(n - 1) + Fib_rec( n- 2).
 !
 
-Function Factorial(n),
+export Function Factorial(n),
     if n >= 1,
         return n * Factorial(n - 1).
     !

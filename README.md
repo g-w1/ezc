@@ -25,8 +25,8 @@ To test the generated code you can do `cd tests; ./test.sh`. Note: this requires
 
 ## Dependencies:
 
-- Zig (master)
-- nasm >= 2.15.05 (sorry ubuntu people)
+- Zig (master). NOTE: If you want to build without zig run `HAS_NO_ZIG=1 cargo ...(whatever command you want)`. This may be useful if you are on a system without zig or want to provide your own standard library.
+- nasm
 - cargo
 - gcc (only for testing)
 

@@ -127,7 +127,7 @@ impl Analyser {
                                     } => {
                                         let var_mem_space: u32;
                                         if let Some(n) = is_array {
-                                            var_mem_space = n + 2; // plus two because arrays are actually slices: first element is their ptr, second is len. TODO is right
+                                            var_mem_space = n + 2; // plus two because arrays are actually slices: first element is their ptr, second is len.
                                         } else {
                                             var_mem_space = 1;
                                         }
@@ -168,7 +168,6 @@ impl Analyser {
                                             .insert(sete.clone(), Type::Number);
                                     }
                                     Val::Array(n) => {
-                                        // TODO is this wrong
                                         mem_len = n.len() as u32 + 2;
                                         is_array = true;
                                         self.initialized_function_vars
@@ -305,7 +304,6 @@ impl Analyser {
                     tmp_res.retain(|x, _| {
                         !args.contains(&ast::Type::Num(x.clone())) && {
                             for i in args.clone() {
-                                // TODO this work?
                                 if let ast::Type::ArrNum(_x, _) = i {
                                     if x.to_owned() == _x {
                                         return false;
@@ -462,13 +460,13 @@ fn get_all_var_decls(tree: &Vec<AstNode>) -> Vec<(String, Type)> {
 fn convert_ast_type_to_analyse_type(x: &ast::Type) -> Type {
     match x {
         ast::Type::Num(_) => Type::Number,
-        ast::Type::ArrNum(_, len) => Type::Arr(check_num(len).unwrap()), // TODO get rid of this unwrap but this cant return Result
+        ast::Type::ArrNum(_, len) => Type::Arr(check_num(len).unwrap()),
     }
 }
 fn convert_ast_val_to_analyse_type(x: &ast::Val) -> Type {
     match x {
         ast::Val::Expr(_) => Type::Number,
-        ast::Val::Array(a) => Type::Arr(a.len() as i64), // need a check num but whos gonna do 2^32 nums in array? lol TODO
+        ast::Val::Array(a) => Type::Arr(a.len() as i64),
     }
 }
 

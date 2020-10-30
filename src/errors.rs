@@ -85,14 +85,12 @@ impl fmt::Display for AnalysisError {
                     crate::ast::Type::ArrNum(name, num) => write!(f, "Analysis Error: the same arg was used in a function definition: [{}]{}", num,name),
                 }
             AnalysisError::BreakWithoutLoop => write!(f, "Analysis Error: there was a break statement outside of a loop."),
-            // TODO add info about which var it was
             AnalysisError::DoubleSet(v) => write!(f, "Analysis Error: the same variable `{}` was set twice. \nHint: use `change` to change the value of the variable once it is set: Ex `set x to 0. change x to 4.`", v),
             AnalysisError::VarNotExist(v) => write!(f, "Analysis Error: the variable `{}` was used, but it doesn't exist in this scope.", v),
-            // TODO get info on whch num
             AnalysisError::NumberTooBig(num) => write!(f, "Analysis Error: Number too big: `{}`", num),
             AnalysisError::SetInLoop => write!(f, "A set statement was used in a loop. Not allowed."),
             AnalysisError::ReturnOutSideOfFunc => write!(f, "A return statement was used outside of a function. Not allowed."),
-            AnalysisError::FuncCalledWithWrongArgsType(name, should, had) => write!(f, "The function {} was called with {:?} args but it takes {:?} args.", name, had,should), // TODO impliment display but thats later
+            AnalysisError::FuncCalledWithWrongArgsType(name, should, had) => write!(f, "The function {} was called with {:?} args but it takes {:?} args.", name, had,should),
             AnalysisError::FuncCalledButNoExist(name) => write!(f, "The function {} was called but it does not exist.",name),
 
         }

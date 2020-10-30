@@ -1,25 +1,25 @@
 external function PutStringLine(n).
-external function PutString(n).
+external function DbgPutString(n).
 external function PutNumBin(n).
 external function PutChar(n).
 external function PutNewLine().
 
 function TakeArray(n),
-    set tmp to PutString(n).
-    return 0.
+    set tmp to DbgPutString(n).
 !
 
-set you to 5.
-set me to you + 1.
-if you < me,
-    set z to PutChar(0).
+if 1,
+    set you to 5.
+    set me to you + 1.
     set tmp to 0.
-    set  p to [PutChar('H'), 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
-    change tmp to PutString(p).
-    change tmp to TakeArray(p).
-    if z = 4,
-        set  w to ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', ].
-        change tmp to PutStringLine(w).
-        change tmp to PutString(p).
+    if you < me,
+        set  p to ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'].
+        change tmp to DbgPutString(p).
+        change tmp to TakeArray(p).
+        if 1,
+            set  w to ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', ].
+            change tmp to PutStringLine(w).
+            change tmp to DbgPutString(p).
+        !
     !
-!
+    !

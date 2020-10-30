@@ -208,7 +208,8 @@ impl Code {
             match arg {
                 Val::Expr(e) => self.cgen_expr(e.clone()),
                 // TODO do this. lol
-                Val::Array(_ve) => self.text.instructions.push(format!("mov r8, {}", { "a" })),
+                // Val::Array(_ve) => self.text.instructions.push(format!("mov r8, {}", { "a" })),
+                Val::Array(_ve) => unimplemented!(),
             }
             self.text
                 .instructions
@@ -297,7 +298,6 @@ impl Code {
                 external,
             } => {
                 self.cgen_funcall_expr(&func_name, external.unwrap_or(true), &args);
-                // TODO REALLY NEED TO FIX THIS. LIKE 7/10 priority. it shouldn't be unwrap_or
             }
             Expr::DerefPtr(a) => {
                 let r = self.cgen_get_display_asm(&Expr::Iden(a));
@@ -383,6 +383,7 @@ impl Code {
                     .insert(varname.clone(), place.0);
             }
         }
+
         (double_keys, mem_len)
     }
     /// code gen for if stmt. uses stack based allocation

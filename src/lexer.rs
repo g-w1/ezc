@@ -81,7 +81,7 @@ pub enum LexError {
     UnexpectedChar(char, u32),
 }
 
-/// see if a word is an iden or a kword TODO: get this inine test to work
+/// see if a word is an iden or a kword
 /// ```rust
 /// let set = get_kword(String::from("set"));
 /// assert!(set == Token::Kset);
@@ -294,7 +294,6 @@ impl Tokenizer {
             LexerState::InWord => match self.intermidiate_string.as_str() {
                 "" => {}
                 _ => self.end_token(
-                    // TODO i use &mut output and &mut output_poss in every one just make it in self
                     &mut output,
                     &mut output_poss,
                     get_kword(&self.intermidiate_string),
