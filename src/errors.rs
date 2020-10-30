@@ -1,4 +1,5 @@
 use crate::analyse::AnalysisError;
+use crate::ast::TypeOfSetOrChange;
 use crate::lexer::{LexError, Token, Token::*};
 use crate::parser::ParserError;
 use std::fmt;
@@ -71,6 +72,14 @@ impl fmt::Display for AnalysisError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AnalysisError::FuncAlreadyExists(s) => write!(f, "Analysis Error: function is declared twice: {}", s),
+            AnalysisError::CannotChangeSomethingToArray(s,t) =>  write!(f, "Analysis Error: cannot set \"{}\" to an array",
+                match t {
+                  TypeOfSetOrChange::ChangeIden => s.clone(),
+                  TypeOfSetOrChange::ChangePtrDeref => format!("@{}", s),
+                  TypeOfSetOrChange::ChangeArrIndex(e) => format!("{}[{:?}]", s, e),
+                  _ => unreachable!()
+                }
+            ),
             AnalysisError::SameArgForFunction(s) => match s {
                     crate::ast::Type::Num(name) => write!(f, "Analysis Error: the same arg was used in a function definition: {}", name) ,
                     crate::ast::Type::ArrNum(name, num) => write!(f, "Analysis Error: the same arg was used in a function definition: [{}]{}", num,name),

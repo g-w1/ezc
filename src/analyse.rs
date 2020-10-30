@@ -27,6 +27,8 @@ pub enum AnalysisError {
     FuncCalledWithWrongArgsType(String, Vec<Type>, Vec<Type>),
     /// funccalledbutnoexist
     FuncCalledButNoExist(String),
+    /// cannot change something to an array
+    CannotChangeSomethingToArray(String, TypeOfSetOrChange),
 }
 
 /// a way to see what ur in
@@ -183,6 +185,15 @@ impl Analyser {
                         self.make_sure_var_exists(sete)?;
                         if let TypeOfSetOrChange::ChangeArrIndex(e) = type_of {
                             self.check_expr(e)?;
+                        }
+                        match setor {
+                            Val::Array(_) => {
+                                return Err(AnalysisError::CannotChangeSomethingToArray(
+                                    sete.clone(),
+                                    type_of.clone(),
+                                ))
+                            }
+                            _ => {}
                         }
                         self.check_val(setor)?;
                     }
