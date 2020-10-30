@@ -257,19 +257,20 @@ impl Code {
             // move ptr to first elem to point to itself
             self.text
                 .instructions
-                .push(format!("lea qword r8, MaNgLe_{}[0]", sete,));
+                .push(format!("lea qword r8, [MaNgLe_{} + 0]", sete,));
             self.text
                 .instructions
-                .push(format!("mov qword MaNgLe_{}[0], r8", sete,));
+                .push(format!("mov qword [MaNgLe_{}+0], r8", sete,));
             // move the length to the 2nd element in the array
-            self.text
-                .instructions
-                .push(format!("mov qword MaNgLe_{}[1 * 8], {}", sete, len_of_arr));
+            self.text.instructions.push(format!(
+                "mov qword [MaNgLe_{} + 1 * 8], {}",
+                sete, len_of_arr
+            ));
             // we know it is a static var
             for (i, e) in ve.iter().enumerate() {
                 self.cgen_expr(e.clone());
                 self.text.instructions.push(format!(
-                    "mov qword MaNgLe_{}[{} * 8], r8",
+                    "mov qword [MaNgLe_{} + {} * 8], r8",
                     sete,
                     i + 2
                 ));

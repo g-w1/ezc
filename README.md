@@ -26,7 +26,7 @@ To test the generated code you can do `cd tests; ./test.sh`. Note: this requires
 ## Dependencies:
 
 - Zig (master)
-- nasm
+- nasm >= 2.15.05 (sorry ubuntu people)
 - cargo
 - gcc (only for testing)
 
@@ -78,6 +78,6 @@ To test the generated code you can do `cd tests; ./test.sh`. Note: this requires
 
 - [x] io
 
-- [ ] arrays and string lits
+- [x] arrays
 
 - [ ] remove all the `TODO`s
