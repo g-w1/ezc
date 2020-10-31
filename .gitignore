@@ -1,6 +1,1 @@
-/target
-*.asm
-out
-*.o
-*.out
-*vgcore*
+book
