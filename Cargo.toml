@@ -3,6 +3,11 @@ name = "ezc"
 version = "0.1.0"
 authors = ["g-w1 <jacoblevgw@gmail.com>"]
 edition = "2018"
+license-file = "LICENSE"
+description = "A compiler for ez"
+homepage = "https://github.com/g-w1/ezc"
+repository = "https://github.com/g-w1/ezc"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
