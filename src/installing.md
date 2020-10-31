@@ -4,7 +4,7 @@
 
 Installing the compiler for `ez`, `ezc` is fairly simple.
 
-First, make sure you have `cargo` and `zig` in your `$PATH` and are on linux. You should use zig `0.7.0`. If you are on windows, [wsl](https://docs.microsoft.com/en-us/windows/wsl/install-win10) should work (although it has not been tested on wsl).
+First, make sure you have `cargo` and `zig` in your `$PATH` and are on x86_64 linux. You should use zig `0.7.0`. If you are on windows, [wsl](https://docs.microsoft.com/en-us/windows/wsl/install-win10) should work (although it has not been tested on wsl).
 
 Then run `cargo install ezc`. This will download and compile `ezc` for you. To test if it worked run `ezc` in the terminal. If it says:
 ```

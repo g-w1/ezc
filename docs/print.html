@@ -97,7 +97,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li><li class="chapter-item expanded "><a href="loops.html"><strong aria-hidden="true">3.</strong> Loops</a></li><li class="chapter-item expanded "><a href="functions.html"><strong aria-hidden="true">4.</strong> Functions</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">5.</strong> Modules</a></li><li class="chapter-item expanded "><a href="stdlib.html"><strong aria-hidden="true">6.</strong> Standard Library</a></li><li class="chapter-item expanded "><a href="arrays_and_ptrs.html"><strong aria-hidden="true">7.</strong> Arrays and Pointers</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -168,7 +168,7 @@
                         <h1><a class="header" href="#installing-ez" id="installing-ez">Installing ez</a></h1>
 <h2><a class="header" href="#the-compiler" id="the-compiler">The compiler</a></h2>
 <p>Installing the compiler for <code>ez</code>, <code>ezc</code> is fairly simple.</p>
-<p>First, make sure you have <code>cargo</code> and <code>zig</code> in your <code>$PATH</code> and are on linux. You should use zig <code>0.7.0</code>. If you are on windows, <a href="https://docs.microsoft.com/en-us/windows/wsl/install-win10">wsl</a> should work (although it has not been tested on wsl).</p>
+<p>First, make sure you have <code>cargo</code> and <code>zig</code> in your <code>$PATH</code> and are on x86_64 linux. You should use zig <code>0.7.0</code>. If you are on windows, <a href="https://docs.microsoft.com/en-us/windows/wsl/install-win10">wsl</a> should work (although it has not been tested on wsl).</p>
 <p>Then run <code>cargo install ezc</code>. This will download and compile <code>ezc</code> for you. To test if it worked run <code>ezc</code> in the terminal. If it says:</p>
 <pre><code>ERROR: I need an input file.
 </code></pre>
@@ -213,9 +213,74 @@ if special_number = 0,
 <ul>
 <li><code>=</code> equals</li>
 <li><code>!=</code> not equal</li>
-<li><code>and</code> not equal</li>
-<li><code>or</code> not equal</li>
+<li><code>and</code> binary and operator</li>
+<li><code>or</code> binary or operator</li>
+<li><code>&gt;</code> greater than</li>
+<li><code>&lt;</code> less than</li>
+<li><code>&gt;=</code> greater than or equal</li>
+<li><code>&lt;=</code> less than or equal</li>
 </ul>
+<h1><a class="header" href="#loops" id="loops">Loops</a></h1>
+<p>Loops are a core part of any programming language.</p>
+<p>Here is an example of loops in ez:</p>
+<pre><code>set index to 0.
+loop,
+  if index &gt;= 10,
+    break.
+  !
+  change index to index + 1.
+!
+</code></pre>
+<p>You can use the break keyword to get out of loop.</p>
+<p>You can also nest loops. You <em>cannot</em> set variables in loops because they would be shadowed on the next iteration of the loop. Variable shadowing is <em>not</em> allowed in ez.</p>
+<h1><a class="header" href="#functions" id="functions">Functions</a></h1>
+<p>Functions are also core to any programming language. If you are not familiar with functions they are like mini-programs that can take arguments and return results.</p>
+<p>Here is an example of one in ez:</p>
+<pre><code>Function AddOne(number),
+  set result to number + 1.
+  Return result.
+!
+</code></pre>
+<p>We can then call a function with an argument to get the return value:</p>
+<pre><code>Set six to AddOne(5). {
+  This calls AddOne with the `number` argument as 5.
+  Then the function is run with the number variable set to 5.
+  Finally, it returns 6.
+}
+</code></pre>
+<p>In ez, comments start with <code>{</code> and end with <code>}</code>. Anything inside the comment is ignored.</p>
+<p>A <code>Return</code> statement immediately stops the function and returns what is after it.</p>
+<h1><a class="header" href="#modules" id="modules">Modules</a></h1>
+<p>Ez has a very minimal module system.</p>
+<p>It is similar to c, except no preprocessor or <code>.h</code> files.</p>
+<p>Functions are the only thing that can be exported from <code>.ez</code> files to other files.</p>
+<p>Here is an example:</p>
+<p><code>lib.ez</code></p>
+<pre><code>Export function MulByTwo(n),
+  return n * n.
+!
+</code></pre>
+<p><code>main.ez</code></p>
+<pre><code>External function MulByTwo(n).
+
+set twelve to MulByTwo(6).
+</code></pre>
+<p>To compile this into a single binary, run:</p>
+<pre><code class="language-bash"># this produces a lib.ez.o file
+$ ezc lib.ez -lib
+# this produces a main.ez.o file
+$ ezc main.ez -nolink
+# this links everything together
+$ ld main.ez.o lib.ez.o -o out
+</code></pre>
+<p>Ez uses the <a href="https://wiki.osdev.org/System_V_ABI">systemv x86_64</a> so you can also import and export functions to c or any language that can use c.</p>
+<h1><a class="header" href="#standard-library-1" id="standard-library-1">Standard Library</a></h1>
+<p>TODO</p>
+<h1><a class="header" href="#arrays-and-pointers" id="arrays-and-pointers">Arrays and Pointers</a></h1>
+<p>Arrays and pointers are two of the most advanced topics in ez. They are also experimental: there are likely to be bugs when using them.</p>
+<h2><a class="header" href="#arrays" id="arrays">Arrays</a></h2>
+<p>You can set a variable to an array in ez.</p>
+<p>TODO</p>
 
                     </main>
 
