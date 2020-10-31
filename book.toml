@@ -5,5 +5,10 @@ multilingual = false
 src = "src"
 title = "ez Docs"
 
+[output.html]
+default-theme = "dark"
+preferred-dark-theme = "ayu"
+curly-quotes = true
+
 [build]
 build-dir = "docs"

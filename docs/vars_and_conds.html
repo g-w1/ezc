@@ -3,9 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>ez Docs</title>
-        
-        <meta name="robots" content="noindex" />
+        <title>Variables and Conditionals - ez Docs</title>
         
         
 
@@ -97,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html" class="active"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -165,27 +163,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#installing-ez" id="installing-ez">Installing ez</a></h1>
-<h2><a class="header" href="#the-compiler" id="the-compiler">The compiler</a></h2>
-<p>Installing the compiler for <code>ez</code>, <code>ezc</code> is fairly simple.</p>
-<p>First, make sure you have <code>cargo</code> and <code>zig</code> in your <code>$PATH</code> and are on linux. You should use zig <code>0.7.0</code>. If you are on windows, <a href="https://docs.microsoft.com/en-us/windows/wsl/install-win10">wsl</a> should work (although it has not been tested on wsl).</p>
-<p>Then run <code>cargo install ezc</code>. This will download and compile <code>ezc</code> for you. To test if it worked run <code>ezc</code> in the terminal. If it says:</p>
-<pre><code>ERROR: I need an input file.
-</code></pre>
-<p>you have installed it correctly.</p>
-<h2><a class="header" href="#standard-library" id="standard-library">Standard Library</a></h2>
-<p>To build the standard library, run <code>git clone https://github.com/g-w1/ezc &amp;&amp; cd ezc/lib &amp;&amp; zig build</code>. If this works correctly, you should have a copy of the standard library in <code>ezc/lib/zig-cache/lib/libstd.a</code>.</p>
-<h2><a class="header" href="#testing-if-it-worked" id="testing-if-it-worked">Testing if it worked</a></h2>
-<p>To test if everything is installed correctly have a file called <code>hello_world.ez</code> with this contents:</p>
-<pre><code>External function PutStringLine(s).
-Set hello_world to ['H', 'e','l','l', 'o',' ', 'W','o','r','l','d','!']
-Set tmp to PutStringLine(hello_world).
-</code></pre>
-<p>To compile it run <code>ezc hello_world.ez -stdlib-path path/to/stdlib.a</code>.</p>
-<p>To see if it worked, the command <code>./a.out</code> should print <code>&quot;Hello World!&quot;</code></p>
-<h2><a class="header" href="#troubleshooting" id="troubleshooting">Troubleshooting</a></h2>
-<p>If you have any issues with the build or install process please raise an <a href="https://github.com/g-w1/ezc/issues">issue on github</a>.</p>
-<h1><a class="header" href="#variables-and-conditionals" id="variables-and-conditionals">Variables and Conditionals</a></h1>
+                        <h1><a class="header" href="#variables-and-conditionals" id="variables-and-conditionals">Variables and Conditionals</a></h1>
 <h2><a class="header" href="#variables" id="variables">Variables</a></h2>
 <p>This tutorial will cover how to program in ez by using examples. Every example will showcase a different feature of ez.</p>
 <p>The simplest ez program that does something is this:</p>
@@ -222,6 +200,10 @@ if special_number = 0,
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
+                            <a rel="prev" href="installing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
 
                         
 
@@ -231,6 +213,10 @@ if special_number = 0,
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="installing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
                 
 
                 
@@ -280,14 +266,6 @@ if special_number = 0,
         <!-- Custom JS scripts -->
         
 
-        
-        
-        <script type="text/javascript">
-        window.addEventListener('load', function() {
-            window.setTimeout(window.print, 100);
-        });
-        </script>
-        
         
 
     </body>
