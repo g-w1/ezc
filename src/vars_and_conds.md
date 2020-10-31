@@ -43,5 +43,9 @@ Blocks look like `, (code) !`. Whitespace has *no* impact on ez.
 You can create boolean expressions using these operators:
 - `=` equals
 - `!=` not equal
-- `and` not equal
-- `or` not equal
+- `and` binary and operator
+- `or` binary or operator
+- `>` greater than
+- `<` less than
+- `>=` greater than or equal
+- `<=` less than or equal
