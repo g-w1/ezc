@@ -4,7 +4,7 @@ const builtin = std.builtin;
 
 pub fn build(b: *Builder) void {
     // const mode = b.standardReleaseOptions();
-    const mode = builtin.Mode.ReleaseFast;
+    const mode = builtin.Mode.ReleaseSmall;
     const lib = b.addStaticLibrary("std", "src/lib.zig");
     lib.setBuildMode(mode);
     lib.install();
