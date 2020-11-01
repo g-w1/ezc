@@ -304,7 +304,18 @@ $ ld main.ez.o lib.ez.o -o out
 <p>Ez uses the <a href="https://wiki.osdev.org/System_V_ABI">systemv x86_64</a> so you can also import and export functions to c or any language that can use this abi in the exact same way.</p>
 <p>For an example of interfacing with c go here: <a href="https://github.com/g-w1/ezc/tree/master/tests/cinterface">https://github.com/g-w1/ezc/tree/master/tests/cinterface</a></p>
 <h1><a class="header" href="#standard-library-1" id="standard-library-1">Standard Library</a></h1>
-<p>TODO</p>
+<p>There are some functions that are provided by the <code>libstd.a</code> standard library.</p>
+<p>Here they are.</p>
+<ul>
+<li><code>PutString(string)</code> Takes an array and prints all the ascii characters in it to stdout.</li>
+<li><code>PutStringLine(string)</code> Same as <code>PutString</code> but prints <code>\n</code> after.</li>
+<li><code>PutNewLine()</code> Prints <code>\n</code> to stdout.</li>
+<li><code>PutChar(char)</code> Takes a character and prints it if it is ascii.</li>
+<li><code>PutNum(num)</code> Takes a number and prints the <em>value</em>.</li>
+<li><code>PutNumHex(num)</code> Takes a number and prints it in hex.</li>
+<li><code>PutNumBin(num)</code> Takes a number and prints it in binary.</li>
+<li><code>InputLine()</code> Reads a line from stdin and returns an array of it.</li>
+</ul>
 <h1><a class="header" href="#arrays-and-pointers" id="arrays-and-pointers">Arrays and Pointers</a></h1>
 <p>Arrays and pointers are two of the most advanced topics in ez. They are also experimental: there are likely to be bugs when using them.</p>
 <h2><a class="header" href="#arrays" id="arrays">Arrays</a></h2>
