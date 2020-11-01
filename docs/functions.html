@@ -180,6 +180,17 @@
 </code></pre>
 <p>In ez, comments start with <code>{</code> and end with <code>}</code>. Anything inside the comment is ignored.</p>
 <p>A <code>Return</code> statement immediately stops the function and returns what is after it.</p>
+<p>Recursive functions <strong>are</strong> allowed:</p>
+<pre><code>Function fib(a),
+    if a &lt;= 2,
+        return 1.
+    !
+    return fib(a - 1) + fib(a - 2).
+!
+
+set result to fib(10).
+</code></pre>
+<p>In this example, at the end, result is set to 55, which is the 10th Fibonacci number. Notice how the fib function can call itself.</p>
 
                     </main>
 

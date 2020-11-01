@@ -15,4 +15,4 @@ loop,
 
 You can use the break keyword to get out of loop.
 
-You can also nest loops. You *cannot* set variables in loops because they would be shadowed on the next iteration of the loop. Variable shadowing is *not* allowed in ez.
+You can also nest loops. You *cannot* set variables in loops because they would be shadowed on the next iteration of the loop. [Variable shadowing](https://en.wikipedia.org/wiki/Variable_shadowing) is *not* allowed in ez.

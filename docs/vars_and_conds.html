@@ -175,7 +175,14 @@
 Change var to var * 2.
 </code></pre>
 <p>This is self explanatory, we are changing var to something else. To use the <code>change</code> keyword with a variable, you must <code>set</code> it first.</p>
+<blockquote>
 <p>Note: keywords in <code>ez</code> that start a sentence are not case sensitive <code>set var to 42.</code> works. <code>to</code> is case sensitive because it is in the middle of a sentence. You can think of this like English.</p>
+</blockquote>
+<p>Numbers and characters can be used interchangeably:</p>
+<pre><code>Set var to 'a'.
+Change var to var * 2.
+</code></pre>
+<p>In this example, at the end, var is 194, because ‘a’ is converted to it’s ASCII code. There is <em>0</em> difference between characters and numbers.</p>
 <h2><a class="header" href="#conditionals" id="conditionals">Conditionals</a></h2>
 <p>We can use an <code>if</code> statement to control the flow of the code:</p>
 <pre><code>Set special_number to 0.
@@ -191,13 +198,22 @@ if special_number = 0,
 <ul>
 <li><code>=</code> equals</li>
 <li><code>!=</code> not equal</li>
-<li><code>and</code> binary and operator</li>
-<li><code>or</code> binary or operator</li>
+<li><code>and</code> binary and operator (it also works for booleans because math is cool)</li>
+<li><code>or</code> binary or operator (it also works for booleans because math is cool)</li>
 <li><code>&gt;</code> greater than</li>
 <li><code>&lt;</code> less than</li>
 <li><code>&gt;=</code> greater than or equal</li>
 <li><code>&lt;=</code> less than or equal</li>
 </ul>
+<p>You can use these operators to create numbers:</p>
+<ul>
+<li><code>+</code> add</li>
+<li><code>-</code> subtract</li>
+<li><code>*</code> multiply</li>
+</ul>
+<blockquote>
+<p>Note: division is not supported because it is not safe, dividing by zero is bad.</p>
+</blockquote>
 
                     </main>
 

@@ -186,7 +186,9 @@ $ ezc main.ez -nolink
 # this links everything together
 $ ld main.ez.o lib.ez.o -o out
 </code></pre>
-<p>Ez uses the <a href="https://wiki.osdev.org/System_V_ABI">systemv x86_64</a> so you can also import and export functions to c or any language that can use c.</p>
+<p>For another example of this, with a Makefile, go here: <a href="https://github.com/g-w1/ezc/tree/master/tests/module">https://github.com/g-w1/ezc/tree/master/tests/module</a>.</p>
+<p>Ez uses the <a href="https://wiki.osdev.org/System_V_ABI">systemv x86_64</a> so you can also import and export functions to c or any language that can use this abi in the exact same way.</p>
+<p>For an example of interfacing with c go here: <a href="https://github.com/g-w1/ezc/tree/master/tests/cinterface">https://github.com/g-w1/ezc/tree/master/tests/cinterface</a></p>
 
                     </main>
 

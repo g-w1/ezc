@@ -23,3 +23,17 @@ Set six to AddOne(5). {
 In ez, comments start with `{` and end with `}`. Anything inside the comment is ignored.
 
 A `Return` statement immediately stops the function and returns what is after it.
+
+Recursive functions **are** allowed:
+```
+Function fib(a),
+    if a <= 2,
+        return 1.
+    !
+    return fib(a - 1) + fib(a - 2).
+!
+
+set result to fib(10).
+```
+
+In this example, at the end, result is set to 55, which is the 10th Fibonacci number. Notice how the fib function can call itself.

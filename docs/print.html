@@ -197,7 +197,14 @@ Set tmp to PutStringLine(hello_world).
 Change var to var * 2.
 </code></pre>
 <p>This is self explanatory, we are changing var to something else. To use the <code>change</code> keyword with a variable, you must <code>set</code> it first.</p>
+<blockquote>
 <p>Note: keywords in <code>ez</code> that start a sentence are not case sensitive <code>set var to 42.</code> works. <code>to</code> is case sensitive because it is in the middle of a sentence. You can think of this like English.</p>
+</blockquote>
+<p>Numbers and characters can be used interchangeably:</p>
+<pre><code>Set var to 'a'.
+Change var to var * 2.
+</code></pre>
+<p>In this example, at the end, var is 194, because ‘a’ is converted to it’s ASCII code. There is <em>0</em> difference between characters and numbers.</p>
 <h2><a class="header" href="#conditionals" id="conditionals">Conditionals</a></h2>
 <p>We can use an <code>if</code> statement to control the flow of the code:</p>
 <pre><code>Set special_number to 0.
@@ -213,13 +220,22 @@ if special_number = 0,
 <ul>
 <li><code>=</code> equals</li>
 <li><code>!=</code> not equal</li>
-<li><code>and</code> binary and operator</li>
-<li><code>or</code> binary or operator</li>
+<li><code>and</code> binary and operator (it also works for booleans because math is cool)</li>
+<li><code>or</code> binary or operator (it also works for booleans because math is cool)</li>
 <li><code>&gt;</code> greater than</li>
 <li><code>&lt;</code> less than</li>
 <li><code>&gt;=</code> greater than or equal</li>
 <li><code>&lt;=</code> less than or equal</li>
 </ul>
+<p>You can use these operators to create numbers:</p>
+<ul>
+<li><code>+</code> add</li>
+<li><code>-</code> subtract</li>
+<li><code>*</code> multiply</li>
+</ul>
+<blockquote>
+<p>Note: division is not supported because it is not safe, dividing by zero is bad.</p>
+</blockquote>
 <h1><a class="header" href="#loops" id="loops">Loops</a></h1>
 <p>Loops are a core part of any programming language.</p>
 <p>Here is an example of loops in ez:</p>
@@ -232,7 +248,7 @@ loop,
 !
 </code></pre>
 <p>You can use the break keyword to get out of loop.</p>
-<p>You can also nest loops. You <em>cannot</em> set variables in loops because they would be shadowed on the next iteration of the loop. Variable shadowing is <em>not</em> allowed in ez.</p>
+<p>You can also nest loops. You <em>cannot</em> set variables in loops because they would be shadowed on the next iteration of the loop. <a href="https://en.wikipedia.org/wiki/Variable_shadowing">Variable shadowing</a> is <em>not</em> allowed in ez.</p>
 <h1><a class="header" href="#functions" id="functions">Functions</a></h1>
 <p>Functions are also core to any programming language. If you are not familiar with functions they are like mini-programs that can take arguments and return results.</p>
 <p>Here is an example of one in ez:</p>
@@ -250,6 +266,17 @@ loop,
 </code></pre>
 <p>In ez, comments start with <code>{</code> and end with <code>}</code>. Anything inside the comment is ignored.</p>
 <p>A <code>Return</code> statement immediately stops the function and returns what is after it.</p>
+<p>Recursive functions <strong>are</strong> allowed:</p>
+<pre><code>Function fib(a),
+    if a &lt;= 2,
+        return 1.
+    !
+    return fib(a - 1) + fib(a - 2).
+!
+
+set result to fib(10).
+</code></pre>
+<p>In this example, at the end, result is set to 55, which is the 10th Fibonacci number. Notice how the fib function can call itself.</p>
 <h1><a class="header" href="#modules" id="modules">Modules</a></h1>
 <p>Ez has a very minimal module system.</p>
 <p>It is similar to c, except no preprocessor or <code>.h</code> files.</p>
@@ -273,7 +300,9 @@ $ ezc main.ez -nolink
 # this links everything together
 $ ld main.ez.o lib.ez.o -o out
 </code></pre>
-<p>Ez uses the <a href="https://wiki.osdev.org/System_V_ABI">systemv x86_64</a> so you can also import and export functions to c or any language that can use c.</p>
+<p>For another example of this, with a Makefile, go here: <a href="https://github.com/g-w1/ezc/tree/master/tests/module">https://github.com/g-w1/ezc/tree/master/tests/module</a>.</p>
+<p>Ez uses the <a href="https://wiki.osdev.org/System_V_ABI">systemv x86_64</a> so you can also import and export functions to c or any language that can use this abi in the exact same way.</p>
+<p>For an example of interfacing with c go here: <a href="https://github.com/g-w1/ezc/tree/master/tests/cinterface">https://github.com/g-w1/ezc/tree/master/tests/cinterface</a></p>
 <h1><a class="header" href="#standard-library-1" id="standard-library-1">Standard Library</a></h1>
 <p>TODO</p>
 <h1><a class="header" href="#arrays-and-pointers" id="arrays-and-pointers">Arrays and Pointers</a></h1>
