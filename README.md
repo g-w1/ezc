@@ -66,7 +66,7 @@ To test the generated code you can do `cd tests; ./test.sh`. Note: this requires
 
 - [x] loops
 
-- [x] fancy errors
+- [x] fancy compile errors (with carets)
 
 - [x] functions
 
@@ -74,10 +74,14 @@ To test the generated code you can do `cd tests; ./test.sh`. Note: this requires
 
 - [x] char literals
 
-- [x] standard library (right now it doesn't have a lot because no arrays and string lits yet)
+- [x] standard library
 
 - [x] io
 
-- [x] arrays
+- [x] arrays and string literals
+
+- [ ] finish blog bost
+
+- [ ] finish documentation
 
 - [ ] remove all the `TODO`s
