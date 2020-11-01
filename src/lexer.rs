@@ -119,6 +119,8 @@ enum LexerState {
     InComment,
     InCharLit,
     InCharLitFowardSlash,
+    InStrLit,
+    InStrLitSawForwardSlash,
 }
 
 #[derive(Debug, PartialEq)]
@@ -183,6 +185,10 @@ impl Tokenizer {
                         '<' => self.state = LexerState::SawLessThan,
                         '=' => self.state = LexerState::SawEquals,
                         '{' => self.state = LexerState::InComment,
+                        '"' => {
+                            self.end_token(&mut output, &mut output_poss, Token::OpenBrak);
+                            self.state = LexerState::InStrLit;
+                        }
                         '\'' => self.state = LexerState::InCharLit,
                         ' ' | '\n' => {}
                         _ => {
@@ -233,6 +239,40 @@ impl Tokenizer {
                             c => return (Err(LexError::UnexpectedChar(c, self.pos)), output_poss),
                         }
                     }
+                },
+                LexerState::InStrLit => match c {
+                    '\\' => self.state = LexerState::InStrLitSawForwardSlash,
+                    '"' => {
+                        self.end_token(&mut output, &mut output_poss, Token::CloseBrak);
+                        self.state = LexerState::Start;
+                    }
+                    c => {
+                        self.end_token_wo_reset(
+                            &mut output,
+                            &mut output_poss,
+                            Token::IntLit((c as u8).to_string()),
+                        );
+                        self.end_token_wo_reset(&mut output, &mut output_poss, Token::Comma);
+                    }
+                },
+                LexerState::InStrLitSawForwardSlash => match c {
+                    'n' => {
+                        self.end_token_wo_reset(
+                            &mut output,
+                            &mut output_poss,
+                            Token::IntLit(String::from("10")),
+                        );
+                        self.state = LexerState::InStrLit;
+                    }
+                    't' => {
+                        self.end_token_wo_reset(
+                            &mut output,
+                            &mut output_poss,
+                            Token::IntLit(String::from("9")),
+                        );
+                        self.state = LexerState::InStrLit;
+                    }
+                    c => return (Err(LexError::UnexpectedChar(c, self.pos)), output_poss),
                 },
                 LexerState::InCharLitFowardSlash => {
                     match c {
@@ -310,8 +350,7 @@ impl Tokenizer {
             LexerState::SawEquals => self.end_token(&mut output, &mut output_poss, Token::BoE),
             LexerState::SawGreaterThan => self.end_token(&mut output, &mut output_poss, Token::BoG),
             LexerState::SawLessThan => self.end_token(&mut output, &mut output_poss, Token::BoL),
-            LexerState::InComment => {}
-            LexerState::InCharLit | LexerState::InCharLitFowardSlash => {}
+            _ => {}
         }
         self.end_token(&mut output, &mut output_poss, Token::Eof);
         (Ok(output), output_poss)
@@ -327,6 +366,17 @@ impl Tokenizer {
         self.intermidiate_string = String::from("");
         output_poss.push(self.pos);
         self.state = LexerState::Start;
+    }
+    /// the function to end a token without reset
+    fn end_token_wo_reset(
+        self: &mut Self,
+        output: &mut Vec<Token>,
+        output_poss: &mut Locs,
+        token_type: Token,
+    ) {
+        output.push(token_type);
+        self.intermidiate_string = String::from("");
+        output_poss.push(self.pos);
     }
 }
 
@@ -413,6 +463,41 @@ mod tests {
                 Token::IntLit(String::from("3")),
                 Token::Comma,
                 Token::IntLit(String::from("4")),
+                Token::CloseBrak,
+                Token::Eof,
+            ]
+        );
+        assert_eq!(ts.len(), res.1.len())
+    }
+    #[test]
+    fn lexer_array_str_lit() {
+        let mut tokenizer = Tokenizer::new();
+        let res = tokenizer.lex(&String::from("n[] = \"abc\\n\""));
+        assert!(res.0.is_ok());
+        assert_eq!(
+            tokenizer,
+            Tokenizer {
+                state: LexerState::Start,
+                intermidiate_string: String::from(""),
+                pos: 13,
+            }
+        );
+        let ts = res.0.unwrap();
+        assert_eq!(
+            ts,
+            vec![
+                Token::Iden(String::from("n")),
+                Token::OpenBrak,
+                Token::CloseBrak,
+                Token::BoE,
+                Token::OpenBrak,
+                Token::IntLit(String::from("97")),
+                Token::Comma,
+                Token::IntLit(String::from("98")),
+                Token::Comma,
+                Token::IntLit(String::from("99")),
+                Token::Comma,
+                Token::IntLit(String::from("10")),
                 Token::CloseBrak,
                 Token::Eof,
             ]
