@@ -97,7 +97,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li><li class="chapter-item expanded "><a href="loops.html"><strong aria-hidden="true">3.</strong> Loops</a></li><li class="chapter-item expanded "><a href="functions.html"><strong aria-hidden="true">4.</strong> Functions</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">5.</strong> Modules</a></li><li class="chapter-item expanded "><a href="stdlib.html"><strong aria-hidden="true">6.</strong> Standard Library</a></li><li class="chapter-item expanded "><a href="arrays_and_ptrs.html"><strong aria-hidden="true">7.</strong> Arrays and Pointers</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li><li class="chapter-item expanded "><a href="loops.html"><strong aria-hidden="true">3.</strong> Loops</a></li><li class="chapter-item expanded "><a href="functions.html"><strong aria-hidden="true">4.</strong> Functions</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">5.</strong> Modules</a></li><li class="chapter-item expanded "><a href="arrays_and_ptrs.html"><strong aria-hidden="true">6.</strong> Arrays and Pointers</a></li><li class="chapter-item expanded "><a href="stdlib.html"><strong aria-hidden="true">7.</strong> Standard Library</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -303,6 +303,40 @@ $ ld main.ez.o lib.ez.o -o out
 <p>For another example of this, with a Makefile, go here: <a href="https://github.com/g-w1/ezc/tree/master/tests/module">https://github.com/g-w1/ezc/tree/master/tests/module</a>.</p>
 <p>Ez uses the <a href="https://wiki.osdev.org/System_V_ABI">systemv x86_64</a> so you can also import and export functions to c or any language that can use this abi in the exact same way.</p>
 <p>For an example of interfacing with c go here: <a href="https://github.com/g-w1/ezc/tree/master/tests/cinterface">https://github.com/g-w1/ezc/tree/master/tests/cinterface</a></p>
+<h1><a class="header" href="#arrays-and-pointers" id="arrays-and-pointers">Arrays and Pointers</a></h1>
+<p>Arrays and pointers are two of the most advanced topics in ez. They are also experimental: there are likely to be bugs when using them.</p>
+<h2><a class="header" href="#arrays" id="arrays">Arrays</a></h2>
+<p>You can set a variable to an array in ez:</p>
+<pre><code>set array_of_nums to [1,2,3].
+</code></pre>
+<p>You can index an array like this:</p>
+<pre><code>set array_of_nums to [3,2,1].
+set one to array_of_nums[1]. { We know one is 3. }
+set array_of_nums[1] to 1. { Now array_of_nums is [1,2,1]. }
+</code></pre>
+<p>A string is just an array of characters, which is just an array of numbers:</p>
+<pre><code>set array_of_nums to &quot;hello\n&quot;.
+set array_of_nums[1] to 'm'. { array_of_nums is &quot;mello\n&quot;}
+</code></pre>
+<p>To find the length of an array, you can use the zeroth element of it:</p>
+<pre><code>set array_of_nums to &quot;hello\n&quot;.
+set len to array_of_nums[0]. { len is 6 }
+</code></pre>
+<blockquote>
+<p>Note: for technical reasons, arrays are layed out in memory with the first element being a pointer to itself (for technical reasons involving the <code>mov</code> and <code>lea</code> instructions), the second element being the length of the array (not including the first 2 elements) and the rest being the array in memory</p>
+<p><code>[1,2,3]</code> is this: <code>pointer to itself, 3, 1, 2, 3 </code>
+To see examples of interacting with this slightly different array abi, view <a href="https://github.com/g-w1/ezc/blob/master/lib/src/lib.zig"><code>lib.zig</code></a></p>
+</blockquote>
+<h2><a class="header" href="#pointers" id="pointers">Pointers</a></h2>
+<p>In ez, pointers are numbers that represent a pointer to a value.</p>
+<p>Use the <code>@</code> operator to dereference a pointer:</p>
+<pre><code>set null to 0.
+set oof to @null.
+</code></pre>
+<p>This will produce a segmentation fault; it is the classic example of dereferencing a null pointer.</p>
+<blockquote>
+<p>Note: when setting something to an array value, or passing an array in a function, you are just using the pointer to the array.</p>
+</blockquote>
 <h1><a class="header" href="#standard-library-1" id="standard-library-1">Standard Library</a></h1>
 <p>There are some functions that are provided by the <code>libstd.a</code> standard library.</p>
 <p>Here they are.</p>
@@ -316,11 +350,6 @@ $ ld main.ez.o lib.ez.o -o out
 <li><code>PutNumBin(num)</code> Takes a number and prints it in binary.</li>
 <li><code>InputLine()</code> Reads a line from stdin and returns an array of it.</li>
 </ul>
-<h1><a class="header" href="#arrays-and-pointers" id="arrays-and-pointers">Arrays and Pointers</a></h1>
-<p>Arrays and pointers are two of the most advanced topics in ez. They are also experimental: there are likely to be bugs when using them.</p>
-<h2><a class="header" href="#arrays" id="arrays">Arrays</a></h2>
-<p>You can set a variable to an array in ez.</p>
-<p>TODO</p>
 
                     </main>
 

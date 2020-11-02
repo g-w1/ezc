@@ -95,7 +95,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li><li class="chapter-item expanded "><a href="loops.html"><strong aria-hidden="true">3.</strong> Loops</a></li><li class="chapter-item expanded "><a href="functions.html"><strong aria-hidden="true">4.</strong> Functions</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">5.</strong> Modules</a></li><li class="chapter-item expanded "><a href="stdlib.html"><strong aria-hidden="true">6.</strong> Standard Library</a></li><li class="chapter-item expanded "><a href="arrays_and_ptrs.html" class="active"><strong aria-hidden="true">7.</strong> Arrays and Pointers</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="installing.html"><strong aria-hidden="true">1.</strong> Installing</a></li><li class="chapter-item expanded "><a href="vars_and_conds.html"><strong aria-hidden="true">2.</strong> Variables and Conditionals</a></li><li class="chapter-item expanded "><a href="loops.html"><strong aria-hidden="true">3.</strong> Loops</a></li><li class="chapter-item expanded "><a href="functions.html"><strong aria-hidden="true">4.</strong> Functions</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">5.</strong> Modules</a></li><li class="chapter-item expanded "><a href="arrays_and_ptrs.html" class="active"><strong aria-hidden="true">6.</strong> Arrays and Pointers</a></li><li class="chapter-item expanded "><a href="stdlib.html"><strong aria-hidden="true">7.</strong> Standard Library</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -166,19 +166,52 @@
                         <h1><a class="header" href="#arrays-and-pointers" id="arrays-and-pointers">Arrays and Pointers</a></h1>
 <p>Arrays and pointers are two of the most advanced topics in ez. They are also experimental: there are likely to be bugs when using them.</p>
 <h2><a class="header" href="#arrays" id="arrays">Arrays</a></h2>
-<p>You can set a variable to an array in ez.</p>
-<p>TODO</p>
+<p>You can set a variable to an array in ez:</p>
+<pre><code>set array_of_nums to [1,2,3].
+</code></pre>
+<p>You can index an array like this:</p>
+<pre><code>set array_of_nums to [3,2,1].
+set one to array_of_nums[1]. { We know one is 3. }
+set array_of_nums[1] to 1. { Now array_of_nums is [1,2,1]. }
+</code></pre>
+<p>A string is just an array of characters, which is just an array of numbers:</p>
+<pre><code>set array_of_nums to &quot;hello\n&quot;.
+set array_of_nums[1] to 'm'. { array_of_nums is &quot;mello\n&quot;}
+</code></pre>
+<p>To find the length of an array, you can use the zeroth element of it:</p>
+<pre><code>set array_of_nums to &quot;hello\n&quot;.
+set len to array_of_nums[0]. { len is 6 }
+</code></pre>
+<blockquote>
+<p>Note: for technical reasons, arrays are layed out in memory with the first element being a pointer to itself (for technical reasons involving the <code>mov</code> and <code>lea</code> instructions), the second element being the length of the array (not including the first 2 elements) and the rest being the array in memory</p>
+<p><code>[1,2,3]</code> is this: <code>pointer to itself, 3, 1, 2, 3 </code>
+To see examples of interacting with this slightly different array abi, view <a href="https://github.com/g-w1/ezc/blob/master/lib/src/lib.zig"><code>lib.zig</code></a></p>
+</blockquote>
+<h2><a class="header" href="#pointers" id="pointers">Pointers</a></h2>
+<p>In ez, pointers are numbers that represent a pointer to a value.</p>
+<p>Use the <code>@</code> operator to dereference a pointer:</p>
+<pre><code>set null to 0.
+set oof to @null.
+</code></pre>
+<p>This will produce a segmentation fault; it is the classic example of dereferencing a null pointer.</p>
+<blockquote>
+<p>Note: when setting something to an array value, or passing an array in a function, you are just using the pointer to the array.</p>
+</blockquote>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="stdlib.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="modules.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
+                        
+                            <a rel="next" href="stdlib.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
 
                         <div style="clear: both"></div>
@@ -188,11 +221,15 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="stdlib.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="modules.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
+                
+                    <a rel="next" href="stdlib.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                 
             </nav>
 
