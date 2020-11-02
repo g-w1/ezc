@@ -173,12 +173,15 @@
 <pre><code>ERROR: I need an input file.
 </code></pre>
 <p>you have installed it correctly.</p>
+<blockquote>
+<p>Note if you want to install without zig, run <code>HAS_NO_ZIG=1 cargo install ezc</code>.</p>
+</blockquote>
 <h2><a class="header" href="#standard-library" id="standard-library">Standard Library</a></h2>
 <p>To build the standard library, run <code>git clone https://github.com/g-w1/ezc &amp;&amp; cd ezc/lib &amp;&amp; zig build</code>. If this works correctly, you should have a copy of the standard library in <code>ezc/lib/zig-cache/lib/libstd.a</code>.</p>
 <h2><a class="header" href="#testing-if-it-worked" id="testing-if-it-worked">Testing if it worked</a></h2>
 <p>To test if everything is installed correctly have a file called <code>hello_world.ez</code> with this contents:</p>
 <pre><code>External function PutStringLine(s).
-Set hello_world to ['H', 'e','l','l', 'o',' ', 'W','o','r','l','d','!']
+Set hello_world to &quot;Hello World!&quot;.
 Set tmp to PutStringLine(hello_world).
 </code></pre>
 <p>To compile it run <code>ezc hello_world.ez -stdlib-path path/to/stdlib.a</code>.</p>
@@ -372,21 +375,6 @@ set oof to @null.
 
         </div>
 
-        
-        <!-- Livereload script (if served using the cli tool) -->
-        <script type="text/javascript">
-            var socket = new WebSocket("ws://0.0.0.0:3000/__livereload");
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
         
 
         
