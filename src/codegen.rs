@@ -120,12 +120,6 @@ impl Code {
             n as i8
         } else {
             unimplemented!();
-            // // TODO this work
-            // self.text
-            //     .instructions
-            //     .push(format!("push qword [rsp - {}]", 8 * (n + 7)));
-            // self.stack_p_offset += 1;
-            // n as i8
         }
     }
     // ////////////////////////////////////////////////////////////  Systemv abi: https://wiki.osdev.org/Calling_Conventions
@@ -207,9 +201,7 @@ impl Code {
             }
             match arg {
                 Val::Expr(e) => self.cgen_expr(e.clone()),
-                // TODO do this. lol
-                // Val::Array(_ve) => self.text.instructions.push(format!("mov r8, {}", { "a" })),
-                Val::Array(_ve) => unimplemented!(),
+                Val::Array(_ve) => unreachable!(),
             }
             self.text
                 .instructions

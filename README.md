@@ -83,5 +83,3 @@ To test the generated code you can do `cd tests; ./test.sh`. Note: this requires
 - [ ] finish blog bost
 
 - [ ] finish documentation
-
-- [ ] remove all the `TODO`s
