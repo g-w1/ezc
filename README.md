@@ -18,24 +18,24 @@ This is for an independent study in school.
 
 To run just do `ezc file` use `-g` flag for debug info (it will generate a out.asm file). then you can open in gdb or lldb
 
-To get the standard library pass `-stdlib-path /path/to/stdlib` to the compiler. To compile the standard library, go into the lib directory in this compiler. Then run `zig build` in that directory and find the library in `zig-cache/lib/libstd.a`. You will probably need pretty close to master branch zig. You can find that here: https://ziglang.org/download/.
+To make use of the standard library, pass `-stdlib-path /path/to/stdlib` to the compiler. To compile the standard library, go into the lib directory in this compiler. Then run `zig build` in that directory and find the library in `zig-cache/lib/libstd.a`. You will probably need pretty close to master branch zig. You can find that here: https://ziglang.org/download/.
 
 To test the code: `cargo test`
 To test the generated code you can do `cd tests; ./test.sh`. Note: this requires `gcc`.
 
 ## Dependencies:
 
-- Zig (master). NOTE: If you want to build without zig run `HAS_NO_ZIG=1 cargo ...(whatever command you want)`. This may be useful if you are on a system without zig or want to provide your own standard library.
-- nasm
-- cargo
-- gcc (only for testing)
+- Zig (0.7.1). NOTE: If you want to build without zig run `HAS_NO_ZIG=1 cargo build`. This may be useful if you are on a system without zig or want to provide your own standard library.
+- `nasm`
+- `cargo`
+- `gcc` (only for testing)
 
 ## Resources
 
 - http://www.eis.mdx.ac.uk/staffpages/r_bornat/books/compiling.pdf - book about compilers
 - http://www.egr.unlv.edu/~ed/assembly64.pdf - book about x86-64 assembly
 - https://ruslanspivak.com/lsbasi-part1/ - this blog series as a reference to the frontend of a compiler
-- godbolt.org - an interactive webpage to explore how compilers work on the backend
+- [godbolt.org](https://godbolt.org) - an interactive webpage to explore how compilers work on the backend
 - http://tinf2.vub.ac.be/~dvermeir/courses/compilers/compilers.pdf - book about compilers.
 - https://github.com/ziglang/zig - source code for another programming language
 - http://www.cs.ecu.edu/karl/5220/spr16/Notes/Lexical/finitestate.html - explanation of a lexer as a state machine
@@ -80,6 +80,6 @@ To test the generated code you can do `cd tests; ./test.sh`. Note: this requires
 
 - [x] arrays and string literals
 
-- [ ] finish blog bost
+- [x] finish blog bost
 
-- [ ] finish documentation
+- [x] finish documentation
