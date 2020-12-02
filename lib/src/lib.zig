@@ -1,5 +1,28 @@
 const std = @import("std");
 
+// We define these so we dont have to link against compiler-rt
+export fn memcpy(noalias dest: ?[*]u8, noalias src: ?[*]const u8, n: usize) callconv(.C) ?[*]u8 {
+    @setRuntimeSafety(false);
+
+    var index: usize = 0;
+    while (index != n) : (index += 1)
+        dest.?[index] = src.?[index];
+
+    return dest;
+}
+
+export fn memset(dest: ?[*]u8, c: u8, n: usize) callconv(.C) ?[*]u8 {
+    @setRuntimeSafety(false);
+
+    var index: usize = 0;
+    while (index != n) : (index += 1)
+        dest.?[index] = c;
+
+    return dest;
+}
+
+// The actual stuff
+
 export fn PutString(s: [*]i64) i64 {
     const stdout = std.io.getStdOut().outStream();
     const len: i64 = s[1];
