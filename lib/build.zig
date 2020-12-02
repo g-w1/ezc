@@ -6,6 +6,7 @@ pub fn build(b: *Builder) void {
     // const mode = b.standardReleaseOptions();
     const mode = builtin.Mode.ReleaseSmall;
     const lib = b.addStaticLibrary("std", "src/lib.zig");
+    lib.bundle_compiler_rt = true;
     lib.setBuildMode(mode);
     lib.install();
 

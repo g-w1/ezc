@@ -18,7 +18,7 @@ This is for an independent study in school.
 
 To run just do `ezc file` use `-g` flag for debug info (it will generate a out.asm file). then you can open in gdb or lldb
 
-To make use of the standard library, pass `-stdlib-path /path/to/stdlib` to the compiler. To compile the standard library, go into the lib directory in this compiler. Then run `zig build` in that directory and find the library in `zig-cache/lib/libstd.a`. You will probably need pretty close to master branch zig. You can find that here: https://ziglang.org/download/.
+To make use of the standard library, pass `-stdlib-path /path/to/stdlib` to the compiler. To compile the standard library, go into the lib directory in this compiler. Then run `zig build` in that directory and find the library in `zig-cache/lib/libstd.a`. You will probably need zig 0.7.1. You can find that here: https://ziglang.org/download/.
 
 To test the code: `cargo test`
 To test the generated code you can do `cd tests; ./test.sh`. Note: this requires `gcc`.
