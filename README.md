@@ -2,9 +2,11 @@
 
 ![https://github.com/g-w1/ezc/workflows/Rust/badge.svg](https://github.com/g-w1/ezc/workflows/Rust/badge.svg)
 
+
 Compiler for `ez`.
 
-This is for an independent study in school.
+
+## [Documentation](https://g-w1.github.io/ezc/)
 
 ## Goals
 
