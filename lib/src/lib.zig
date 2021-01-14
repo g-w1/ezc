@@ -24,7 +24,7 @@ export fn memset(dest: ?[*]u8, c: u8, n: usize) callconv(.C) ?[*]u8 {
 // The actual stuff
 
 export fn PutString(s: [*]i64) i64 {
-    const stdout = std.io.getStdOut().outStream();
+    const stdout = std.io.getStdOut().writer();
     const len: i64 = s[1];
     var were_on_rn: u32 = 2;
     var char: u8 = 0;
@@ -35,37 +35,37 @@ export fn PutString(s: [*]i64) i64 {
     return 0;
 }
 export fn PutStringLine(s: [*]i64) i64 {
-    const stdout = std.io.getStdOut().outStream();
+    const stdout = std.io.getStdOut().writer();
     if (PutString(s) != 0) return -1;
     if (PutNewLine() != 0) return -1;
     return 0;
 }
 
 export fn PutNewLine() i64 {
-    const stdout = std.io.getStdOut().outStream();
+    const stdout = std.io.getStdOut().writer();
     stdout.print("\n", .{}) catch return -1;
     return 0;
 }
 
 export fn PutChar(u: u8) i64 {
-    const stdout = std.io.getStdOut().outStream();
+    const stdout = std.io.getStdOut().writer();
     stdout.print("{u}", .{u}) catch return -1;
     return 0;
 }
 export fn PutNum(n: i64) i64 {
-    const stdout = std.io.getStdOut().outStream();
+    const stdout = std.io.getStdOut().writer();
     stdout.print("{}", .{n}) catch return -1;
     return 0;
 }
 
 export fn PutNumHex(n: i64) i64 {
-    const stdout = std.io.getStdOut().outStream();
+    const stdout = std.io.getStdOut().writer();
     stdout.print("0x{X}", .{n}) catch return -1;
     return 0;
 }
 
 export fn PutNumBin(n: i64) i64 {
-    const stdout = std.io.getStdOut().outStream();
+    const stdout = std.io.getStdOut().writer();
     stdout.print("{b}", .{n}) catch return -1;
     return 0;
 }
