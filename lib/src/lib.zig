@@ -35,7 +35,6 @@ export fn PutString(s: [*]i64) i64 {
     return 0;
 }
 export fn PutStringLine(s: [*]i64) i64 {
-    const stdout = std.io.getStdOut().writer();
     if (PutString(s) != 0) return -1;
     if (PutNewLine() != 0) return -1;
     return 0;
