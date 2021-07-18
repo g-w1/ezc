@@ -48,7 +48,7 @@ export fn PutNewLine() i64 {
 
 export fn PutChar(u: u8) i64 {
     const stdout = std.io.getStdOut().writer();
-    stdout.print("{u}", .{u}) catch return -1;
+    stdout.print("{c}", .{u}) catch return -1;
     return 0;
 }
 export fn PutNum(n: i64) i64 {
