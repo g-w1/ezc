@@ -1,19 +1,16 @@
 # ezc
 
-![https://github.com/g-w1/ezc/workflows/Rust/badge.svg](https://github.com/g-w1/ezc/workflows/Rust/badge.svg)
-
-
 Compiler for `ez`.
 
 
-## [Documentation](https://g-w1.github.io/ezc/)
+## Documentation: https://g-w1.github.io/ezc/
 
 ## Goals
 
 - To learn a _lot_
 - `ez` should resemble english
 - Use only rust standard library
-- Write a (minimal) working compiler. probably only u64 but maybe arrays
+- Write a working compiler.
 - Write a (minimal) standard library for `ez` in another language (zig, rust, c, asm, ..)
 
 ## Instructions
