@@ -3,7 +3,7 @@
 Compiler for `ez`.
 
 
-## Documentation: https://g-w1.github.io/ezc/
+## Documentation: https://jacobgw.com/ezc/
 
 ## Goals
 
